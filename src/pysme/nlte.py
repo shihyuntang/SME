@@ -300,7 +300,7 @@ class Grid:
         else:
             solar = Abund(0, solar)
 
-        self.solar = solar.get_pattern("sme")[self.elem]
+        self.solar = solar.get_pattern("H-12")[self.elem]
 
         #:dict: upper and lower parameters covered by the grid
         self.limits = {}
