@@ -29,6 +29,9 @@ class Synthesizer:
         self.config, self.lfs_atmo, self.lfs_nlte = setup_lfs(
             config, lfs_atmo, lfs_nlte
         )
+        # dict: internal storage of the adaptive wavelength grid
+        self.wint = {}
+        # dll: the smelib object used for the radiative transfer calculation
         self.dll = dll if dll is not None else SME_DLL()
         logger.critical("Don't forget to cite your sources. Use sme.citation()")
 
@@ -109,7 +112,7 @@ class Synthesizer:
         # [2] 10% the mean dispersion of WINT_SEG
         # [3] 0.05 km/s, which is 1% the width of solar line profiles
 
-        wbeg, wend = wint[[0, -1]]
+        wbeg, wend = wint[0], wint[-1]
         wmid = 0.5 * (wend + wbeg)  # midpoint of segment
         wspan = wend - wbeg  # width of segment
         diff = wint[1:] - wint[:-1]
@@ -473,8 +476,6 @@ class Synthesizer:
             for i in range(sme.nseg):
                 sme.mask[i, ~np.isfinite(sme.spec[i])] = 0
 
-        if "wint" not in sme:
-            reuse_wavelength_grid = False
         if radial_velocity_mode != "robust" and (
             "cscale" not in sme or "vrad" not in sme
         ):
@@ -624,7 +625,11 @@ class Synthesizer:
         self.dll.Opacity()
 
         # Reuse adaptive wavelength grid in the jacobians
-        wint_seg = sme.wint[segment] if reuse_wavelength_grid else None
+        if reuse_wavelength_grid and segment in self.wint.keys():
+            wint_seg = self.wint[segment]
+        else:
+            wint_seg = None
+
         # Only calculate line opacities in the first segment
         #   Calculate spectral synthesis for each
         _, wint, sint, cint = self.dll.Transf(
@@ -634,6 +639,10 @@ class Synthesizer:
             keep_lineop=keep_line_opacity,
             wave=wint_seg,
         )
+        # Store the adaptive wavelength grid for the future
+        # if it was newly created
+        if wint_seg is None:
+            self.wint[segment] = wint
 
         if not sme.specific_intensities_only:
             # Create new geomspaced wavelength grid, to be used for intermediary steps
