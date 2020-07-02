@@ -250,7 +250,15 @@ class Grid:
     """NLTE Grid class that handles all NLTE data reading and interpolation
     """
 
-    def __init__(self, sme, elem, lfs_nlte, selection="energy", solar="asplund2009"):
+    def __init__(
+        self,
+        sme,
+        elem,
+        lfs_nlte,
+        selection="energy",
+        solar="asplund2009",
+        abund_format="Fe=12",
+    ):
         #:str: Element of the NLTE grid
         self.elem = elem
         #:LineList: Whole LineList that was passed to the C library
@@ -293,14 +301,27 @@ class Grid:
         #:list(int): number of points in the grid to cache for each parameter, order; abund, teff, logg, monh
         self.subgrid_size = sme.nlte.subgrid_size
         #:float: Solar Abundance of the element
+        self.abund_format = abund_format
         if solar is None:
             solar = Abund.solar()
         elif isinstance(solar, Abund):
             solar = Abund(0, solar._pattern, type=solar._type_internal)
+        elif isinstance(solar, np.floating):
+            pass
         else:
             solar = Abund(0, solar)
 
-        self.solar = solar.get_pattern("H-12")[self.elem]
+        # In the grid
+        # Ag_{X} = [X/Fe] = log(X/Fe) - log(X/Fe)_{SUN}
+        # N_{X} is the number of nuclei of element X in any atomic/ionisation/molecular form
+
+        # We are doing:
+        # Ag_{X} = [X/H] = log(X / H) - log(X / H)_SUN
+
+        if isinstance(solar, np.floating):
+            self.solar = solar
+        else:
+            self.solar = solar.get_element(self.elem, self.abund_format)
 
         #:dict: upper and lower parameters covered by the grid
         self.limits = {}
@@ -751,6 +772,7 @@ class NLTE(Collection):
         ("flags", None, array(None, np.bool_), this,
             "array: contains a flag for each line, whether it was calculated in NLTE (True) or not (False)"),
         ("solar", None, this, this, "str: defines which default to use as the solar metallicitiies"),
+        ("abund_format", "H=12", astype(str), this, "str: which abundance format to use for comparison"),
     ]
     # fmt: on
 
@@ -891,8 +913,10 @@ class NLTE(Collection):
         # Call each element to update and return its set of departure coefficients
         for elem in self.elements:
             # Call function to retrieve interpolated NLTE departure coefficients
+            # the abundances for NLTE are handled in the H-12 format
+            abund = sme.abund.get_element(elem, type=self.abund_format)
             grid = self.get_grid(sme, elem, lfs_nlte)
-            bmat = grid.get(sme.abund[elem], sme.teff, sme.logg, sme.monh)
+            bmat = grid.get(abund, sme.teff, sme.logg, sme.monh)
 
             if bmat is None or len(grid.linerefs) < 2:
                 # no data were returned. Don't bother?
@@ -918,7 +942,9 @@ class NLTE(Collection):
         if elem in self.grid_data.keys():
             grid = self.grid_data[elem]
         else:
-            grid = Grid(sme, elem, lfs_nlte, solar=self.solar)
+            grid = Grid(
+                sme, elem, lfs_nlte, solar=self.solar, abund_format=self.abund_format
+            )
             self.grid_data[elem] = grid
 
         return grid
