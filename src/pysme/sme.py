@@ -178,7 +178,7 @@ class SME_Structure(Parameters):
         ("ipres", 0, asfloat, this, "float: Instrumental resolution for instrumental broadening"),
         ("ip_x", None, this, this, "array: Instrumental broadening table in x direction"),
         ("ip_y", None, this, this, "array: Instrumental broadening table in y direction"),
-        ("mu", np.geomspace(0.01, 1, 7), array(None, float), this,
+        ("mu", np.sqrt(0.5 * (2 * np.arange(7) + 1) / 7), array(None, float), this,
             """array of size (nmu,): Mu values to calculate radiative transfer at
             mu values describe the distance from the center of the stellar disk to the edge
             with mu = cos(theta), where theta is the angle of the observation,
@@ -460,6 +460,9 @@ class SME_Structure(Parameters):
             raise ValueError("All values must be positive")
         if np.any(value > 1):
             raise ValueError("All values must be smaller or equal to 1")
+        # The mu values are expected in decreasing order
+        # For spherical models
+        value = np.sort(value)[::-1]
         self.__mu = value
 
     # Additional properties
@@ -474,6 +477,10 @@ class SME_Structure(Parameters):
     @property
     def nmu(self):
         return self.mu.size
+
+    @nmu.setter
+    def nmu(self, value):
+        self.mu = np.sqrt(0.5 * (2 * np.arange(value) + 1) / value)
 
     @property
     def mask_good(self):
