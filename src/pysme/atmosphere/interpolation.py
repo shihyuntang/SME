@@ -764,8 +764,8 @@ def interp_atmo_grid(Teff, logg, MonH, atmo_in, lfs_atmo, verbose=0, reload=Fals
             - logg_sun
             - 2 * np.log10(R_sun / atmo_grid[icor].radius)
         )
-        mass = 10 ** np.mean(mass_cor)
-        radius = R_sun * 10 ** ((logg_sun - logg + np.log10(mass)) * 0.5)
+        logmass = np.mean(mass_cor)
+        radius = R_sun * 10 ** ((logg_sun - logg + logmass) * 0.5)
         krz.radius = radius
         geom = "SPH"
     else:
