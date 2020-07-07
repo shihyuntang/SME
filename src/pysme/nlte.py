@@ -293,7 +293,18 @@ class Grid:
         self._xfe = self.directory["abund"]
         # The position of the models in the datafile
         self._keys = self.directory["models"].astype("U")
-        self._depth = self.directory[depth_name]
+
+        try:
+            self._depth = self.directory[depth_name]
+        except KeyError:
+            other_depth_name = "tau" if depth_name == "rhox" else "rhox"
+            self._depth = self.directory[other_depth_name]
+            self.target_depth = sme.atmo[other_depth_name]
+            self.target_depth = np.log10(self.target_depth)
+            logger.warning(
+                f"No data for {depth_name} in NLTE grid for {self.elem} found, using {other_depth_name} instead."
+            )
+            depth_name = other_depth_name
 
         self._grid = None
         self._points = None
