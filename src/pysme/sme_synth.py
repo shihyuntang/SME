@@ -287,10 +287,12 @@ class SME_DLL:
 
             if atmo.geom == "SPH":
                 # Spherical only supports RHOX
-                motype = "RHOX"
+                depth = atmo["RHOX"]
+                motype = "SPH"
             else:
                 motype = atmo.depth
-            depth = atmo[motype]
+                depth = atmo[motype]
+
             ndepth = len(depth)
             t = atmo.temp
             xne = atmo.xne
@@ -319,8 +321,8 @@ class SME_DLL:
                 radius = atmo.radius
                 height = atmo.height
                 motype = "SPH"
-                args = args[:5] + [radius] + args[5:] + [height]
-                type = type[:5] + "d" + type[5:] + "d"
+                args = args[:4] + [motype, radius] + args[5:] + [height]
+                type = type[:4] + "ud" + type[5:] + "d"
         except AttributeError as ae:
             raise TypeError(f"atmo has to be an Atmo type, {ae}")
 
@@ -567,6 +569,7 @@ class SME_DLL:
         sint_seg = np.zeros((nwmax, nmu))  # line+continuum intensities
         cint_seg = np.zeros((nwmax, nmu))  # all continuum intensities
         cintr_seg = np.zeros((nmu))  # red continuum intensity
+        nw = np.array([nw])
 
         type = "sdddiiddddss"  # s: short, d:double, i:int, u:unicode (string)
 
@@ -585,9 +588,7 @@ class SME_DLL:
             long_continuum,
             type=type,
         )
-
-        if nw == 0:
-            nw = np.count_nonzero(wint_seg)
+        nw = nw[0]
 
         wint_seg = wint_seg[:nw]
         sint_seg = sint_seg[:nw, :].T

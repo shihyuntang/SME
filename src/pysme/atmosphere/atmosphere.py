@@ -212,6 +212,7 @@ class AtmosphereGrid(np.recarray):
         self.citation_info = getattr(self, "citation_info", "")
         self.method = getattr(self, "method", "grid")
         self.abund_format = getattr(self, "abund_format", "sme")
+        self.wlstd = getattr(self, "wlstd", 5000)
 
     def __getitem__(self, key):
         """ Overwrite the getitem routine, so we keep additional

@@ -82,8 +82,10 @@ def load(fname, sme):
     try:
         ff = FlexFile.read(fname)
         sme = from_flex(ff, sme)
+        ff.close()
         return sme
     except Exception as ex:
+        print(ex)
         return load_v1(fname, sme)
 
 
@@ -359,7 +361,6 @@ def write_as_idl(sme):
         "species": save_as_binary(sme.species),
         "atomic": save_as_binary(sme.atomic),
         "lande": save_as_binary(sme.linelist.lande),
-        "depth": save_as_binary(sme.linelist.depth),
         "lineref": save_as_binary(sme.linelist.reference),
         "short_line_format": {"short": 1, "long": 2}[sme.linelist.lineformat],
         "wran": sme.wran.tolist(),
@@ -394,6 +395,11 @@ def write_as_idl(sme):
         idl_fields["mob"] = save_as_binary(sme.mask.ravel().astype("int16"))
     if sme.synth is not None:
         idl_fields["smod"] = save_as_binary(sme.synth.ravel())
+
+    if "depth" in sme.linelist.columns:
+        idl_fields["depth"] = save_as_binary(sme.linelist.depth)
+    else:
+        idl_fields["depth"] = save_as_binary(np.ones(len(sme.linelist)))
 
     if sme.linelist.lineformat == "long":
         idl_fields.update(

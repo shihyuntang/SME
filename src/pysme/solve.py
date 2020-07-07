@@ -28,7 +28,7 @@ from .large_file_storage import setup_lfs
 from .iliffe_vector import Iliffe_vector
 from .sme_synth import SME_DLL
 from .uncertainties import uncertainties
-from .util import safe_interpolation, print_to_log
+from .util import print_to_log
 from .synthesize import Synthesizer
 from .nlte import DirectAccessFile
 
@@ -257,11 +257,11 @@ class SME_Solver:
                 bounds["teff"] = teff
 
                 logg = np.unique(atmo_grid.logg)
-                logg = np.min(logg), np.max(logg) + 1
+                logg = np.min(logg), np.inf
                 bounds["logg"] = logg
 
                 monh = np.unique(atmo_grid.monh)
-                monh = np.min(monh), np.max(monh)
+                monh = np.min(monh), np.inf
                 bounds["monh"] = monh
             elif ext == ".krz":
                 # krz atmospheres are fixed to one parameter set

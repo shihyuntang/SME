@@ -77,6 +77,7 @@ class SavFile(AtmosphereGrid):
         self["monh"] = atmo_grid["monh"]
         self["vturb"] = atmo_grid["vturb"]
         self["lonh"] = atmo_grid["lonh"]
+        self["wlstd"] = atmo_grid["wlstd"]
         # Vector Parameters (one array per atmosphere)
         self["rhox"] = np.stack(atmo_grid["rhox"])
         self["tau"] = np.stack(atmo_grid["tau"])

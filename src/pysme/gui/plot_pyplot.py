@@ -37,7 +37,6 @@ class MaskPlot:
         self.smod = sme.synth
         self.segment = segment
         self.nsegments = len(self.wave)
-        self.wind = sme.wind
         self.mode = "line/cont"
         self.lines = sme.linelist
         self.vrad = sme.vrad

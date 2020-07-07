@@ -102,10 +102,10 @@ class ValdFile(LineList):
     }
     """
 
-    acknowledgement = r"""
-    This work has made use of the VALD database, operated at Uppsala University,
-    the Institute of Astronomy RAS in Moscow, and the University of Vienna.
-    """
+    acknowledgement = (
+        r"This work has made use of the VALD database, operated at Uppsala University,"
+        r"the Institute of Astronomy RAS in Moscow, and the University of Vienna."
+    )
 
     def __init__(self, filename, medium=None):
         self.filename = filename
@@ -137,43 +137,100 @@ class ValdFile(LineList):
         """
         return ValdFile(filename)
 
+    def identify_valdtype(self, lines):
+        """Determines whether the file was created with extract_all, extract_stellar, or extract_element
+        and whether it is in long or short format
+
+        Parameters
+        ----------
+        lines : list(str)
+            file contents
+        """
+        header = lines[0]
+        header = header.strip().split()
+
+        if header[0] == "Damping":
+            # short format extract all / extract element
+            return "extract_all", "short"
+        elif header[0] == "Lande":
+            # long format extract all / extract element
+            return "extract_all", "long"
+        else:
+            header = lines[1].strip().split()
+            if header[0] == "Damping":
+                # short format, extract stellar
+                return "extract_stellar", "short"
+            elif header[0] == "Lande":
+                # long format, extract stellar
+                return "extract_stellar", "long"
+
+        raise ValueError("Could not identify ValdFile type")
+
     def loads(self, filename):
         logger.info("Loading VALD file %s", filename)
 
         with open(filename, "r") as file:
             lines = file.readlines()
 
-        # TODO: if linelist from extract all, there is an extra header line
+        # Determine File type and format
+        valdtype, fmt = self.identify_valdtype(lines)
 
-        self.parse_header(lines[0])
-        self.parse_columns(lines[2])
-        # TODO how to recognise extended format
-        fmt = "long" if lines[4][:2] == "' " else "short"
-        n = self.nlines
+        # Determine the number of lines in the file
+        if valdtype == "extract_stellar":
+            n = self.parse_header(lines[0])
+            # Skip the info header if extract stellar
+            lines = lines[1:]
+        else:
+            n = self.parse_nlines(lines, fmt, valdtype)
 
+        # Determine the units and medium in the linelist
+        self.parse_columns(lines[1])
+
+        # Split the lines into the different parts
         try:
             if fmt == "long":
-                linedata = lines[3 : 3 + n * 4]
-                atmodata = lines[3 + n * 4]
-                abunddata = lines[4 + n * 4 : 22 + n * 4]
-                refdata = linedata[3::4]
+                linedata = lines[2 : 2 + n * 4]
+                refdata = linedata[2::4]
+                if valdtype == "extract_stellar":
+                    atmodata = lines[2 + n * 4]
+                    abunddata = lines[3 + n * 4 : 21 + n * 4]
             elif fmt == "short":
-                linedata = lines[3 : 3 + n]
-                atmodata = lines[3 + n]
-                abunddata = lines[4 + n : 22 + n]
+                linedata = lines[2 : 2 + n]
                 refdata = linedata
+                if valdtype == "extract_stellar":
+                    atmodata = lines[2 + n]
+                    abunddata = lines[3 + n : 21 + n]
         except IndexError:
             msg = "Linelist file is shorter than it should be according to the number of lines. Is it incomplete?"
             logger.error(msg)
             raise IOError(msg)
 
-        linelist = self.parse_linedata(linedata, fmt=fmt)
-        self.atmo = self.parse_valdatmo(atmodata)
-        self.abund = self.parse_abund(abunddata)
+        # Process the individual parts
+        linelist = self.parse_linedata(linedata, fmt=fmt, valdtype=valdtype)
+        if valdtype == "extract_stellar":
+            self.atmo = self.parse_valdatmo(atmodata)
+            self.abund = self.parse_abund(abunddata)
 
         self.citation_info += self.parse_references(refdata, fmt)
 
         return linelist
+
+    def parse_nlines(self, lines, fmt, valdtype):
+        if valdtype == "extract_stellar":
+            pattern = r"^ '\S+',$"
+        else:
+            pattern = r"\* oscillator|References"
+        pattern = re.compile(pattern)
+        for i in range(len(lines)):
+            if re.match(pattern, lines[i]):
+                # Offset by the two header lines
+                n = i - 2
+                break
+
+        if fmt == "long":
+            n //= 4
+        self.nlines = n
+        return self.nlines
 
     def parse_header(self, line):
         """
@@ -202,6 +259,7 @@ class ValdFile(LineList):
             pass
         except:
             raise ValdError(f"{self.filename} is not a VALD line data file")
+        return self.nlines
 
     def parse_columns(self, line):
         match = re.search(r"WL_(air|vac)\((.*?)\)", line)
@@ -238,10 +296,9 @@ class ValdFile(LineList):
         else:
             raise ValueError("could not determine the unit of the energy levels")
 
-        # columns = re.split("\s\s+", line)
-        # return columns
+        return self.medium, self.unit, self.energy_unit
 
-    def parse_linedata(self, lines, fmt="short"):
+    def parse_linedata(self, lines, fmt="short", valdtype="extract_stellar"):
         """Parse line data from a VALD line data file
 
         Parameters
@@ -271,9 +328,10 @@ class ValdFile(LineList):
                 "gamqst",
                 "gamvw",
                 "lande",
-                "depth",
                 "reference",
             ]
+            if valdtype == "extract_stellar":
+                names = names[:-1] + ["depth", names[-1]]
 
         elif fmt == "long":
             names = [
@@ -290,8 +348,10 @@ class ValdFile(LineList):
                 "gamrad",
                 "gamqst",
                 "gamvw",
-                "depth",
             ]
+            if valdtype == "extract_stellar":
+                names += ["depth"]
+
             term_lower = lines[1::4]
             term_upper = lines[2::4]
             comment = lines[3::4]
@@ -343,7 +403,9 @@ class ValdFile(LineList):
 
             # extract error data
             error = np.array([s[:10].strip() for s in comment])
-            error = LineList.parse_line_error(error, linelist["depth"])
+            error = LineList.parse_line_error(
+                error, linelist["depth"] if valdtype == "extract_stellar" else None
+            )
             linelist["error"] = error
 
         # Convert from whatever unit to Angstrom

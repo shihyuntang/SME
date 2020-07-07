@@ -117,6 +117,11 @@ def get_continuum_mask(wave, synth, linelist, threshold=0.1, mask=None):
         True for points between lines and False for points within lines
     """
 
+    if "depth" not in linelist.columns:
+        raise ValueError(
+            "No depth specified in the linelist, can't auto compute the mask"
+        )
+
     if threshold <= 0:
         threshold = 0.01
 
@@ -272,7 +277,7 @@ def determine_radial_velocity(sme, segment, cscale, x_syn, y_syn):
             resid = np.nan_to_num(resid, copy=False)
             return resid
 
-        interpolator = util.safe_interpolation(x_syn, y_syn, None)
+        interpolator = lambda x: np.interp(x, x_syn, y_syn)
         res = least_squares(func, x0=rvel, loss="soft_l1", bounds=rv_bounds)
         rvel = res.x[0]
 

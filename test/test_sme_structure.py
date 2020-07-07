@@ -88,8 +88,9 @@ def test_save_and_load_structure(filename):
     sme.save(filename)
     del sme
     sme = SME_Struct.load(filename)
-    remove(filename)
     assert sme.teff == 5000
+
+    remove(filename)
 
     data = np.linspace(1000, 2000, 100)
     sme.wave = data

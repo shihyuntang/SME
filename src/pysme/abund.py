@@ -194,11 +194,11 @@ class Abund(IPersist):
         nuclei of each element in any form relative to the total for
         all elements in any form. For the Sun, the abundance values
         of H, He, and Li are approximately 0.92, -1.11, and -11.0.
-    'n/nTot' - Abundance values are log10 of the fraction of nuclei
+    'n/nTot' - Abundance values are the fraction of nuclei
         of each element in any form relative to the total for all
         elements in any form. For the Sun, the abundance values of
         H, He, and Li are approximately 0.92, 0.078, and 1.03e-11.
-    'n/nH' - Abundance values are log10 of the fraction of nuclei
+    'n/nH' - Abundance values are the fraction of nuclei
         of each element in any form relative to the number of
         hydrogen nuclei in any form. For the Sun, the abundance
         values of H, He, and Li are approximately 1, 0.085, and
@@ -238,9 +238,7 @@ class Abund(IPersist):
         return self.totype(pattern, type, raw=raw)
 
     def __getitem__(self, elem):
-        pattern = self.get_pattern(self.type, raw=True)
-        i = self._get_index(elem)
-        return pattern[i]
+        return self.get_element(elem)
 
     def __setitem__(self, elem, abund):
         self.update_pattern({elem: abund})
@@ -296,11 +294,21 @@ class Abund(IPersist):
                 f"Got element abreviation {elem}, expected one of {elements}"
             )
 
+    def __copy__(self):
+        pattern = self._pattern.copy()
+        other = Abund(
+            monh=self.monh,
+            type=self.type,
+            pattern=pattern,
+            citation_info=self.citation_info,
+        )
+        return other
+
     @staticmethod
     def fromtype(pattern, fromtype, raw=False):
         """Return a copy of the input abundance pattern, transformed from
         the input type to the 'H=12' type. Valid abundance pattern types
-        are 'sme', 'n/nTot', 'n/nH', and 'H=12'.
+        are 'sme', 'n/nTot', 'n/nH', 'n/nFe', and 'H=12'.
         """
         elem = elements
 
@@ -323,10 +331,17 @@ class Abund(IPersist):
             abund = 12 + np.log10(abund)
         elif type == "n/nh":
             abund = 12 + np.log10(abund)
+        elif type == "n/nfe":
+            abund /= abund[0]
+            abund = 12 + np.log10(abund)
+        elif type == "fe=12":
+            abund = 10 ** (abund - 12)
+            abund /= abund[0]
+            abund = 12 + np.log10(abund)
         else:
             raise ValueError(
                 "got abundance type '{}',".format(type)
-                + " should be 'H=12', 'n/nH', 'n/nTot', or 'sme'"
+                + " should be 'H=12', 'n/nH', 'n/nTot', 'n/nFe', 'Fe=12', or 'sme'"
             )
         if raw:
             return abund
@@ -360,10 +375,19 @@ class Abund(IPersist):
             abund /= np.nansum(abund)
         elif type == "n/nh":
             abund = 10 ** (abund - 12)
+        elif type == "n/nfe":
+            idx_fe = elements_dict["Fe"]
+            abund = 10 ** (abund - 12)
+            abund /= abund[idx_fe]
+        elif type == "fe=12":
+            idx_fe = elements_dict["Fe"]
+            abund = 10 ** (abund - 12)
+            abund /= abund[idx_fe]
+            abund = np.log10(abund) + 12
         else:
             raise ValueError(
                 "got abundance type '{}',".format(type)
-                + " should be 'H=12', 'n/nH', 'n/nTot', or 'sme'"
+                + " should be 'H=12', 'n/nH', 'n/nTot', 'n/nFe', 'Fe=12', or 'sme'"
             )
 
         if raw:
@@ -371,11 +395,7 @@ class Abund(IPersist):
         else:
             return {el: abund[elements_dict[el]] for el in elements}
 
-    _formats = ["H=12", "sme", "n/nTot", "n/nH"]
-
-    # fmt: off
-
-    # fmt: on
+    _formats = ["H=12", "sme", "n/nTot", "n/nH", "n/nFe", "Fe=12"]
 
     @property
     def elem(self):
@@ -415,10 +435,10 @@ class Abund(IPersist):
         """
         self.type = "H=12"
         self.citation_info = _citation_atomic_weights + "\n"
-        if pattern_name.lower() in ["asplund2009", "solar"]:
+        if pattern_name.lower() in ["asplund2009"]:
             self._pattern = np.array(_asplund2009, dtype=float)
             self.citation_info += _citation_asplund2009
-        elif pattern_name.lower() == "grevesse2007":
+        elif pattern_name.lower() in ["grevesse2007", "solar"]:
             self._pattern = np.array(_grevesse2007, dtype=float)
             self.citation_info += _citation_grevesse2007
         elif pattern_name.lower() == "lodders2003":
@@ -476,6 +496,13 @@ class Abund(IPersist):
         if type is None:
             type = self.type
         return self.totype(self._pattern, type, raw=raw)
+
+    def get_element(self, elem, type=None):
+        if type is None:
+            type = self.type
+        pattern = self.get_pattern(type, raw=True)
+        i = self._get_index(elem)
+        return pattern[i]
 
     def empty_pattern(self):
         """Return an abundance pattern with value None for all elements.

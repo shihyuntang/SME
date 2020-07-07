@@ -44,7 +44,7 @@ class LineList(IPersist):
     citation_info = ""
 
     @staticmethod
-    def parse_line_error(error_flags, values):
+    def parse_line_error(error_flags, values=None):
         """Transform Line Error flags into relative error values
 
         Parameters
@@ -59,6 +59,9 @@ class LineList(IPersist):
         errors : list(float)
             relative errors for each line
         """
+        if values is None:
+            values = np.ones(len(error_flags))
+
         nist = {
             "AAA": 0.003,
             "AA": 0.01,

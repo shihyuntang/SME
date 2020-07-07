@@ -250,7 +250,15 @@ class Grid:
     """NLTE Grid class that handles all NLTE data reading and interpolation
     """
 
-    def __init__(self, sme, elem, lfs_nlte, selection="energy"):
+    def __init__(
+        self,
+        sme,
+        elem,
+        lfs_nlte,
+        selection="energy",
+        solar="asplund2009",
+        abund_format="Fe=12",
+    ):
         #:str: Element of the NLTE grid
         self.elem = elem
         #:LineList: Whole LineList that was passed to the C library
@@ -293,7 +301,27 @@ class Grid:
         #:list(int): number of points in the grid to cache for each parameter, order; abund, teff, logg, monh
         self.subgrid_size = sme.nlte.subgrid_size
         #:float: Solar Abundance of the element
-        self.solar = Abund.solar()[self.elem]
+        self.abund_format = abund_format
+        if solar is None:
+            solar = Abund.solar()
+        elif isinstance(solar, Abund):
+            solar = Abund(0, solar._pattern, type=solar._type_internal)
+        elif isinstance(solar, np.floating):
+            pass
+        else:
+            solar = Abund(0, solar)
+
+        # In the grid
+        # Ag_{X} = [X/Fe] = log(X/Fe) - log(X/Fe)_{SUN}
+        # N_{X} is the number of nuclei of element X in any atomic/ionisation/molecular form
+
+        # We are doing:
+        # Ag_{X} = [X/H] = log(X / H) - log(X / H)_SUN
+
+        if isinstance(solar, np.floating):
+            self.solar = solar
+        else:
+            self.solar = solar.get_element(self.elem, self.abund_format)
 
         #:dict: upper and lower parameters covered by the grid
         self.limits = {}
@@ -730,86 +758,6 @@ class Grid:
         return subgrid[0]
 
 
-def nlte(sme, dll, elem, lfs_nlte):
-    """ Read and interpolate the NLTE grid for the current element and parameters """
-    if sme.nlte.grids[elem] is None:
-        raise ValueError(f"Element {elem} has not been prepared for NLTE")
-
-    # TODO: The grids are cached in the DLL object
-    # Its probably better to store them in a seperate object
-    if elem in sme.nlte.grid_data.keys():
-        grid = sme.nlte.grid_data[elem]
-    else:
-        grid = Grid(sme, elem, lfs_nlte)
-        sme.nlte.grid_data[elem] = grid
-
-    subgrid = grid.get(sme.abund[elem], sme.teff, sme.logg, sme.monh)
-
-    return subgrid, grid.linerefs, grid.lineindices
-
-
-# TODO should this be in sme_synth instead ?
-def update_nlte_coefficients(sme, dll, lfs_nlte):
-    """ pass departure coefficients to C library """
-
-    # Only print "Running in NLTE" message on the first run each time
-    self = update_nlte_coefficients
-    if not hasattr(self, "first"):
-        setattr(self, "first", True)
-
-    if (
-        not "nlte" in sme
-        or "elements" not in sme.nlte
-        or "grids" not in sme.nlte
-        or np.all(sme.nlte.grids == "")
-        or np.size(sme.nlte.elements) == 0
-    ):
-        # No NLTE to do
-        if self.first:
-            self.first = False
-            logger.info("Running in LTE")
-        return sme
-    if sme.linelist.lineformat == "short":
-        if self.first:
-            self.first = False
-            logger.warning(
-                "NLTE line formation was requested, but VALD3 long-format linedata\n"
-                "are required in order to relate line terms to NLTE level corrections!\n"
-                "Line formation will proceed under LTE."
-            )
-        return sme
-
-    # Reset the departure coefficient every time, just to be sure
-    # It would be more efficient to just Update the values, but this doesn't take long
-    dll.ResetNLTE()
-
-    elements = sme.nlte.elements
-
-    if self.first:
-        self.first = False
-        logger.info("Running in NLTE: %s", ", ".join(elements))
-
-    # Call each element to update and return its set of departure coefficients
-    for elem in elements:
-        # Call function to retrieve interpolated NLTE departure coefficients
-        bmat, linerefs, lineindices = nlte(sme, dll, elem, lfs_nlte)
-
-        if bmat is None or len(linerefs) < 2:
-            # no data were returned. Don't bother?
-            pass
-        else:
-            # Put corrections into the nlte_b matrix, don't cache the data
-            for lr, li in zip(linerefs, lineindices):
-                # loop through the list of relevant _lines_, substitute both their levels into the main b matrix
-                # Make sure both levels have corrections available
-                if lr[0] != -1 and lr[1] != -1:
-                    dll.InputNLTE(bmat[:, lr].T, li)
-
-    # flags = sme_synth.GetNLTEflags(sme.linelist)
-
-    return sme
-
-
 @CollectionFactory
 class NLTE(Collection):
     # fmt: off
@@ -822,7 +770,9 @@ class NLTE(Collection):
             "array of shape (4,): defines size of nlte grid cache."
             "Each entry is for one parameter abund, teff, logg, monh"),
         ("flags", None, array(None, np.bool_), this,
-            "array: contains a flag for each line, whether it was calculated in NLTE (True) or not (False)")
+            "array: contains a flag for each line, whether it was calculated in NLTE (True) or not (False)"),
+        ("solar", None, this, this, "str: defines which default to use as the solar metallicitiies"),
+        ("abund_format", "H=12", astype(str), this, "str: which abundance format to use for comparison"),
     ]
     # fmt: on
 
@@ -842,6 +792,10 @@ class NLTE(Collection):
 
     def __init__(self, **kwargs):
         super().__init__()
+        self.first = False
+
+        if "solar" in kwargs.keys():
+            self.solar = kwargs["solar"]
 
         # Convert IDL keywords to Python
         if "nlte_elem_flags" in kwargs.keys():
@@ -927,3 +881,83 @@ class NLTE(Collection):
     @_citation_info.setter
     def _citation_info(self, value):
         pass
+
+    def update_coefficients(self, sme, dll, lfs_nlte):
+        """ pass departure coefficients to C library """
+
+        # Only print "Running in NLTE" message on the first run each time
+        if np.all(self.grids == "") or np.size(self.elements) == 0:
+            # No NLTE to do
+            if self.first:
+                self.first = False
+                logger.info("Running in LTE")
+            return sme
+        if sme.linelist.lineformat == "short":
+            if self.first:
+                self.first = False
+                logger.warning(
+                    "NLTE line formation was requested, but VALD3 long-format linedata\n"
+                    "are required in order to relate line terms to NLTE level corrections!\n"
+                    "Line formation will proceed under LTE."
+                )
+            return sme
+
+        # Reset the departure coefficient every time, just to be sure
+        # It would be more efficient to just Update the values, but this doesn't take long
+        dll.ResetNLTE()
+
+        if self.first:
+            self.first = False
+            logger.info("Running in NLTE: %s", ", ".join(self.elements))
+
+        # Call each element to update and return its set of departure coefficients
+        for elem in self.elements:
+            # Call function to retrieve interpolated NLTE departure coefficients
+            # the abundances for NLTE are handled in the H-12 format
+            abund = sme.abund.get_element(elem, type=self.abund_format)
+            grid = self.get_grid(sme, elem, lfs_nlte)
+            bmat = grid.get(abund, sme.teff, sme.logg, sme.monh)
+
+            if bmat is None or len(grid.linerefs) < 2:
+                # no data were returned. Don't bother?
+                pass
+            else:
+                # Put corrections into the nlte_b matrix, don't cache the data
+                for lr, li in zip(grid.linerefs, grid.lineindices):
+                    # loop through the list of relevant _lines_, substitute both their levels into the main b matrix
+                    # Make sure both levels have corrections available
+                    if lr[0] != -1 and lr[1] != -1:
+                        dll.InputNLTE(bmat[:, lr].T, li)
+
+        # flags = sme_synth.GetNLTEflags(sme.linelist)
+
+        return sme
+
+    def get_grid(self, sme, elem, lfs_nlte):
+        """ Read and interpolate the NLTE grid for the current element and parameters """
+        if self.grids[elem] is None:
+            raise ValueError(f"Element {elem} has not been prepared for NLTE")
+
+        # The grids are cached in the NLTE object, but not saved
+        if elem in self.grid_data.keys():
+            grid = self.grid_data[elem]
+        else:
+            grid = Grid(
+                sme, elem, lfs_nlte, solar=self.solar, abund_format=self.abund_format
+            )
+            self.grid_data[elem] = grid
+
+        return grid
+
+
+# These are kept here for compatibility, but it is recommended to use the functions of sme.nlte
+def nlte(sme, dll, elem, lfs_nlte):
+    """ Read and interpolate the NLTE grid for the current element and parameters """
+    grid = sme.nlte.get_grid(sme, elem, lfs_nlte)
+    subgrid = grid.get(sme.abund[elem], sme.teff, sme.logg, sme.monh)
+    return subgrid, grid.linerefs, grid.lineindices
+
+
+def update_nlte_coefficients(sme, dll, lfs_nlte):
+    """ pass departure coefficients to C library """
+    return sme.nlte.update_coefficients(sme, dll, lfs_nlte)
