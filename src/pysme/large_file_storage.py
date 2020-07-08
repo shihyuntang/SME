@@ -175,17 +175,18 @@ class LargeFileStorage:
         """ Generate the pointers dictionary from the existing storage directory """
         pointers = {}
         for path in self.current.iterdir():
-            name = path.stem
-            if not path.is_dir:
+            name = path.name
+            if not path.is_dir():
                 pointers[name] = self.hash(path)
 
-        self.pointers = pointers
-        return pointers
+        # Only update existing files, keep old references
+        self.pointers.update(pointers)
+        return self.pointers
 
     def move_to_cache(self):
         """ Move currently used files into cache directory and use symlinks insteadm, just if downloaded from a server """
         for fullpath in self.current.iterdir():
-            name = fullpath.stem
+            name = fullpath.name
             if fullpath.is_file():
                 # Copy file
                 shutil.copy(str(fullpath), str(self.cache / self.pointers[name]))
@@ -200,7 +201,7 @@ class LargeFileStorage:
             raise RuntimeError("Needs pointers")
 
         with open(filename, "w") as f:
-            json.dump(self.pointers, f)
+            json.dump(self.pointers, f, indent=4)
 
 
 class Server:
