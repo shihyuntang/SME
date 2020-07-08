@@ -85,8 +85,12 @@ def load(fname, sme):
         ff.close()
         return sme
     except Exception as ex:
-        print(ex)
-        return load_v1(fname, sme)
+        logger.error(ex)
+        try:
+            sme = load_v1(fname, sme)
+        except:
+            raise ex
+        return sme
 
 
 # Update this if the names in sme change
