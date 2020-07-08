@@ -183,7 +183,8 @@ class LargeFileStorage:
         return pointers
 
     def move_to_cache(self):
-        """ Move currently used files into cache directory and use symlinks insteadm, just if downloaded from a server """
+        """ Move currently used files into cache directory and use symlinks instead,
+        just as if downloaded from a server """
         for fullpath in self.current.iterdir():
             name = fullpath.stem
             if fullpath.is_file():
