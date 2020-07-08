@@ -200,6 +200,7 @@ class LineList(IPersist):
                 f"Medium not recognized, expected one of ['air', 'vac'] , but got {medium} instead."
             )
 
+        self.citation_info = ""
         if "citation_info" in kwargs.keys():
             self.citation_info = kwargs["citation_info"]
 
