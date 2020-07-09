@@ -789,16 +789,21 @@ class NLTE(Collection):
 
     # For marcs2012 atmosphere
     _default_grids = {
-        "Al": "marcs2012_Al2017.grd",
+        "Al": "nlte_Al_ama51_pysme.grd",
         "Fe": "marcs2012_Fe2016.grd",
-        "Li": "marcs2012_Li.grd",
-        "Mg": "marcs2012_Mg2016.grd",
-        "Na": "marcs2012p_t1.0_Na.grd",
-        "O": "marcs2012_O2015.grd",
-        "Ba": "marcs2012p_t1.0_Ba.grd",
-        "Ca": "marcs2012p_t1.0_Ca.grd",
-        "Si": "marcs2012_SI2016.grd",
+        "Li": "nlte_Li_ama51_pysme.grd",
+        "Mg": "nlte_Mg_ama51_pysme.grd",
+        "Na": "nlte_Na_ama51_pysme.grd",
+        "O": "nlte_O_ama51_pysme.grd",
+        "Ba": "nlte_Ba_ama51_pysme.grd",
+        "Ca": "nlte_Ca_ama51_pysme.grd",
+        "Si": "nlte_Si_ama51_pysme.grd",
         "Ti": "marcs2012s_t2.0_Ti.grd",
+        "C": "nlte_C_ama51_pysme.grd",
+        "H": "nlte_H_ama51_pysme.grd",
+        "K": "nlte_K_ama51_pysme.grd",
+        "Mn": "nlte_Mn_ama51_pysme.grd",
+        "N": "nlte_N_ama51_pysme.grd",
     }
 
     def __init__(self, **kwargs):

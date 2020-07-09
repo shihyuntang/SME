@@ -8,14 +8,15 @@ Con: Need to run server
 """
 
 import hashlib
+import json
 import logging
 import os
 import shutil
+import warnings
 from pathlib import Path
 
-import wget
 import requests
-import json
+import wget
 
 from .config import Config
 
@@ -70,8 +71,12 @@ class LargeFileStorage:
     def symlink(self, src, dest):
         try:
             os.symlink(src, dest)
-        except OSError:
+        except OSError as ex:
             # Might Fail on Windows, then just copy the file
+            logger.debug(ex)
+            warnings.warn(
+                "Could not create symlinks, see https://docs.python.org/3/library/os.html#os.symlink for more details",
+            )
             shutil.copy(src, dest)
 
     def get(self, key):
