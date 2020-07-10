@@ -121,14 +121,14 @@ class Atmosphere(Collection):
 
         for name in self._names:
             value = self[name]
-            if isinstance(value, (float, int, str)):
-                header[name] = value
-            elif isinstance(value, np.ndarray):
+
+            if isinstance(value, np.ndarray):
                 data[name] = value
             elif value is None or isinstance(value, Abund):
                 pass
             else:
-                raise ValueError("What is this? %s" % value)
+                # if isinstance(value, (np.floating, np.integer, np.str, float, int, str)):
+                header[name] = value
 
         ext = MultipleDataExtension(header, data)
 

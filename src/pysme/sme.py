@@ -103,7 +103,7 @@ class Fitresults(Collection):
     # fmt: off
     _fields = Collection._fields + [
         ("maxiter", 100, astype(int), this, "int: maximum number of iterations in the solver"),
-        ("chisq", 0, asfloat, this, "float: reduced chi-square of the solution"),
+        ("chisq", None, this, this, "float: reduced chi-square of the solution"),
         ("uncertainties", None, array(None, float), this, "array of size(nfree,): uncertainties of the free parameters"),
         ("covariance", None, array(None, float), this, "array of size (nfree, nfree): covariance matrix"),
         ("gradient", None, array(None, float), this, "array of size (nfree,): final gradients of the free parameters on the cost function"),
@@ -287,11 +287,11 @@ class SME_Structure(Parameters):
         self.normalize_by_continuum = kwargs.get("cscale_flag", "") != "fix"
 
         self.system_info = Version(**idlver)
-        self.atmo = Atmosphere(
-            **atmo,
-            abund=kwargs.get("abund", "empty"),
-            monh=kwargs.get("monh", kwargs.get("feh", 0)),
+        atmo_abund = atmo.pop("abund", kwargs.get("abund", "empty"))
+        atmo_monh = atmo.pop(
+            "monh", atmo.pop("feh", kwargs.get("monh", kwargs.get("feh", 0)))
         )
+        self.atmo = Atmosphere(**atmo, abund=atmo_abund, monh=atmo_monh,)
         self.nlte = NLTE(**nlte)
 
         # Apply final conversions from IDL to Python version
