@@ -261,10 +261,6 @@ class Grid:
         self.species = sme.linelist.species
         #:str: complete filename of the NLTE grid data file
         self.fname = lfs_nlte.get(sme.nlte.grids[elem])
-        depth_name = str.lower(sme.atmo.interp)
-        #:array(float): depth points of the atmosphere that was passed to the C library (in log10 scale)
-        self.target_depth = sme.atmo[depth_name]
-        self.target_depth = np.log10(self.target_depth)
         #:{"levels", "energy"}: Selection algorithm to match lines in grid with linelist
         self.selection = selection
 
@@ -289,16 +285,20 @@ class Grid:
         self._keys = self.directory["models"].astype("U")
 
         try:
-            self._depth = self.directory[depth_name]
+            depth_name = str.lower(sme.atmo.interp)
+            depth = self.directory[depth_name]
         except KeyError:
             other_depth_name = "tau" if depth_name == "rhox" else "rhox"
-            self._depth = self.directory[other_depth_name]
-            self.target_depth = sme.atmo[other_depth_name]
-            self.target_depth = np.log10(self.target_depth)
+            depth = self.directory[other_depth_name]
             logger.warning(
                 f"No data for {depth_name} in NLTE grid for {self.elem} found, using {other_depth_name} instead."
             )
             depth_name = other_depth_name
+
+        #:str: Which parameter is used as the depth axis
+        self.depth_name = depth_name
+        #:array(float): depth points of the atmosphere that is passed to the C library (in log10 scale)
+        self._depth = depth
 
         self._grid = None
         self._points = None
@@ -385,7 +385,7 @@ class Grid:
         rabund = sel - sfe
         return rabund
 
-    def get(self, abund, teff, logg, monh):
+    def get(self, abund, teff, logg, monh, atmo):
         rabund = self.scaled_rel_abund(abund)
 
         if len(self.limits) == 0 or not (
@@ -396,7 +396,7 @@ class Grid:
         ):
             _ = self.read_grid(rabund, teff, logg, monh)
 
-        return self.interpolate(rabund, teff, logg, monh)
+        return self.interpolate(rabund, teff, logg, monh, atmo)
 
     def read_grid(self, rabund, teff, logg, monh):
         """ Read the NLTE coefficients from the nlte_grid files for the given element
@@ -469,22 +469,6 @@ class Grid:
             "feh": self._points[3][[0, -1]],
             "xfe": self._points[0][[0, -1]],
         }
-
-        # Interpolate the depth scale to the target depth, this is unstructured data
-        # i.e. each combination of parameters has a different depth scale (given in depth)
-        ndepths, _, *nparam = self.bgrid.shape
-        ntarget = len(self.target_depth)
-
-        # TODO: this should be recalculated when target depth changes !!!
-        self._grid = np.empty((*nparam, ntarget, ndepths), float)
-        for l, x, t, g, f in np.ndindex(ndepths, *nparam):
-            xp = self.depth[f, g, t, :]
-            yp = self.bgrid[l, :, x, t, g, f]
-
-            xp = np.log10(xp)
-            self._grid[x, t, g, f, :, l] = interpolate.interp1d(
-                xp, yp, bounds_error=False, fill_value="extrapolate", kind="linear",
-            )(self.target_depth)
 
         return self.bgrid
 
@@ -720,7 +704,7 @@ class Grid:
 
         return lineindices, linerefs, iused
 
-    def interpolate(self, rabund, teff, logg, monh):
+    def interpolate(self, rabund, teff, logg, monh, atmo):
         """
         interpolate nlte coefficients on the model grid
 
@@ -741,14 +725,30 @@ class Grid:
             interpolated grid values
         """
 
-        assert self._grid is not None
         assert self._points is not None
+
+        # Interpolate the depth scale to the target depth, this is unstructured data
+        # i.e. each combination of parameters has a different depth scale (given in depth)
+        ndepths, _, *nparam = self.bgrid.shape
+        target_depth = atmo[self.depth_name]
+        target_depth = np.log10(target_depth)
+        ntarget = len(target_depth)
+
+        # TODO: We only need to interpolate the closest 2**4 grids, and not all of them
+        grid = np.empty((*nparam, ntarget, ndepths), float)
+        for l, x, t, g, f in np.ndindex(ndepths, *nparam):
+            xp = self.depth[f, g, t, :]
+            yp = self.bgrid[l, :, x, t, g, f]
+
+            xp = np.log10(xp)
+            grid[x, t, g, f, :, l] = interpolate.interp1d(
+                xp, yp, bounds_error=False, fill_value="extrapolate", kind="cubic",
+            )(target_depth)
 
         # Interpolate on the grid
         # self._points and self._grid are interpolated when reading the data in read_grid
         target = (rabund, teff, logg, monh)
         points = self._points
-        grid = self._grid
 
         # Check if we need to extrapolate
         if any([t < min(p) or t > max(p) for t, p in zip(target, points)]):
@@ -796,7 +796,7 @@ class NLTE(Collection):
             "list: elements for which nlte calculations will be performed"),
         ("grids", {}, astype(dict), this,
             "dict: nlte grid datafiles for each element"),
-        ("subgrid_size", [3, 5, 5, 5], array(4, int), this,
+        ("subgrid_size", [2, 2, 2, 2], array(4, int), this,
             "array of shape (4,): defines size of nlte grid cache."
             "Each entry is for one parameter abund, teff, logg, monh"),
         ("flags", None, array(None, np.bool_), this,
@@ -950,7 +950,7 @@ class NLTE(Collection):
             # Call function to retrieve interpolated NLTE departure coefficients
             # the abundances for NLTE are handled in the H-12 format
             grid = self.get_grid(sme, elem, lfs_nlte)
-            bmat = grid.get(sme.abund, sme.teff, sme.logg, sme.monh)
+            bmat = grid.get(sme.abund, sme.teff, sme.logg, sme.monh, sme.atmo)
 
             if bmat is None or len(grid.linerefs) < 2:
                 # no data were returned. Don't bother?
