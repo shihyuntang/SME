@@ -1,0 +1,140 @@
+ 5000.00000, 5005.00000, 26, 32019, 1.0 Wavelength region, lines selected, lines processed, Vmicro
+                                                                       Lande factors       Damping parameters   Central
+Spec Ion        WL_vac(A)  log gf* E_low(eV) J lo E_up(eV)  J up   lower   upper   mean   Rad.   Stark   Waals   depth
+'Fe 1',        5000.5066, -1.740,  4.1864,  2.0,  6.6658,  3.0,  0.680,  1.080,  1.480, 7.820,-4.820,  -7.520, 0.288,
+'  LS                                                                               3d8 c3F'
+'  LS                                                                     3d7.(2D2).4p x1F*'
+'N C        Kurucz Fe I 2014   1  wl:K14   2  gf:FMW   1     K14   1     K14   1     K14   1     K14   1     K14   1     K14   1     K14   no-hfs Fe'
+'La 2',        5000.7374, -2.217,  0.4029,  3.0,  2.8823,  2.0,  1.330,  1.460,  1.210, 0.000, 0.000,   0.000, 0.204,
+'  LS                                                  5d.6s                            a3D'
+'  LS                                                  4f.5d                           z3P*'
+'E 0.02     Wisconsin REE ex   3  wl:LBS   3  gf:LBS   3     LBS   3     LBS   3     LBS   3     LBS   3     LBS   3     LBS   3     LBS   hfs:HHW,HHW La+'
+'La 2',        5000.7499, -2.314,  0.4029,  3.0,  2.8823,  2.0,  1.330,  1.460,  1.210, 0.000, 0.000,   0.000, 0.204,
+'  LS                                                  5d.6s                            a3D'
+'  LS                                                  4f.5d                           z3P*'
+'E 0.02     Wisconsin REE ex   3  wl:LBS   3  gf:LBS   3     LBS   3     LBS   3     LBS   3     LBS   3     LBS   3     LBS   3     LBS   hfs:HHW,HHW La+'
+'La 2',        5000.7506, -2.138,  0.4029,  3.0,  2.8823,  2.0,  1.330,  1.460,  1.210, 0.000, 0.000,   0.000, 0.204,
+'  LS                                                  5d.6s                            a3D'
+'  LS                                                  4f.5d                           z3P*'
+'E 0.02     Wisconsin REE ex   3  wl:LBS   3  gf:LBS   3     LBS   3     LBS   3     LBS   3     LBS   3     LBS   3     LBS   3     LBS   hfs:HHW,HHW La+'
+'La 2',        5000.7711, -2.460,  0.4030,  3.0,  2.8823,  2.0,  1.330,  1.460,  1.210, 0.000, 0.000,   0.000, 0.204,
+'  LS                                                  5d.6s                            a3D'
+'  LS                                                  4f.5d                           z3P*'
+'E 0.02     Wisconsin REE ex   3  wl:LBS   3  gf:LBS   3     LBS   3     LBS   3     LBS   3     LBS   3     LBS   3     LBS   3     LBS   hfs:HHW,HHW La+'
+'La 2',        5000.7721, -1.955,  0.4030,  3.0,  2.8823,  2.0,  1.330,  1.460,  1.210, 0.000, 0.000,   0.000, 0.204,
+'  LS                                                  5d.6s                            a3D'
+'  LS                                                  4f.5d                           z3P*'
+'E 0.02     Wisconsin REE ex   3  wl:LBS   3  gf:LBS   3     LBS   3     LBS   3     LBS   3     LBS   3     LBS   3     LBS   3     LBS   hfs:HHW,HHW La+'
+'La 2',        5000.7727, -2.439,  0.4030,  3.0,  2.8823,  2.0,  1.330,  1.460,  1.210, 0.000, 0.000,   0.000, 0.204,
+'  LS                                                  5d.6s                            a3D'
+'  LS                                                  4f.5d                           z3P*'
+'E 0.02     Wisconsin REE ex   3  wl:LBS   3  gf:LBS   3     LBS   3     LBS   3     LBS   3     LBS   3     LBS   3     LBS   3     LBS   hfs:HHW,HHW La+'
+'La 2',        5000.8008, -2.694,  0.4030,  3.0,  2.8823,  2.0,  1.330,  1.460,  1.210, 0.000, 0.000,   0.000, 0.204,
+'  LS                                                  5d.6s                            a3D'
+'  LS                                                  4f.5d                           z3P*'
+'E 0.02     Wisconsin REE ex   3  wl:LBS   3  gf:LBS   3     LBS   3     LBS   3     LBS   3     LBS   3     LBS   3     LBS   3     LBS   hfs:HHW,HHW La+'
+'La 2',        5000.8021, -1.896,  0.4030,  3.0,  2.8823,  2.0,  1.330,  1.460,  1.210, 0.000, 0.000,   0.000, 0.204,
+'  LS                                                  5d.6s                            a3D'
+'  LS                                                  4f.5d                           z3P*'
+'E 0.02     Wisconsin REE ex   3  wl:LBS   3  gf:LBS   3     LBS   3     LBS   3     LBS   3     LBS   3     LBS   3     LBS   3     LBS   hfs:HHW,HHW La+'
+'La 2',        5000.8031, -2.021,  0.4030,  3.0,  2.8823,  2.0,  1.330,  1.460,  1.210, 0.000, 0.000,   0.000, 0.204,
+'  LS                                                  5d.6s                            a3D'
+'  LS                                                  4f.5d                           z3P*'
+'E 0.02     Wisconsin REE ex   3  wl:LBS   3  gf:LBS   3     LBS   3     LBS   3     LBS   3     LBS   3     LBS   3     LBS   3     LBS   hfs:HHW,HHW La+'
+'La 2',        5000.8392, -3.112,  0.4030,  3.0,  2.8823,  2.0,  1.330,  1.460,  1.210, 0.000, 0.000,   0.000, 0.204,
+'  LS                                                  5d.6s                            a3D'
+'  LS                                                  4f.5d                           z3P*'
+'E 0.02     Wisconsin REE ex   3  wl:LBS   3  gf:LBS   3     LBS   3     LBS   3     LBS   3     LBS   3     LBS   3     LBS   3     LBS   hfs:HHW,HHW La+'
+'La 2',        5000.8408, -1.929,  0.4030,  3.0,  2.8823,  2.0,  1.330,  1.460,  1.210, 0.000, 0.000,   0.000, 0.204,
+'  LS                                                  5d.6s                            a3D'
+'  LS                                                  4f.5d                           z3P*'
+'E 0.02     Wisconsin REE ex   3  wl:LBS   3  gf:LBS   3     LBS   3     LBS   3     LBS   3     LBS   3     LBS   3     LBS   3     LBS   hfs:HHW,HHW La+'
+'La 2',        5000.8421, -1.750,  0.4030,  3.0,  2.8823,  2.0,  1.330,  1.460,  1.210, 0.000, 0.000,   0.000, 0.204,
+'  LS                                                  5d.6s                            a3D'
+'  LS                                                  4f.5d                           z3P*'
+'E 0.02     Wisconsin REE ex   3  wl:LBS   3  gf:LBS   3     LBS   3     LBS   3     LBS   3     LBS   3     LBS   3     LBS   3     LBS   hfs:HHW,HHW La+'
+'La 2',        5000.8882, -2.112,  0.4030,  3.0,  2.8823,  2.0,  1.330,  1.460,  1.210, 0.000, 0.000,   0.000, 0.204,
+'  LS                                                  5d.6s                            a3D'
+'  LS                                                  4f.5d                           z3P*'
+'E 0.02     Wisconsin REE ex   3  wl:LBS   3  gf:LBS   3     LBS   3     LBS   3     LBS   3     LBS   3     LBS   3     LBS   3     LBS   hfs:HHW,HHW La+'
+'La 2',        5000.8898, -1.543,  0.4030,  3.0,  2.8823,  2.0,  1.330,  1.460,  1.210, 0.000, 0.000,   0.000, 0.204,
+'  LS                                                  5d.6s                            a3D'
+'  LS                                                  4f.5d                           z3P*'
+'E 0.02     Wisconsin REE ex   3  wl:LBS   3  gf:LBS   3     LBS   3     LBS   3     LBS   3     LBS   3     LBS   3     LBS   3     LBS   hfs:HHW,HHW La+'
+'Ti 1',        5000.8977,  0.320,  0.8259,  3.0,  3.3051,  4.0,  1.250,  1.150,  1.000, 7.940,-6.050, 318.245, 0.746,
+'  LS                                                                       3d3.(4F).4s a5F'
+'  LS                                                                      3d3.(4F).4p y5G*'
+'_          Kurucz TiI 2016    4  wl:K16   5 gf:LGWS   4     K16   4     K16   4     K16   4     K16   4     K16   6     BPM   4     K16   no-hfs Ti'
+'La 2',        5000.9463, -1.372,  0.4030,  3.0,  2.8823,  2.0,  1.330,  1.460,  1.210, 0.000, 0.000,   0.000, 0.204,
+'  LS                                                  5d.6s                            a3D'
+'  LS                                                  4f.5d                           z3P*'
+'E 0.02     Wisconsin REE ex   3  wl:LBS   3  gf:LBS   3     LBS   3     LBS   3     LBS   3     LBS   3     LBS   3     LBS   3     LBS   hfs:HHW,HHW La+'
+'Fe 1',        5001.6058, -1.045,  4.6382,  1.0,  7.1171,  2.0,  2.500,  1.560,  1.090, 8.300,-4.340,  -7.310, 0.394,
+'  LS                                                             3d6.(5D).4s.4p.(1P*) y5P*'
+'  LS                                                                     3d6.4s.(6D).5d 5P'
+'_          Kurucz Fe I 2014   1  wl:K14   1  gf:K14   1     K14   1     K14   1     K14   1     K14   1     K14   1     K14   1     K14   no-hfs Fe'
+'Ni 1',        5001.7376, -0.430,  3.6353,  3.0,  6.1141,  3.0,  1.090,  1.000,  1.040, 8.260,-4.640, 829.278, 0.597,
+'  LS                                                                      3d9.(2D).4p z3F*'
+'  JK                                                               3d9.(2D<5/2>).4d 2[7/2]'
+'_          Kurucz Ni I 2008   7  wl:K08   8  gf:FMW   7     K08   7     K08   7     K08   7     K08   7     K08   6     BPM   7     K08   no-hfs Ni'
+'Fe 2',        5002.1254, -4.540,  2.7785,  0.5,  5.2571,  1.5,  2.680,  1.040,  0.630, 8.540,-6.540, 173.220, 0.206,
+'  LS                                                                      3d6.(3P2).4s b4P'
+'  LS                                                                      3d6.(5D).4p z6F*'
+'_          Kurucz FeII 2013   9  wl:K13  10 gf:BSSc   9     K13   9     K13   9     K13   9     K13   9     K13   6    BA-J   9     K13   no-hfs Fe+'
+'Ti 1',        5002.3846, -0.020,  1.9969,  4.0,  4.4754,  3.0,  1.150,  1.240,  1.020, 7.960,-5.310, 792.231, 0.388,
+'  LS                                                             3d2.(3F).4s.4p.(3P*) z5G*'
+'  LS                                                                    3d2.4s.(4F).5s e5F'
+'_          Kurucz TiI 2016    4  wl:K16  11  gf:NWL   4     K16   4     K16   4     K16   4     K16   4     K16   6     BPM   4     K16   no-hfs Ti'
+'Ca 2',        5002.8742, -0.507,  7.5051,  0.5,  9.9834,  1.5,  0.670,  0.800,  0.830, 7.889,-4.611,  -7.336, 0.155,
+'  LS                                                                         3p6.5p    2P*'
+'  LS                                                                         3p6.6d     2D'
+'_          Ca1-Ca2 exp.      12   wl:TB  12   gf:TB  12      TB  12      TB  12      TB  12      TB  12      TB  12      TB  12      TB   no-hfs Ca+'
+'Fe 1',        5003.2584,  0.010,  3.8816,  4.0,  6.3597,  3.0,  1.250,  1.350,  1.110, 8.180,-5.290, 725.240, 0.746,
+'  LS                                                             3d6.(5D).4s.4p.(3P*) z3F*'
+'  LS                                                              3d6.(5D).4s\ (4D).5s e3D'
+'N C+       Kurucz Fe I 2014   1  wl:K14   2  gf:FMW   1     K14   1     K14   1     K14   1     K14   1     K14   6     BPM   1     K14   no-hfs Fe'
+'Fe 1',        5003.2599, -1.242,  4.5485,  4.0,  7.0266,  4.0,  1.250,  1.260,  1.250, 8.160,-4.510,  -7.320, 0.350,
+'  LS                                                                      3d7.(4F).4p y3F*'
+'  LS                                                                     3d6.4s.(6D).5d 5G'
+'_          Kurucz Fe I 2014   1  wl:K14   1  gf:K14   1     K14   1     K14   1     K14   1     K14   1     K14   1     K14   1     K14   no-hfs Fe'
+'Fe 1',        5003.9784, -1.136,  4.1864,  2.0,  6.6641,  2.0,  0.680,  0.720,  0.700, 7.840,-5.010,  -7.560, 0.514,
+'  LS                                                                               3d8 c3F'
+'  LS                                                             3d6.(3G).4s.4p.(3P*) x3F*'
+'_          Kurucz Fe I 2014   1  wl:K14   1  gf:K14   1     K14   1     K14   1     K14   1     K14   1     K14   1     K14   1     K14   no-hfs Fe'
+'Fe 1',        5004.1875, -1.580,  3.3965,  3.0,  5.8741,  4.0,  1.250,  1.330,  1.450, 7.900,-5.270, 848.232, 0.599,
+'  LS                                                             3d6.(5D).4s.4p.(3P*) z5F*'
+'  LS                                                                       3d7.(4F).5s e5F'
+'N C        Kurucz Fe I 2014   1  wl:K14   2  gf:FMW   1     K14   1     K14   1     K14   1     K14   1     K14   6     BPM   1     K14   no-hfs Fe'
+ 'castelli_ap00k2_T06000G40.krz',
+ 'H :  0.92','He: -1.11',
+ 'Li:-10.94','Be:-10.64','B : -9.49','C : -3.52','N : -4.12','O : -3.21',
+ 'F : -7.48','Ne: -3.96','Na: -5.71','Mg: -4.46','Al: -5.57','Si: -4.49',
+ 'P : -6.59','S : -4.71','Cl: -6.54','Ar: -5.64','K : -6.92','Ca: -5.68',
+ 'Sc: -8.87','Ti: -7.02','V : -8.04','Cr: -6.37','Mn: -6.65','Fe: -4.54',
+ 'Co: -7.12','Ni: -5.79','Cu: -7.83','Zn: -7.44','Ga: -9.16','Ge: -8.63',
+ 'As: -9.67','Se: -8.63','Br: -9.41','Kr: -8.73','Rb: -9.44','Sr: -9.07',
+ 'Y : -9.80','Zr: -9.44','Nb:-10.62','Mo:-10.12','Tc:-20.00','Ru:-10.20',
+ 'Rh:-10.92','Pd:-10.35','Ag:-11.10','Cd:-10.27','In:-10.38','Sn:-10.04',
+ 'Sb:-11.04','Te: -9.80','I :-10.53','Xe: -9.87','Cs:-10.91','Ba: -9.91',
+ 'La:-10.87','Ce:-10.46','Pr:-11.33','Nd:-10.54','Pm:-20.00','Sm:-11.03',
+ 'Eu:-11.53','Gd:-10.92','Tb:-11.69','Dy:-10.90','Ho:-11.78','Er:-11.11',
+ 'Tm:-12.04','Yb:-10.96','Lu:-11.98','Hf:-11.16','Ta:-12.17','W :-10.93',
+ 'Re:-11.76','Os:-10.59','Ir:-10.69','Pt:-10.24','Au:-11.03','Hg:-10.91',
+ 'Tl:-11.14','Pb:-10.09','Bi:-11.33','Po:-20.00','At:-20.00','Rn:-20.00',
+ 'Fr:-20.00','Ra:-20.00','Ac:-20.00','Th:-11.95','Pa:-20.00','U :-12.54',
+ 'Np:-20.00','Pu:-20.00','Am:-20.00','Cm:-20.00','Bk:-20.00','Cf:-20.00',
+ 'Es:-20.00','END'
+ * oscillator strengths were scaled by the solar isotopic ratios.
+  References:
+   1. Kurucz obs. energy level: Fe 1
+   2. Fe 1: exp. data
+   3. Wisconsin exp. data with IS
+   4. Kurucz obs. energy level: Ti 1
+   5. Ti1-Ti2 Wisconsin exp. data
+   6. Van der Waals data
+   7. Kurucz obs. energy level: Ni 1
+   8. Ni: NBS data
+   9. Kurucz obs. energy level: Fe 2
+  10. Fe 2: exp. data
+  11. Ti1-Cr1-Mn1-Mn2-Ni2 Wisconsin exp. data
+  12. Ca1-2 exp. data with IS
