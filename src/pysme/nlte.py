@@ -251,13 +251,7 @@ class Grid:
     """
 
     def __init__(
-        self,
-        sme,
-        elem,
-        lfs_nlte,
-        selection="energy",
-        solar="asplund2009",
-        abund_format="Fe=12",
+        self, sme, elem, lfs_nlte, selection="energy", solar=None, abund_format="Fe=12",
     ):
         #:str: Element of the NLTE grid
         self.elem = elem
@@ -316,23 +310,10 @@ class Grid:
         if solar is None:
             solar = Abund.solar()
         elif isinstance(solar, Abund):
-            solar = Abund(0, solar._pattern, type=solar._type_internal)
-        elif isinstance(solar, np.floating):
             pass
         else:
             solar = Abund(0, solar)
-
-        # In the grid
-        # Ag_{X} = [X/Fe] = log(X/Fe) - log(X/Fe)_{SUN}
-        # N_{X} is the number of nuclei of element X in any atomic/ionisation/molecular form
-
-        # We are doing:
-        # Ag_{X} = [X/H] = log(X / H) - log(X / H)_SUN
-
-        if isinstance(solar, np.floating):
-            self.solar = solar
-        else:
-            self.solar = solar.get_element(self.elem, self.abund_format)
+        self.solar = solar
 
         #:dict: upper and lower parameters covered by the grid
         self.limits = {}
@@ -379,9 +360,28 @@ class Grid:
                 conf, term, species, rotnum, energies
             )
 
+    def solar_rel_abund(self, abund, elem):
+        """ Get the abundance of elem relative to H, i.e. [X/H] """
+        a = abund.get_element(elem, type="sme")
+        h = abund.get_element("H", type="sme")
+        h = np.log10(h)
+
+        s = self.solar.get_element(elem, type="sme")
+        sh = self.solar.get_element("H", type="sme")
+        sh = np.log10(sh)
+
+        rabund = (a - h) - (s - sh)
+        return rabund
+
+    def scaled_rel_abund(self, abund):
+        """ Get the abundance of self.elem relative to Fe, i.e. [X/Fe] """
+        sel = self.solar_rel_abund(abund, self.elem)
+        sfe = self.solar_rel_abund(abund, "Fe")
+        rabund = sel - sfe
+        return rabund
+
     def get(self, abund, teff, logg, monh):
-        # TODO: NLTE grid should define which solar value has been used
-        rabund = abund - self.solar
+        rabund = self.scaled_rel_abund(abund)
 
         if len(self.limits) == 0 or not (
             (self.limits["xfe"][0] <= rabund <= self.limits["xfe"][-1])
@@ -477,7 +477,7 @@ class Grid:
 
             xp = np.log10(xp)
             self._grid[x, t, g, f, :, l] = interpolate.interp1d(
-                xp, yp, bounds_error=False, fill_value=(yp[0], yp[-1]), kind="cubic"
+                xp, yp, bounds_error=False, fill_value="extrapolate", kind="linear",
             )(self.target_depth)
 
         return self.bgrid
@@ -760,13 +760,24 @@ class Grid:
             idx = [slice(None, None) if m else 0 for m in mask]
             grid = grid[idx]
 
-        # TODO: Interpolate with splines
-        # Possibly in order of importance, since scipy doesn't have spline interpolation on a grid
-        subgrid = interpolate.interpn(
-            points, grid, target, method="linear", bounds_error=False, fill_value=None,
-        )
-
-        return subgrid[0]
+        method = "order"
+        if method == "grid":
+            # TODO: Interpolate with splines
+            # Possibly in order of importance, since scipy doesn't have spline interpolation on a grid
+            subgrid = interpolate.interpn(
+                points,
+                grid,
+                target,
+                method="linear",
+                bounds_error=False,
+                fill_value=None,
+            )
+            subgrid = subgrid[0]
+        elif method == "order":
+            for p, t in zip(points, target):
+                grid = interpolate.interp1d(p, grid, axis=0)(t)
+            subgrid = grid
+        return subgrid
 
 
 @CollectionFactory
@@ -777,7 +788,7 @@ class NLTE(Collection):
             "list: elements for which nlte calculations will be performed"),
         ("grids", {}, astype(dict), this,
             "dict: nlte grid datafiles for each element"),
-        ("subgrid_size", [2, 2, 2, 2], array(4, int), this,
+        ("subgrid_size", [3, 5, 5, 5], array(4, int), this,
             "array of shape (4,): defines size of nlte grid cache."
             "Each entry is for one parameter abund, teff, logg, monh"),
         ("flags", None, array(None, np.bool_), this,
@@ -930,9 +941,8 @@ class NLTE(Collection):
         for elem in self.elements:
             # Call function to retrieve interpolated NLTE departure coefficients
             # the abundances for NLTE are handled in the H-12 format
-            abund = sme.abund.get_element(elem, type=self.abund_format)
             grid = self.get_grid(sme, elem, lfs_nlte)
-            bmat = grid.get(abund, sme.teff, sme.logg, sme.monh)
+            bmat = grid.get(sme.abund, sme.teff, sme.logg, sme.monh)
 
             if bmat is None or len(grid.linerefs) < 2:
                 # no data were returned. Don't bother?
