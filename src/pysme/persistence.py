@@ -322,7 +322,7 @@ def write_as_idl(sme):
     data arrays are stored in seperate temp files, and only the filename is passed to idl
     """
 
-    vrad_flag = {"none": -2, "whole": -1, "each": 0}[sme.vrad_flag]
+    vrad_flag = {"none": -2, "whole": -1, "each": 0, "fix": -2}[sme.vrad_flag]
     cscale_flag = {"none": -3, "fix": -3, "constant": 0, "linear": 1, "quadratic": 1,}[
         sme.cscale_flag
     ]
@@ -380,6 +380,22 @@ def write_as_idl(sme):
             "geom": str(sme.atmo.geom),
         },
     }
+
+    if len(sme.nlte.elements) != 0:
+        idl_fields["nlte"] = {}
+
+        flags = np.zeros(99, dtype="int16")
+        grids = ["" for _ in range(99)]
+        for elem in sme.nlte.elements:
+            flags[sme.abund.elem_dict[elem]] = 1
+            grids[sme.abund.elem_dict[elem]] = sme.nlte.grids[elem]
+
+        idl_fields["nlte"]["nlte_elem_flags"] = save_as_binary(flags)
+        idl_fields["nlte"]["nlte_subgrid_size"] = save_as_binary(
+            sme.nlte.subgrid_size.astype("int16")
+        )
+        idl_fields["nlte"]["nlte_grids"] = grids
+        idl_fields["nlte"]["nlte_pro"] = "sme_nlte"
 
     # if sme.iptype is not None:
     #     idl_fields["iptype"] = sme.iptype

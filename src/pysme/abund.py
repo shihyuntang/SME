@@ -405,6 +405,11 @@ class Abund(IPersist):
         return elements
 
     @property
+    def elem_dict(self):
+        """ Return the position of each element in the raw array """
+        return elements_dict
+
+    @property
     def monh(self):
         """float: Metallicity, the logarithmic offset added to
         the abundance pattern for all elements except hydrogen and helium."""
