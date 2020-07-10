@@ -190,7 +190,7 @@ class ValdFile(LineList):
         try:
             if fmt == "long":
                 linedata = lines[2 : 2 + n * 4]
-                refdata = linedata[2::4]
+                refdata = linedata[3::4]
                 if valdtype == "extract_stellar":
                     atmodata = lines[2 + n * 4]
                     abunddata = lines[3 + n * 4 : 21 + n * 4]
