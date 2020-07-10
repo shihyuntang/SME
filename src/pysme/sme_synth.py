@@ -700,13 +700,13 @@ class SME_DLL:
             raise TypeError("Departure coefficient matrix is not an array")
 
         bmat = np.atleast_2d(bmat)
-        if bmat.shape[0] != 2:
+        if bmat.shape[1] != 2:
             raise ValueError(
-                f"Departure coefficient matrix has the wrong shape, expected (2, {ndepth}) but got {bmat.shape} instead"
+                f"Departure coefficient matrix has the wrong shape, expected ({ndepth}, 2) but got {bmat.shape} instead"
             )
-        if bmat.shape[1] != ndepth:
+        if bmat.shape[0] != ndepth:
             raise ValueError(
-                f"Departure coefficient matrix has the wrong shape, expected (2, {ndepth}) but got {bmat.shape} instead"
+                f"Departure coefficient matrix has the wrong shape, expected ({ndepth}, 2) but got {bmat.shape} instead"
             )
 
         if not isinstance(lineindex, (int, np.integer)):

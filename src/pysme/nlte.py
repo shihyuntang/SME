@@ -362,13 +362,18 @@ class Grid:
 
     def solar_rel_abund(self, abund, elem):
         """ Get the abundance of elem relative to H, i.e. [X/H] """
-        a = abund.get_element(elem, type="sme")
-        h = abund.get_element("H", type="sme")
-        h = np.log10(h)
-
-        s = self.solar.get_element(elem, type="sme")
-        sh = self.solar.get_element("H", type="sme")
-        sh = np.log10(sh)
+        if self.abund_format == "H=12":
+            # Its a bit more efficient, to simply use the values as is, instead of converting everything
+            # just to end up back here
+            idx = abund.elem_dict[elem]
+            a = abund._pattern[idx]
+            s = self.solar._pattern[idx]
+            h = sh = 12
+        else:
+            a = abund.get_element(elem, type=self.abund_format)
+            h = abund.get_element("H", type=self.abund_format)
+            s = self.solar.get_element(elem, type=self.abund_format)
+            sh = self.solar.get_element("H", type=self.abund_format)
 
         rabund = (a - h) - (s - sh)
         return rabund
@@ -470,6 +475,7 @@ class Grid:
         ndepths, _, *nparam = self.bgrid.shape
         ntarget = len(self.target_depth)
 
+        # TODO: this should be recalculated when target depth changes !!!
         self._grid = np.empty((*nparam, ntarget, ndepths), float)
         for l, x, t, g, f in np.ndindex(ndepths, *nparam):
             xp = self.depth[f, g, t, :]
@@ -775,7 +781,9 @@ class Grid:
             subgrid = subgrid[0]
         elif method == "order":
             for p, t in zip(points, target):
-                grid = interpolate.interp1d(p, grid, axis=0)(t)
+                grid = interpolate.interp1d(
+                    p, grid, axis=0, bounds_error=False, fill_value="extrapolate",
+                )(t)
             subgrid = grid
         return subgrid
 
@@ -953,7 +961,7 @@ class NLTE(Collection):
                     # loop through the list of relevant _lines_, substitute both their levels into the main b matrix
                     # Make sure both levels have corrections available
                     if lr[0] != -1 and lr[1] != -1:
-                        dll.InputNLTE(bmat[:, lr].T, li)
+                        dll.InputNLTE(bmat[:, lr], li)
 
         # flags = sme_synth.GetNLTEflags(sme.linelist)
 

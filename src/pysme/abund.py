@@ -505,7 +505,7 @@ class Abund(IPersist):
     def get_element(self, elem, type=None):
         if type is None:
             type = self.type
-        pattern = self.get_pattern(type, raw=True)
+        pattern = self(type, raw=True)
         i = self._get_index(elem)
         return pattern[i]
 

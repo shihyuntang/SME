@@ -514,7 +514,7 @@ class Synthesizer:
             self.dll.SetVWscale(sme.gam6)
             self.dll.SetH2broad(sme.h2broad)
         if passNLTE:
-            update_nlte_coefficients(sme, self.dll, self.lfs_nlte)
+            sme.nlte.update_coefficients(sme, self.dll, self.lfs_nlte)
 
         # Loop over segments
         #   Input Wavelength range and Opacity

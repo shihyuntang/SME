@@ -92,7 +92,7 @@ class Atmosphere(Collection):
 
     @property
     def names(self):
-        return self._names
+        return self._names + ["monh"]
 
     @property
     def dtype(self):

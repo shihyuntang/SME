@@ -36,6 +36,8 @@ class Parameters(Collection):
     def __init__(self, **kwargs):
         monh = kwargs.pop("monh", kwargs.pop("feh", 0))
         abund = kwargs.pop("abund", "empty")
+        if "grav" in kwargs.keys() and "logg" not in kwargs.keys():
+            kwargs["logg"] = kwargs.pop("grav")
         super().__init__(**kwargs)
         self.abund = Abund(monh=monh, pattern=abund, type="sme")
 
