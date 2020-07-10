@@ -394,7 +394,7 @@ def write_as_idl(sme):
         idl_fields["nlte"]["nlte_subgrid_size"] = save_as_binary(
             sme.nlte.subgrid_size.astype("int16")
         )
-        idl_fields["nlte"]["nlte_grid"] = grids
+        idl_fields["nlte"]["nlte_grids"] = grids
         idl_fields["nlte"]["nlte_pro"] = "sme_nlte"
 
     # if sme.iptype is not None:
