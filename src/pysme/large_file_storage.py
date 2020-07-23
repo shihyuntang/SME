@@ -43,13 +43,9 @@ class LargeFileStorage:
         self.server = Server(server)
 
         if isinstance(pointers, str):
-            path = Path("~/.sme").expanduser() / pointers
-            try:
-                with open(str(path), "r") as f:
-                    pointers = json.load(f)
-            except FileNotFoundError:
-                logger.error("Could not find LargeFileStorage reference file %s", path)
-                pointers = {}
+            path = Path(__file__).parent / pointers
+            pointers = LargeFileStorage.load_pointers_file(path)
+
         #:dict(fname:hash): points from a filename to the current newest object id, usually a hash
         self.pointers = pointers
         #:Directory: directory of the current data files
@@ -58,6 +54,16 @@ class LargeFileStorage:
         self.cache = Path(cache).expanduser().absolute()
         #:dict(fname:hash): hashes of existing files, to avoid recalculation
         self._hashes = {}
+
+    @staticmethod
+    def load_pointers_file(filename):
+        try:
+            with open(str(filename), "r") as f:
+                pointers = json.load(f)
+        except FileNotFoundError:
+            logger.error("Could not find LargeFileStorage reference file %s", filename)
+            pointers = {}
+        return pointers
 
     def hash(self, filename):
         """ hash a file """
@@ -266,15 +272,30 @@ def get_available_atmospheres(config=None):
     if config is None:
         config = Config()
     pointers = config["data.pointers.atmospheres"]
-    with open(pointers) as f:
-        data = json.load(f)
-    return data.keys()
+    storage = config["data.atmospheres"]
+    data = get_available_files(pointers, storage)
+    return data
 
 
 def get_available_nlte_grids(config=None):
     if config is None:
         config = Config()
     pointers = config["data.pointers.nlte_grids"]
-    with open(pointers) as f:
-        data = json.load(f)
-    return data.keys()
+    storage = config["data.nlte_grids"]
+    data = get_available_files(pointers, storage)
+    return data
+
+
+def get_available_files(pointers, storage):
+    pointers = Path(__file__).parent / pointers
+    storage = Path(storage).expanduser()
+    data = LargeFileStorage.load_pointers_file(pointers)
+    files = list(data.keys())
+    files_non_lfs = [
+        f
+        for f in os.listdir(storage)
+        if f not in data and not os.path.isdir(storage / f)
+    ]
+    files += files_non_lfs
+    return files
+
