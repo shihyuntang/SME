@@ -46,12 +46,12 @@ def test_activate_nlte():
     assert len(sme.nlte.elements) == 0
 
     # Add an element
-    sme.nlte.set_nlte("Ca")
+    sme.nlte.set_nlte("Ca", "marcs2012p_t1.0_Ca.grd")
     assert len(sme.nlte.elements) == 1
     assert "Ca" in sme.nlte.elements
 
     # Add it again, shouldn't change anything
-    sme.nlte.set_nlte("Ca")
+    sme.nlte.set_nlte("Ca", "marcs2012p_t1.0_Ca.grd")
     assert len(sme.nlte.elements) == 1
     assert "Ca" in sme.nlte.elements
 
@@ -88,7 +88,7 @@ def test_activate_nlte():
 def test_run_with_nlte():
     # NOTE sme structure must have long format for NLTE
     sme = make_minimum_structure()
-    sme.nlte.set_nlte("Ca")
+    sme.nlte.set_nlte("Ca", "marcs2012p_t1.0_Ca.grd")
 
     sme2 = synthesize_spectrum(sme)
 
@@ -103,7 +103,7 @@ def test_run_with_nlte():
 def test_dll(lfs_atmo, lfs_nlte):
     sme = make_minimum_structure()
     elem = "Ca"
-    sme.nlte.set_nlte(elem)
+    sme.nlte.set_nlte(elem, "marcs2012p_t1.0_Ca.grd")
 
     libsme = SME_DLL()
     libsme.ResetNLTE()
@@ -148,6 +148,7 @@ def test_dll(lfs_atmo, lfs_nlte):
     with pytest.raises(ValueError):
         libsme.InputNLTE(bmat[:, [0, 1]].T, -10)
 
+
 @pytest.fixture
 def temp():
     file = tempfile.NamedTemporaryFile(delete=False)
@@ -157,11 +158,12 @@ def temp():
     except:
         pass
 
-def test_read_write_direct_access_file(temp : str):
+
+def test_read_write_direct_access_file(temp: str):
     content = {
         "hello": "world",
-        "I" : ["have", "the", "high", "ground"],
-        "teff": np.arange(100)
+        "I": ["have", "the", "high", "ground"],
+        "teff": np.arange(100),
     }
 
     DirectAccessFile.write(temp, **content)
