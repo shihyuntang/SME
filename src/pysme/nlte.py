@@ -988,7 +988,7 @@ class NLTE(Collection):
 def nlte(sme, dll, elem, lfs_nlte):
     """ Read and interpolate the NLTE grid for the current element and parameters """
     grid = sme.nlte.get_grid(sme, elem, lfs_nlte)
-    subgrid = grid.get(sme.abund[elem], sme.teff, sme.logg, sme.monh)
+    subgrid = grid.get(sme.abund, sme.teff, sme.logg, sme.monh, sme.atmo)
     return subgrid, grid.linerefs, grid.lineindices
 
 
