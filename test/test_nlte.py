@@ -119,7 +119,7 @@ def test_dll(lfs_atmo, lfs_nlte):
     for lr, li in zip(linerefs, lineindices):
         if lr[0] != -1 and lr[1] != -1:
             counter += 1
-            libsme.InputNLTE(bmat[:, lr].T, li)
+            libsme.InputNLTE(bmat[:, lr], li)
 
     flags = libsme.GetNLTEflags()
     assert np.any(flags)
@@ -140,13 +140,13 @@ def test_dll(lfs_atmo, lfs_nlte):
         libsme.InputNLTE(None, 0)
 
     with pytest.raises(TypeError):
-        libsme.InputNLTE(bmat[:, [0, 1]].T, 0.1)
+        libsme.InputNLTE(bmat[:, [0, 1]], 0.1)
 
     with pytest.raises(ValueError):
         libsme.InputNLTE([0, 1], 10)
 
     with pytest.raises(ValueError):
-        libsme.InputNLTE(bmat[:, [0, 1]].T, -10)
+        libsme.InputNLTE(bmat[:, [0, 1]], -10)
 
 
 @pytest.fixture
