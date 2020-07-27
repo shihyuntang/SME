@@ -204,6 +204,7 @@ class SME_Structure(Parameters):
             "Iliffe_vector of shape (nseg, ...): continuum intensities"),
         ("linelist", LineList(), astype(LineList), this, "LineList: spectral line information"),
         ("fitparameters", [], astype(list), this, "list: parameters to fit"),
+        ("fitresults", Fitresults(), astype(Fitresults), this, "Fitresults: fit results data"),
         ("atmo", Atmosphere(), astype(Atmosphere), this, "Atmosphere: model atmosphere data"),
         ("nlte", NLTE(), astype(NLTE), this, "NLTE: nlte calculation data"),
         ("system_info", Version(), astype(Version), this,
