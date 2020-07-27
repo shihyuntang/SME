@@ -351,10 +351,7 @@ class SME_Solver:
 
         popt = result.x
         sme.fitresults.values = popt
-        sme.fitparameters = self.parameter_names
-
-        for i, name in enumerate(self.parameter_names):
-            sme[name] = popt[i]
+        sme.fitresults.parameters = self.parameter_names
 
         # Determine the covariance
         # hessian == fisher information matrix
@@ -521,6 +518,8 @@ class SME_Solver:
             self.progressbar_jacobian.close()
             # The returned jacobian is "scaled for robust loss function"
             res.jac = self._last_jac
+            for i, name in enumerate(self.parameter_names):
+                sme[name] = res.x[i]
             sme = self.__update_fitresults(sme, res)
             logger.debug("Reduced chi square: %.3f", sme.fitresults.chisq)
             for name, value, unc in zip(

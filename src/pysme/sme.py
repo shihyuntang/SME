@@ -106,6 +106,7 @@ class Fitresults(Collection):
     _fields = Collection._fields + [
         ("maxiter", 100, astype(int), this, "int: maximum number of iterations in the solver"),
         ("chisq", None, this, this, "float: reduced chi-square of the solution"),
+        ("parameters", None, this, this, "list: parameter names"),
         ("values", None, array(None, float), this, "array: best fit values for the fit parameters"),
         ("uncertainties", None, array(None, float), this, "array of size(nfree,): uncertainties of the free parameters"),
         ("covariance", None, array(None, float), this, "array of size (nfree, nfree): covariance matrix"),
@@ -281,7 +282,7 @@ class SME_Structure(Parameters):
             maxiter=kwargs.get("maxiter", 0),
             chisq=kwargs.get("chisq", 0),
             uncertainties=kwargs.get("punc", None),
-            covar=kwargs.get("covar", None),
+            covariance=kwargs.get("covar", None),
         )
 
         self.normalize_by_continuum = kwargs.get("cscale_flag", "") != "fix"
