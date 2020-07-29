@@ -83,7 +83,10 @@ setup(
         "colorlog",
         "emcee",
         "pybtex",
-        "git+https://github.com/AWehrhahn/flex-format.git",
+        "flex-format",
+    ],
+    dependency_links=[
+        "http://github.com/AWehrhahn/flex-format/tarball/master#egg=package-1.0"
     ],
     url="https://github.com/AWehrhahn/SME/",
     project_urls={
