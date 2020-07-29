@@ -83,6 +83,7 @@ setup(
         "colorlog",
         "emcee",
         "pybtex",
+        "git+https://github.com/AWehrhahn/flex-format.git",
     ],
     url="https://github.com/AWehrhahn/SME/",
     project_urls={
