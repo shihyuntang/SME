@@ -380,7 +380,15 @@ class ValdFile(LineList):
             linelist["reference"] = comment
 
             # Parse energy level terms
-            term_lower = [t.strip()[8:-1].strip() for t in term_lower]
+            # Extract Stellar has quotation marks around the levels
+            # extract element does not...
+            if self.valdtype == "extract_stellar":
+                term_lower = [t.strip()[8:-1].strip() for t in term_lower]
+                term_upper = [t.strip()[8:-1].strip() for t in term_upper]
+            else:
+                term_lower = [t.strip()[8:].strip() for t in term_lower]
+                term_upper = [t.strip()[8:].strip() for t in term_upper]
+
             term_lower = np.char.partition(term_lower, " ")[:, (0, 2)]
             term_lower = np.char.strip(term_lower)
             idx = term_lower[:, 1] == ""
@@ -389,7 +397,6 @@ class ValdFile(LineList):
                 np.char.add(term_lower[:, 0], " "), term_lower[:, 1]
             )
 
-            term_upper = [t.strip()[8:-1].strip() for t in term_upper]
             term_upper = np.char.partition(term_upper, " ")[:, (0, 2)]
             term_upper = np.char.strip(term_upper)
             idx = term_upper[:, 1] == ""
