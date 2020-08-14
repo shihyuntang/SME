@@ -16,17 +16,17 @@ def test_simple():
 
     assert sme2.synth is not None
     assert sme2.fitresults is not None
-    assert sme2.fitresults.covar is not None
-    assert isinstance(sme2.fitresults.covar, np.ndarray)
-    assert np.all(sme2.fitresults.covar != 0)
+    assert sme2.fitresults.covariance is not None
+    assert isinstance(sme2.fitresults.covariance, np.ndarray)
+    assert np.all(sme2.fitresults.covariance != 0)
 
-    assert isinstance(sme2.fitresults.punc, dict)
-    assert len(sme2.fitresults.punc) == 1
-    assert len(sme2.fitresults.punc.keys()) == 1
-    assert list(sme2.fitresults.punc.keys())[0] == "teff"
-    assert list(sme2.fitresults.punc.values())[0] != 0
+    assert isinstance(sme2.fitresults.uncertainties, np.ndarray)
+    assert len(sme2.fitresults.uncertainties) == 1
+    assert sme2.fitresults.parameters[0] == "teff"
+    assert sme2.fitresults.uncertainties[0] != 0
 
-    assert np.array_equal(sme2.fitresults.covar.shape, [1, 1])
-    assert sme2.fitresults.covar.ndim == 2
+    assert np.array_equal(sme2.fitresults.covariance.shape, [1, 1])
+    assert sme2.fitresults.covariance.ndim == 2
 
+    assert sme2.fitresults.chisq is not None
     assert sme2.fitresults.chisq != 0

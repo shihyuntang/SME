@@ -502,6 +502,12 @@ class ValdFile(LineList):
         # Get references from bibtex file
         # TODO: only load this once? But then again, how often will we do this?
         bibdata = pybtex.database.parse_file(join(dirname(__file__), "VALD3_ref.bib"))
-        entries = {r: bibdata.entries[r] for r in references}
+        entries = {}
+        for r in references:
+            try:
+                entries[r] = bibdata.entries[r]
+            except KeyError as ex:
+                logger.warning(f"Could not find citation key: {r}")
+                logger.debug(ex)
         bibdata_filtered = pybtex.database.BibliographyData(entries)
         return bibdata_filtered.to_string("bibtex")

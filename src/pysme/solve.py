@@ -347,12 +347,11 @@ class SME_Solver:
 
     def __update_fitresults(self, sme, result):
         # Update SME structure
-        popt = result.x
-        sme.pfree = np.atleast_2d(popt)  # 2d for compatibility
-        sme.fitparameters = self.parameter_names
+        sme.fitresults.clear()
 
-        for i, name in enumerate(self.parameter_names):
-            sme[name] = popt[i]
+        popt = result.x
+        sme.fitresults.values = popt
+        sme.fitresults.parameters = self.parameter_names
 
         # Determine the covariance
         # hessian == fisher information matrix
@@ -361,25 +360,24 @@ class SME_Solver:
         sig = np.sqrt(covar.diagonal())
 
         # Update fitresults
-        sme.fitresults.clear()
-        sme.fitresults.covar = covar
-        sme.fitresults.grad = result.grad
-        sme.fitresults.pder = result.jac
-        sme.fitresults.resid = result.fun
+        sme.fitresults.covariance = covar
+        sme.fitresults.gradient = result.grad
+        sme.fitresults.derivative = result.jac
+        sme.fitresults.residuals = result.fun
         sme.fitresults.chisq = (
             result.cost * 2 / (sme.spec.size - len(self.parameter_names))
         )
 
-        sme.fitresults.punc = {}
-        sme.fitresults.punc2 = {}
+        sme.fitresults.uncertainties = [np.nan for _ in self.parameter_names]
+        sme.fitresults.punc2 = [np.nan for _ in self.parameter_names]
         for i in range(len(self.parameter_names)):
             # Errors based on covariance matrix
-            sme.fitresults.punc[self.parameter_names[i]] = sig[i]
+            sme.fitresults.uncertainties[i] = sig[i]
             # Errors based on ad-hoc metric
             tmp = np.abs(result.fun) / np.clip(
                 np.median(np.abs(result.jac[:, i])), 1e-5, None
             )
-            sme.fitresults.punc2[self.parameter_names[i]] = np.median(tmp)
+            sme.fitresults.punc2[i] = np.median(tmp)
 
         # punc3 = uncertainties(res.jac, res.fun, uncs, param_names, plot=False)
         return sme
@@ -520,10 +518,12 @@ class SME_Solver:
             self.progressbar_jacobian.close()
             # The returned jacobian is "scaled for robust loss function"
             res.jac = self._last_jac
+            for i, name in enumerate(self.parameter_names):
+                sme[name] = res.x[i]
             sme = self.__update_fitresults(sme, res)
             logger.debug("Reduced chi square: %.3f", sme.fitresults.chisq)
             for name, value, unc in zip(
-                self.parameter_names, res.x, sme.fitresults.punc.values()
+                self.parameter_names, res.x, sme.fitresults.uncertainties
             ):
                 logger.info("%s\t%.5f +- %.5g", name.ljust(10), value, unc)
             logger.info("%s\t%s +- %s", "v_rad".ljust(10), sme.vrad, sme.vrad_unc)

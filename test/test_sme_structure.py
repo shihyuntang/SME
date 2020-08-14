@@ -138,4 +138,4 @@ def test_fitresults():
     sme = SME_Struct()
     sme.fitresults.chisq = 100
     sme.fitresults.clear()
-    assert sme.fitresults.chisq == 0
+    assert sme.fitresults.chisq is None
