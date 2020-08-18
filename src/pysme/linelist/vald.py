@@ -382,7 +382,7 @@ class ValdFile(LineList):
             # Parse energy level terms
             # Extract Stellar has quotation marks around the levels
             # extract element does not...
-            if self.valdtype == "extract_stellar":
+            if valdtype == "extract_stellar":
                 term_lower = [t.strip()[8:-1].strip() for t in term_lower]
                 term_upper = [t.strip()[8:-1].strip() for t in term_upper]
             else:
