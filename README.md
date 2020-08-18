@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/AWehrhahn/SME.svg?branch=master)](https://travis-ci.org/AWehrhahn/SME)
+[![Build Status](https://travis-ci.com/AWehrhahn/SME.svg?branch=master)](https://travis-ci.com/AWehrhahn/SME)
 [![Documentation Status](https://readthedocs.org/projects/pysme-astro/badge/?version=latest)](https://pysme-astro.readthedocs.io/en/latest/?badge=latest)
 [![DOI](https://zenodo.org/badge/150097199.svg)](https://zenodo.org/badge/latestdoi/150097199)
 
