@@ -31,6 +31,10 @@ pip install -e .
 ```
 See also the [documentation](https://pysme-astro.readthedocs.io/en/latest/usage/installation.html)
 
+# Poster
+
+A poster about PySME can be found here: [Poster](http://sme.astro.uu.se/poster.html)
+
 # GUI
 
 A GUI for PySME is available in its own repository [PySME-GUI](https://github.com/AWehrhahn/PySME-GUI).
