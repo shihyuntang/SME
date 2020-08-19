@@ -175,7 +175,7 @@ class SME_Structure(Parameters):
         ("accrt", 1e-4, asfloat, this,
             "float: minimum accuracy for synthethized spectrum at wavelength grid points in sme.wint."),
         ("iptype", None, lowercase(oneof(None, "gauss", "sinc", "table")), this, "str: instrumental broadening type"),
-        ("ipres", 0, asfloat, this, "float: Instrumental resolution for instrumental broadening"),
+        ("ipres", 0, array(None, float), this, "float, array: Instrumental resolution for instrumental broadening"),
         ("ip_x", None, this, this, "array: Instrumental broadening table in x direction"),
         ("ip_y", None, this, this, "array: Instrumental broadening table in y direction"),
         ("mu", np.sqrt(0.5 * (2 * np.arange(7) + 1) / 7), array(None, float), this,
@@ -465,6 +465,19 @@ class SME_Structure(Parameters):
         # For spherical models
         value = np.sort(value)[::-1]
         self.__mu = value
+
+    @property
+    def _ipres(self):
+        return self.__ipres
+
+    @_ipres.setter
+    def _ipres(self, value):
+        size = np.size(value)
+        if size != 1 and size != self.nseg:
+            raise ValueError(
+                f"The instrument resolution must have 1 or {self.nseg} elements"
+            )
+        self.__ipres = value
 
     # Additional properties
     @property
