@@ -61,7 +61,7 @@ def apply_broadening(ipres, x_seg, y_seg, type="gauss", sme=None):
     return y_seg
 
 
-def tablebroad(_, s, xip, yip):
+def tablebroad(w, s, xip, yip):
     """
     Convolves a spectrum with an arbitrary instrumental profile.
 
@@ -96,9 +96,9 @@ def tablebroad(_, s, xip, yip):
         Oct-18  AW
             Python version
     """
-    dsdh = s
 
-    # Define sizes.
+    # Define sizes
+    dsdh = np.abs(np.min(np.diff(xip)))
     nip = 2 * int(15 / dsdh) + 1  ## profile points
 
     # Generate instrumental profile on model pixel scale.
