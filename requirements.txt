@@ -8,6 +8,6 @@ tqdm==4.48.2
 colorlog==4.2.1
 emcee==3.0.2
 pybtex==0.22.2
-flex-format
+flex-format==0.2.1
 
 git+https://github.com/AWehrhahn/flex-format.git
