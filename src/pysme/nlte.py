@@ -460,7 +460,10 @@ class Grid:
         # Reduce the stored data to only relevant energy levels
         # Remap the previous indices into a collapsed sequence
         # level_labels = level_labels[iused]
-        self.bgrid = self.bgrid[self.iused, ...]
+        if self.iused is not None:
+            self.bgrid = self.bgrid[self.iused, ...]
+        else:
+            self.bgrid = self.bgrid[False]
 
         self._points = (self._xfe[x], self._teff[t], self._grav[g], self._feh[f])
         self.limits = {
@@ -513,7 +516,7 @@ class Grid:
         lineindices = np.char.startswith(lineindices, self.elem)
         if not np.any(lineindices):
             warnings.warn(f"No NLTE transitions for {self.elem} found")
-            return None, None, None
+            return None, None, np.full(len(species), False)
 
         sme_species = self.species[lineindices]
 
@@ -726,6 +729,8 @@ class Grid:
         """
 
         assert self._points is not None
+        if self.bgrid is None or self.bgrid.shape[0] == 0:
+            return None
 
         # Interpolate the depth scale to the target depth, this is unstructured data
         # i.e. each combination of parameters has a different depth scale (given in depth)
@@ -954,7 +959,7 @@ class NLTE(Collection):
 
             if bmat is None or len(grid.linerefs) < 2:
                 # no data were returned. Don't bother?
-                pass
+                logger.warning(f"No NLTE transitions found for {elem}")
             else:
                 # Put corrections into the nlte_b matrix, don't cache the data
                 for lr, li in zip(grid.linerefs, grid.lineindices):
