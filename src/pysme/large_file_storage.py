@@ -17,6 +17,7 @@ from pathlib import Path
 
 import requests
 import wget
+from tqdm import tqdm
 
 from .config import Config
 
@@ -65,17 +66,40 @@ class LargeFileStorage:
             pointers = {}
         return pointers
 
-    def hash(self, filename):
-        """ hash a file """
-        hasher = hashlib.sha3_512()
-        blocksize = 8192  # 512 * 16
+    def hash(self, filename, blocks_per_iter=256, max_blocks=1000):
+        """Hash a file, so we can compare with the server
+
+        Parameters
+        ----------
+        filename : str
+            filename
+        blocks_per_iter : int, optional
+            Number of blocks to hash per iteration, by default 256
+        max_blocks : int, optional
+            Maximum number of blocks to hash, by default 1000.
+            A smaller number will limit the execution time. The current
+            default should keep it to less than a second.
+
+        Returns
+        -------
+        hash : str
+            hexadecimal representation of the hash
+        """
+        hasher = hashlib.blake2b()
+        blocksize = blocks_per_iter * hasher.block_size
         with open(str(filename), "rb") as f:
-            for chunk in iter(lambda: f.read(blocksize), b""):
+            for chunk, _ in tqdm(
+                zip(iter(lambda: f.read(blocksize), b""), range(max_blocks))
+            ):
                 hasher.update(chunk)
         return hasher.hexdigest()
 
     def symlink(self, src, dest):
         try:
+            try:
+                os.remove(dest)
+            except:
+                pass
             os.symlink(src, dest)
         except OSError as ex:
             # Might Fail on Windows, then just copy the file
