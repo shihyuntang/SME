@@ -350,6 +350,411 @@ def interp_atmo_pair(atmo1, atmo2, frac, interpvar="RHOX", itop=0):
     return atmo
 
 
+def determine_depth_scale(atmo_in, atmo_grid):
+    """
+    Determine ATMO.DEPTH radiative transfer depth variable. Order of precedence:
+        1. Value of ATMO_IN.DEPTH, if it exists and is set
+        2. Value of ATMO_GRID[0].DEPTH, if it exists and is set
+        3. 'RHOX', if ATMO_GRID.RHOX exists (preferred over 'TAU' for depth)
+        4. 'TAU', if ATMO_GRID.TAU exists
+    Check that INTERP is valid and the corresponding field exists in ATMO.
+
+    Parameters
+    ----------
+    atmo_in : Atmosphere
+        input atmosphere
+    atmo_grid : AtmosphereGrid
+        input atmosphere grid to interpolate on
+
+    Returns
+    -------
+    depth : {"TAU", "RHOX"}
+        The chosen depth scale
+
+    Raises
+    ------
+    AtmosphereError
+        If an invalid value was set in atmo_in/atmo_grid
+    """
+
+    atags = atmo_in.dtype.names
+    gtags = atmo_grid.dtype.names
+
+    if "depth" in atags and atmo_in.depth is not None:
+        depth = atmo_in.depth
+    elif "depth" in gtags and atmo_grid.depth is not None:
+        depth = atmo_grid.depth
+    elif "rhox" in gtags:
+        depth = "RHOX"
+    elif "tau" in gtags:
+        depth = "TAU"
+    else:
+        raise AtmosphereError("no value for ATMO.DEPTH")
+    if depth != "TAU" and depth != "RHOX":
+        raise AtmosphereError("ATMO.DEPTH must be 'TAU' or 'RHOX', not '%s'" % depth)
+    if depth.lower() not in gtags:
+        raise AtmosphereError(
+            "ATMO.DEPTH='%s', but ATMO. %s does not exist" % (depth, depth)
+        )
+    return depth
+
+
+def determine_interpolation_scale(atmo_in, atmo_grid):
+    """
+    Determine ATMO.INTERP interpolation variable. Order of precedence:
+        1. Value of ATMO_IN.INTERP, if it exists and is set
+        2. Value of ATMO_GRID[0].INTERP, if it exists and is set
+        3. 'TAU', if ATMO_GRID.TAU exists (preferred over 'RHOX' for interpolation)
+        4. 'RHOX', if ATMO_GRID.RHOX exists
+    Check that INTERP is valid and the corresponding field exists in ATMO.
+
+    Parameters
+    ----------
+    atmo_in : Atmosphere
+        input atmopshere
+    atmo_grid : AtmosphereGrid
+        Atmosphere grid for interpolation
+
+    Returns
+    -------
+    interp: {"RHOX", "TAU"}
+        the interpolation axis
+
+    Raises
+    ------
+    AtmosphereError
+        if a non valid parameter is set in atmo_in/atmo_grid
+    """
+
+    gtags = atmo_grid.dtype.names
+
+    if atmo_in.interp is not None:
+        interp = atmo_in.interp
+    elif atmo_grid.interp is not None:
+        interp = atmo_grid.interp
+    elif "tau" in gtags:
+        interp = "TAU"
+    elif "rhox" in gtags:
+        interp = "RHOX"
+    else:
+        raise AtmosphereError("no value for ATMO.INTERP")
+    if interp not in ["TAU", "RHOX"]:
+        raise AtmosphereError("ATMO.INTERP must be 'TAU' or 'RHOX', not '%s'" % interp)
+    if interp.lower() not in gtags:
+        raise AtmosphereError(
+            "ATMO.INTERP='%s', but ATMO. %s does not exist" % (interp, interp)
+        )
+    return interp
+
+
+def find_corner_models(teff, logg, monh, atmo_grid, verbose=0):
+    """
+    Find the models in the grid that bracket the given stellar parameters
+
+    The purpose of the first major set of code blocks is to find values
+    of [M/H] in the grid that bracket the requested [M/H]. Then in this
+    subset of models, find values of log(g) in the subgrid that bracket
+    the requested log(g). Then in this subset of models, find values of
+    Teff in the subgrid that bracket the requested Teff. The net result
+    is a set of 8 models in the grid that bracket the requested stellar
+    parameters. Only these 8 "corner" models will be used in the
+    interpolation that constitutes the remainder of the program.
+
+    Parameters
+    ----------
+    teff : float
+        effective temperature
+    logg : float
+        surface gravity
+    monh : float
+        metallicity
+    atmo_grid : AtmosphereGrid
+        atmosphere grid to search models in
+    verbose : int, optional
+        determines how many debugging messages to print, by default 0
+    """
+
+    nb = 2  # number of bracket points
+
+    # *** DETERMINATION OF METALICITY BRACKET ***
+    # Find unique set of [M/H] values in grid.
+    mlist = np.unique(atmo_grid.monh)  # list of unique [M/H]
+
+    # Test whether requested metalicity is in grid.
+    mmin = np.min(mlist)  # range of [M/H] in grid
+    mmax = np.max(mlist)
+    if monh > mmax:  # true: [M/H] too large
+        logger.info(
+            "interp_atmo_grid: requested [M/H] (%.3f) larger than max grid value (%.3f). extrapolating.",
+            monh,
+            mmax,
+        )
+    if monh < mmin:  # true: logg too small
+        raise AtmosphereError(
+            "interp_atmo_grid: requested [M/H] (%.3f) smaller than min grid value (%.3f). returning."
+            % (monh, mmin)
+        )
+
+    # Find closest two [M/H] values in grid that bracket requested [M/H].
+    if monh <= mmax:
+        mlo = np.max(mlist[mlist <= monh])
+        mup = np.min(mlist[mlist >= monh])
+    else:
+        mup = mmax
+        mlo = np.max(mlist[mlist < mup])
+    mb = [mlo, mup]  # bounding [M/H] values
+
+    # Trace diagnostics.
+    if verbose >= 5:
+        logger.info("[M/H]: %.3f < %.3f < %.3f", mlo, monh, mup)
+
+    # *** DETERMINATION OF LOG(G) BRACKETS AT [M/H] BRACKET VALUES ***
+    # Set up for loop through [M/H] bounds.
+    gb = np.zeros((nb, nb))  # bounding gravities
+    for i in range(nb):
+        # Find unique set of gravities at boundary below [M/H] value.
+        im = atmo_grid.monh == mb[i]  # models on [M/H] boundary
+        glist = np.unique(atmo_grid[im].logg)  # list of unique gravities
+
+        # Test whether requested logarithmic gravity is in grid.
+        gmin = np.min(glist)  # range of gravities in grid
+        gmax = np.max(glist)
+        if logg > gmax:  # true: logg too large
+            logger.info(
+                "interp_atmo_grid: requested log(g) (%.3f) larger than max grid value (%.3f). extrapolating.",
+                logg,
+                gmax,
+            )
+
+        if logg < gmin:  # true: logg too small
+            raise AtmosphereError(
+                "interp_atmo_grid: requested log(g) (%.3f) smaller than min grid value (%.3f). returning."
+                % (logg, gmin)
+            )
+
+        # Find closest two gravities in Mlo subgrid that bracket requested gravity.
+        if logg <= gmax:
+            glo = np.max(glist[glist <= logg])
+            gup = np.min(glist[glist >= logg])
+        else:
+            gup = gmax
+            glo = np.max(glist[glist < gup])
+        gb[i] = [glo, gup]  # store boundary values.
+
+        # Trace diagnostics.
+        if verbose >= 5:
+            logger.info(
+                "log(g) at [M/H]=%.3f: %.3f < %.3f < %.3f", mb[i], glo, logg, gup
+            )
+
+    # End of loop through [M/H] bracket values.
+    # *** DETERMINATION OF TEFF BRACKETS AT [M/H] and LOG(G) BRACKET VALUES ***
+    # Set up for loop through [M/H] and log(g) bounds.
+    tb = np.zeros((nb, nb, nb))  # bounding temperatures
+    for ig in range(nb):
+        for im in range(nb):
+            # Find unique set of gravities at boundary below [M/H] value.
+            it = (atmo_grid.monh == mb[im]) & (
+                atmo_grid.logg == gb[im, ig]
+            )  # models on joint boundary
+            tlist = np.unique(atmo_grid[it].teff)  # list of unique temperatures
+
+            # Test whether requested temperature is in grid.
+            tmin = np.min(tlist)  # range of temperatures in grid
+            tmax = np.max(tlist)
+            if teff > tmax:  # true: Teff too large
+                raise AtmosphereError(
+                    "interp_atmo_grid: requested Teff (%i) larger than max grid value (%i). returning."
+                    % (teff, tmax)
+                )
+            if teff < tmin:  # true: logg too small
+                logger.info(
+                    "interp_atmo_grid: requested Teff (%i) smaller than min grid value (%i). extrapolating.",
+                    teff,
+                    tmin,
+                )
+
+            # Find closest two temperatures in subgrid that bracket requested Teff.
+            if teff > tmin:
+                tlo = np.max(tlist[tlist <= teff])
+                tup = np.min(tlist[tlist >= teff])
+            else:
+                tlo = tmin
+                tup = np.min(tlist[tlist > tlo])
+            tb[im, ig, :] = [tlo, tup]  # store boundary values.
+
+            # Trace diagnostics.
+            if verbose >= 5:
+                logger.info(
+                    "Teff at log(g)=%.3f and [M/H]=%.3f: %i < %i < %i",
+                    gb[im, ig],
+                    mb[im],
+                    tlo,
+                    teff,
+                    tup,
+                )
+
+    # End of loop through log(g) and [M/H] bracket values.
+
+    # Find and save atmo_grid indices for the 8 corner models.
+    icor = np.zeros((nb, nb, nb), dtype=int)
+    for it, ig, im in itertools.product(range(nb), repeat=3):
+        iwhr = np.where(
+            (atmo_grid.teff == tb[im, ig, it])
+            & (atmo_grid.logg == gb[im, ig])
+            & (atmo_grid.monh == mb[im])
+        )[0]
+        nwhr = iwhr.size
+        if nwhr != 1:
+            logger.info(
+                "interp_atmo_grid: %i models in grid with [M/H]=%.1f, log(g)=%.1f, and Teff=%i",
+                nwhr,
+                mb[im],
+                gb[im, ig],
+                tb[im, ig, it],
+            )
+        icor[im, ig, it] = iwhr[0]
+
+    # Trace diagnostics.
+    if verbose >= 1:
+        logger.info("Teff=%i,  log(g)=%.3f,  [M/H]=%.3f:", teff, logg, monh)
+        logger.info("indx  M/H  g   Teff     indx  M/H  g   Teff")
+        for im in range(nb):
+            for ig in range(nb):
+                i0 = icor[im, ig, 0]
+                i1 = icor[im, ig, 1]
+                logger.info(
+                    i0,
+                    atmo_grid[i0].monh,
+                    atmo_grid[i0].logg,
+                    atmo_grid[i0].teff,
+                    i1,
+                    atmo_grid[i1].monh,
+                    atmo_grid[i1].logg,
+                    atmo_grid[i1].teff,
+                )
+    return icor
+
+
+def interpolate_corner_models(teff, logg, monh, icor, atmo_grid, interp="RHOX", itop=1):
+    """
+    Interpolate over the 8 corner models in the cube around the stellar parameters
+
+    The code below interpolates between 8 corner models to produce
+    the output atmosphere. In the first step, pairs of models at each
+    of the 4 combinations of log(g) and Teff are interpolated to the
+    desired value of [M/H]. These 4 new models are then interpolated
+    to the desired value of log(g), yielding 2 models at the requested
+    [M/H] and log(g). Finally, this pair of models is interpolated
+    to the desired Teff, producing a single output model.
+
+    Interpolation is done on the logarithm of all quantities to improve
+    linearity of the fitted data. Kurucz models sometimes have very small
+    fractional steps in mass column at the top of the atmosphere. These
+    cause wild oscillations in splines fitted to facilitate interpolation
+    onto a common depth scale. To circumvent this problem, we ignore the
+    top point in the atmosphere by setting itop=1.
+
+    Parameters
+    ----------
+    teff : float
+        effective temperature
+    logg : float
+        surface gravity
+    monh : float
+        metallicity
+    icor : array_like
+        indices of the corner models
+    atmo_grid : AtmosphereGrid
+        atmosphere grid with input models
+    interp : str, optional
+        interpolation axis, by default "RHOX"
+    itop : int, optional
+        index of the topmost point in the RHOX scale, by default 1
+
+    Returns
+    -------
+    atmo3: Atmosphere
+        Interpolated atmosphere
+    """
+
+    # Interpolate 8 corner models to create 4 models at the desired [M/H].
+    atmo = np.empty((2, 2), dtype=object)
+    param = "monh"
+    p = monh
+
+    for (i, j) in np.ndindex(2, 2):
+        m0 = atmo_grid[icor[0, i, j]]
+        m1 = atmo_grid[icor[1, i, j]]
+        p0 = getattr(m0, param)
+        p1 = getattr(m1, param)
+        pfrac = (p - p0) / (p1 - p0) if p0 != p1 else 0
+        atmo[i, j] = interp_atmo_pair(m0, m1, pfrac, interpvar=interp, itop=itop)
+
+    # Interpolate 4 models at the desired [M/H] to create 2 models at desired
+    # [M/H] and log(g).
+    atmo2 = [None, None]
+    param = "teff"
+    p = teff
+    for (k,) in np.ndindex(2):
+        m0 = atmo[0, k]
+        m1 = atmo[1, k]
+        p0 = getattr(m0, param)
+        p1 = getattr(m1, param)
+        pfrac = (p - p0) / (p1 - p0) if p0 != p1 else 0
+        atmo2[k] = interp_atmo_pair(m0, m1, pfrac, interpvar=interp)
+
+    # Interpolate the 2 models at desired [M/H] and log(g) to create final
+    # model at desired [M/H], log(g), and Teff
+    t0 = atmo2[0].teff
+    t1 = atmo2[1].teff
+    tfrac = 0 if t0 == t1 else (teff - t0) / (t1 - t0)
+    atmo3 = interp_atmo_pair(atmo2[0], atmo2[1], tfrac, interpvar=interp)
+
+    return atmo3
+
+
+def spherical_model_correction(atmo_grid, icor):
+    """
+    Correct the radius of the model grids, for the stellar parameters if necessary
+
+    If all interpolated models were spherical, the interpolated model should
+    also be reported as spherical. This enables spherical-symmetric radiative
+    transfer in the spectral synthesis.
+
+    Formulae for mass and radius at the corners of interpolation cube:
+        log(M/Msol) = log g - log g_sol - 2*log(R_sol / R)
+        2 * log(R / R_sol) = log g_sol - log g + log(M / M_sol)
+
+    Parameters
+    ----------
+    atmo_grid : AtmosphereGrid
+        complete atmosphere grid
+    icor : array_like
+        indices for the corner models that were interpolated from the atmosphere grid
+
+    Returns
+    -------
+    geom : {"PP", "SPH"}
+        The geometry of the interpolated models
+    radius : None, array
+        The corrected radius of the models, if geom == "SPH". Otherwise None.
+    """
+
+    gtags = atmo_grid.dtype.names
+    selection = atmo_grid[icor]
+    if "radius" in gtags and "height" in gtags and np.min(selection.radius) > 1:
+        mass_cor = selection.logg - logg_sun - 2 * np.log10(R_sun / selection.radius)
+        mass = np.mean(mass_cor)
+        radius = R_sun * 10 ** ((logg_sun - logg + mass) * 0.5)
+        geom = "SPH"
+    else:
+        geom = "PP"
+        radius = None
+
+    return geom, radius
+
+
 def interp_atmo_grid(Teff, logg, MonH, atmo_in, lfs_atmo, verbose=0, reload=False):
     """
     General routine to interpolate in 3D grid of model atmospheres
@@ -441,8 +846,6 @@ def interp_atmo_grid(Teff, logg, MonH, atmo_in, lfs_atmo, verbose=0, reload=Fals
     """
 
     # Internal parameters.
-    nb = 2  # number of bracket points
-    itop = 1  # index of top depth to use on RHOX scale
 
     atmo_file = atmo_in.source
     self = interp_atmo_grid
@@ -450,334 +853,26 @@ def interp_atmo_grid(Teff, logg, MonH, atmo_in, lfs_atmo, verbose=0, reload=Fals
         atmo_file = lfs_atmo.get(atmo_file)
         self.atmo_grid = SavFile(atmo_file)
     atmo_grid = self.atmo_grid
+
     # Get field names in ATMO and ATMO_GRID structures.
-    atags = [s for s in atmo_in.dtype.names]
-    gtags = [s for s in atmo_grid.dtype.names]
+    depth = determine_depth_scale(atmo_in, atmo_grid)
+    interp = determine_interpolation_scale(atmo_in, atmo_grid)
 
-    # Determine ATMO.DEPTH radiative transfer depth variable. Order of precedence:
-    # (1) Value of ATMO_IN.DEPTH, if it exists and is set
-    # (2) Value of ATMO_GRID[0].DEPTH, if it exists and is set
-    # (3) 'RHOX', if ATMO_GRID.RHOX exists (preferred over 'TAU' for depth)
-    # (4) 'TAU', if ATMO_GRID.TAU exists
-    # Check that INTERP is valid and the corresponding field exists in ATMO.
-    #
-    if "depth" in atags and atmo_in.depth is not None:
-        depth = atmo_in.depth
-    elif "depth" in gtags and atmo_grid.depth is not None:
-        depth = atmo_grid.depth
-    elif "rhox" in gtags:
-        depth = "RHOX"
-    elif "tau" in gtags:
-        depth = "TAU"
-    else:
-        raise AtmosphereError("no value for ATMO.DEPTH")
-    if depth != "TAU" and depth != "RHOX":
-        raise AtmosphereError("ATMO.DEPTH must be 'TAU' or 'RHOX', not '%s'" % depth)
-    if depth.lower() not in gtags:
-        raise AtmosphereError(
-            "ATMO.DEPTH='%s', but ATMO. %s does not exist" % (depth, depth)
-        )
+    # Find the corner models bracketing the given values
+    icor = find_corner_models(Teff, logg, MonH, atmo_grid)
 
-    # Determine ATMO.INTERP interpolation variable. Order of precedence:
-    # (1) Value of ATMO_IN.INTERP, if it exists and is set
-    # (2) Value of ATMO_GRID[0].INTERP, if it exists and is set
-    # (3) 'TAU', if ATMO_GRID.TAU exists (preferred over 'RHOX' for interpolation)
-    # (4) 'RHOX', if ATMO_GRID.RHOX exists
-    # Check that INTERP is valid and the corresponding field exists in ATMO.
-    #
-    if atmo_in.interp is not None:
-        interp = atmo_in.interp
-    elif atmo_grid.interp is not None:
-        interp = atmo_grid.interp
-    elif "tau" in gtags:
-        interp = "TAU"
-    elif "rhox" in gtags:
-        interp = "RHOX"
-    else:
-        raise AtmosphereError("no value for ATMO.INTERP")
-    if interp not in ["TAU", "RHOX"]:
-        raise AtmosphereError("ATMO.INTERP must be 'TAU' or 'RHOX', not '%s'" % interp)
-    if interp.lower() not in gtags:
-        raise AtmosphereError(
-            "ATMO.INTERP='%s', but ATMO. %s does not exist" % (interp, interp)
-        )
+    # Interpolate the corner models
+    atmo = interpolate_corner_models(Teff, logg, MonH, icor, atmo_grid, interp=interp)
 
-    # print("CHECK ATMOSPHERE INTERPOLATION")
-    # atmo = interpolate_atmosphere_grid(
-    #     atmo_grid, Teff, logg, MonH, interp, depth, atmo_in, atmo_file
-    # )
-    # return atmo
-
-    # The purpose of the first major set of code blocks is to find values
-    # of [M/H] in the grid that bracket the requested [M/H]. Then in this
-    # subset of models, find values of log(g) in the subgrid that bracket
-    # the requested log(g). Then in this subset of models, find values of
-    # Teff in the subgrid that bracket the requested Teff. The net result
-    # is a set of 8 models in the grid that bracket the requested stellar
-    # parameters. Only these 8 "corner" models will be used in the
-    # interpolation that constitutes the remainder of the program.
-
-    # *** DETERMINATION OF METALICITY BRACKET ***
-    # Find unique set of [M/H] values in grid.
-    Mlist = np.unique(atmo_grid.monh)  # list of unique [M/H]
-
-    # Test whether requested metalicity is in grid.
-    Mmin = np.min(Mlist)  # range of [M/H] in grid
-    Mmax = np.max(Mlist)
-    if MonH > Mmax:  # true: [M/H] too large
-        logger.info(
-            "interp_atmo_grid: requested [M/H] (%.3f) larger than max grid value (%.3f). extrapolating.",
-            MonH,
-            Mmax,
-        )
-    if MonH < Mmin:  # true: logg too small
-        raise AtmosphereError(
-            "interp_atmo_grid: requested [M/H] (%.3f) smaller than min grid value (%.3f). returning."
-            % (MonH, Mmin)
-        )
-
-    # Find closest two [M/H] values in grid that bracket requested [M/H].
-    if MonH <= Mmax:
-        Mlo = np.max(Mlist[Mlist <= MonH])
-        Mup = np.min(Mlist[Mlist >= MonH])
-    else:
-        Mup = Mmax
-        Mlo = np.max(Mlist[Mlist < Mup])
-    Mb = [Mlo, Mup]  # bounding [M/H] values
-
-    # Trace diagnostics.
-    if verbose >= 5:
-        logger.info("[M/H]: %.3f < %.3f < %.3f", Mlo, MonH, Mup)
-
-    # *** DETERMINATION OF LOG(G) BRACKETS AT [M/H] BRACKET VALUES ***
-    # Set up for loop through [M/H] bounds.
-    Gb = np.zeros((nb, nb))  # bounding gravities
-    for iMb in range(nb):
-        # Find unique set of gravities at boundary below [M/H] value.
-        im = atmo_grid.monh == Mb[iMb]  # models on [M/H] boundary
-        Glist = np.unique(atmo_grid[im].logg)  # list of unique gravities
-
-        # Test whether requested logarithmic gravity is in grid.
-        Gmin = np.min(Glist)  # range of gravities in grid
-        Gmax = np.max(Glist)
-        if logg > Gmax:  # true: logg too large
-            logger.info(
-                "interp_atmo_grid: requested log(g) (%.3f) larger than max grid value (%.3f). extrapolating.",
-                logg,
-                Gmax,
-            )
-
-        if logg < Gmin:  # true: logg too small
-            raise AtmosphereError(
-                "interp_atmo_grid: requested log(g) (%.3f) smaller than min grid value (%.3f). returning."
-                % (logg, Gmin)
-            )
-
-        # Find closest two gravities in Mlo subgrid that bracket requested gravity.
-        if logg <= Gmax:
-            Glo = np.max(Glist[Glist <= logg])
-            Gup = np.min(Glist[Glist >= logg])
-        else:
-            Gup = Gmax
-            Glo = np.max(Glist[Glist < Gup])
-        Gb[iMb] = [Glo, Gup]  # store boundary values.
-
-        # Trace diagnostics.
-        if verbose >= 5:
-            logger.info(
-                "log(g) at [M/H]=%.3f: %.3f < %.3f < %.3f", Mb[iMb], Glo, logg, Gup
-            )
-
-    # End of loop through [M/H] bracket values.
-    # *** DETERMINATION OF TEFF BRACKETS AT [M/H] and LOG(G) BRACKET VALUES ***
-    # Set up for loop through [M/H] and log(g) bounds.
-    Tb = np.zeros((nb, nb, nb))  # bounding temperatures
-    for iGb in range(nb):
-        for iMb in range(nb):
-            # Find unique set of gravities at boundary below [M/H] value.
-            it = (atmo_grid.monh == Mb[iMb]) & (
-                atmo_grid.logg == Gb[iMb, iGb]
-            )  # models on joint boundary
-            Tlist = np.unique(atmo_grid[it].teff)  # list of unique temperatures
-
-            # Test whether requested temperature is in grid.
-            Tmin = np.min(Tlist)  # range of temperatures in grid
-            Tmax = np.max(Tlist)
-            if Teff > Tmax:  # true: Teff too large
-                raise AtmosphereError(
-                    "interp_atmo_grid: requested Teff (%i) larger than max grid value (%i). returning."
-                    % (Teff, Tmax)
-                )
-            if Teff < Tmin:  # true: logg too small
-                logger.info(
-                    "interp_atmo_grid: requested Teff (%i) smaller than min grid value (%i). extrapolating.",
-                    Teff,
-                    Tmin,
-                )
-
-            # Find closest two temperatures in subgrid that bracket requested Teff.
-            if Teff > Tmin:
-                Tlo = np.max(Tlist[Tlist <= Teff])
-                Tup = np.min(Tlist[Tlist >= Teff])
-            else:
-                Tlo = Tmin
-                Tup = np.min(Tlist[Tlist > Tlo])
-            Tb[iMb, iGb, :] = [Tlo, Tup]  # store boundary values.
-
-            # Trace diagnostics.
-            if verbose >= 5:
-                logger.info(
-                    "Teff at log(g)=%.3f and [M/H]=%.3f: %i < %i < %i",
-                    Gb[iMb, iGb],
-                    Mb[iMb],
-                    Tlo,
-                    Teff,
-                    Tup,
-                )
-
-    # End of loop through log(g) and [M/H] bracket values.
-
-    # Find and save atmo_grid indices for the 8 corner models.
-    icor = np.zeros((nb, nb, nb), dtype=int)
-    for iTb, iGb, iMb in itertools.product(range(nb), repeat=3):
-        iwhr = np.where(
-            (atmo_grid.teff == Tb[iMb, iGb, iTb])
-            & (atmo_grid.logg == Gb[iMb, iGb])
-            & (atmo_grid.monh == Mb[iMb])
-        )[0]
-        nwhr = iwhr.size
-        if nwhr != 1:
-            logger.info(
-                "interp_atmo_grid: %i models in grid with [M/H]=%.1f, log(g)=%.1f, and Teff=%i",
-                nwhr,
-                Mb[iMb],
-                Gb[iMb, iGb],
-                Tb[iMb, iGb, iTb],
-            )
-        icor[iMb, iGb, iTb] = iwhr[0]
-
-    # Trace diagnostics.
-    if verbose >= 1:
-        logger.info("Teff=%i,  log(g)=%.3f,  [M/H]=%.3f:", Teff, logg, MonH)
-        logger.info("indx  M/H  g   Teff     indx  M/H  g   Teff")
-        for iMb in range(nb):
-            for iGb in range(nb):
-                i0 = icor[iMb, iGb, 0]
-                i1 = icor[iMb, iGb, 1]
-                logger.info(
-                    i0,
-                    atmo_grid[i0].monh,
-                    atmo_grid[i0].logg,
-                    atmo_grid[i0].teff,
-                    i1,
-                    atmo_grid[i1].monh,
-                    atmo_grid[i1].logg,
-                    atmo_grid[i1].teff,
-                )
-
-    # The code below interpolates between 8 corner models to produce
-    # the output atmosphere. In the first step, pairs of models at each
-    # of the 4 combinations of log(g) and Teff are interpolated to the
-    # desired value of [M/H]. These 4 new models are then interpolated
-    # to the desired value of log(g), yielding 2 models at the requested
-    # [M/H] and log(g). Finally, this pair of models is interpolated
-    # to the desired Teff, producing a single output model.
-
-    # Interpolation is done on the logarithm of all quantities to improve
-    # linearity of the fitted data. Kurucz models sometimes have very small
-    # fractional steps in mass column at the top of the atmosphere. These
-    # cause wild oscillations in splines fitted to facilitate interpolation
-    # onto a common depth scale. To circumvent this problem, we ignore the
-    # top point in the atmosphere by setting itop=1.
-
-    # Interpolate 8 corner models to create 4 models at the desired [M/H].
-    m0 = atmo_grid[icor[0, 0, 0]].monh
-    m1 = atmo_grid[icor[1, 0, 0]].monh
-    mfrac = 0 if m0 == m1 else (MonH - m0) / (m1 - m0)
-    atmo00 = interp_atmo_pair(
-        atmo_grid[icor[0, 0, 0]],
-        atmo_grid[icor[1, 0, 0]],
-        mfrac,
-        interpvar=interp,
-        itop=itop,
-    )
-    m0 = atmo_grid[icor[0, 1, 0]].monh
-    m1 = atmo_grid[icor[1, 1, 0]].monh
-    mfrac = 0 if m0 == m1 else (MonH - m0) / (m1 - m0)
-    atmo01 = interp_atmo_pair(
-        atmo_grid[icor[0, 1, 0]],
-        atmo_grid[icor[1, 1, 0]],
-        mfrac,
-        interpvar=interp,
-        itop=itop,
-    )
-    m0 = atmo_grid[icor[0, 0, 1]].monh
-    m1 = atmo_grid[icor[1, 0, 1]].monh
-    mfrac = 0 if m0 == m1 else (MonH - m0) / (m1 - m0)
-    atmo10 = interp_atmo_pair(
-        atmo_grid[icor[0, 0, 1]],
-        atmo_grid[icor[1, 0, 1]],
-        mfrac,
-        interpvar=interp,
-        itop=itop,
-    )
-    m0 = atmo_grid[icor[0, 1, 1]].monh
-    m1 = atmo_grid[icor[1, 1, 1]].monh
-    mfrac = 0 if m0 == m1 else (MonH - m0) / (m1 - m0)
-    atmo11 = interp_atmo_pair(
-        atmo_grid[icor[0, 1, 1]],
-        atmo_grid[icor[1, 1, 1]],
-        mfrac,
-        interpvar=interp,
-        itop=itop,
-    )
-
-    # Interpolate 4 models at the desired [M/H] to create 2 models at desired
-    # [M/H] and log(g).
-    g0 = atmo00.logg
-    g1 = atmo01.logg
-    gfrac = 0 if g0 == g1 else (logg - g0) / (g1 - g0)
-    atmo0 = interp_atmo_pair(atmo00, atmo01, gfrac, interpvar=interp)
-    g0 = atmo10.logg
-    g1 = atmo11.logg
-    gfrac = 0 if g0 == g1 else (logg - g0) / (g1 - g0)
-    atmo1 = interp_atmo_pair(atmo10, atmo11, gfrac, interpvar=interp)
-
-    # Interpolate the 2 models at desired [M/H] and log(g) to create final
-    # model at desired [M/H], log(g), and Teff
-    t0 = atmo0.teff
-    t1 = atmo1.teff
-    tfrac = 0 if t0 == t1 else (Teff - t0) / (t1 - t0)
-    krz = interp_atmo_pair(atmo0, atmo1, tfrac, interpvar=interp)
-
-    # If all interpolated models were spherical, the interpolated model should
-    # also be reported as spherical. This enables spherical-symmetric radiative
-    # transfer in the spectral synthesis.
-    #
-    # Formulae for mass and radius at the corners of interpolation cube:
-    #  log(M/Msol) = log g - log g_sol - 2*log(R_sol / R)
-    #  2 * log(R / R_sol) = log g_sol - log g + log(M / M_sol)
-    #
-    if "radius" in gtags and "height" in gtags and np.min(atmo_grid[icor].radius) > 1:
-        mass_cor = (
-            atmo_grid[icor].logg
-            - logg_sun
-            - 2 * np.log10(R_sun / atmo_grid[icor].radius)
-        )
-        mass = np.mean(mass_cor)
-        radius = R_sun * 10 ** ((logg_sun - logg + mass) * 0.5)
-        krz.radius = radius
-        geom = "SPH"
-    else:
-        geom = "PP"
+    # TODO: Or should we only consider spherical models for interpolation of spherical modesl are requested?
+    geom, radius = spherical_model_correction(atmo_grid, icor)
 
     # Add standard ATMO input fields, if they are missing from ATMO_IN.
-    atmo = krz
     atmo.depth = depth
     atmo.interp = interp
 
     # Create ATMO.GEOM, if necessary, and set value.
-    if "geom" in atags and atmo_in.geom != geom:
+    if "geom" in atmo_in.dtype.names and atmo_in.geom != geom:
         if atmo_in.geom == "SPH":
             raise AtmosphereError(
                 "Input ATMO.GEOM='%s' was requested but the model only supports PP (at this point)."
@@ -788,6 +883,8 @@ def interp_atmo_grid(Teff, logg, MonH, atmo_in, lfs_atmo, verbose=0, reload=Fals
                 "Input ATMO.GEOM='%s' overrides '%s' from grid.", atmo_in.geom, geom
             )
     atmo.geom = atmo_in.geom
+    if radius is not None:
+        atmo.radius = radius
     atmo.source = atmo_in.source
     atmo.method = atmo_in.method
 
