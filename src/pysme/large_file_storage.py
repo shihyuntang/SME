@@ -88,8 +88,8 @@ class LargeFileStorage:
         hasher = hashlib.blake2b()
         blocksize = blocks_per_iter * hasher.block_size
         with open(str(filename), "rb") as f:
-            for chunk, _ in tqdm(
-                zip(iter(lambda: f.read(blocksize), b""), range(max_blocks))
+            for chunk, _ in zip(
+                iter(lambda: f.read(blocksize), b""), range(max_blocks)
             ):
                 hasher.update(chunk)
         return hasher.hexdigest()
