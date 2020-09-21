@@ -45,7 +45,7 @@ class Atmosphere(Collection):
         ("source", None, asstr, this, "str: datafile name of this data"),
         ("method", "grid", lowercase(oneof("grid", "embedded")), this, 
             "str: whether the data source is a grid or a fixed atmosphere"),
-        ("geom", "PP", uppercase(oneof("PP", "SPH")), this,
+        ("geom", "PP", uppercase(oneof("PP", "SPH", None)), this,
             "str: the geometry of the atmopshere model"),
         ("radius", 0, asfloat, this, "float: radius of the spherical model"),
         ("height", None, array(None, "f8"), this, "array: height of the spherical model"),

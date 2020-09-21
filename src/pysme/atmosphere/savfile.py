@@ -68,6 +68,7 @@ class SavFile(AtmosphereGrid):
             # self["radius"] /= np.max(self["radius"])
         else:
             self.geom = "PP"
+            self["radius"][:] = 1
 
         self.abund_format = "sme"
 

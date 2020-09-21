@@ -12,7 +12,7 @@ from scipy.interpolate import interp1d
 
 
 from . import broadening
-from .atmosphere.interpolation import interp_atmo_grid
+from .atmosphere.interpolation import AtmosphereInterpolator
 from .continuum_and_radial_velocity import match_rv_continuum
 from .large_file_storage import setup_lfs
 from .iliffe_vector import Iliffe_vector
@@ -33,6 +33,7 @@ class Synthesizer:
         self.wint = {}
         # dll: the smelib object used for the radiative transfer calculation
         self.dll = dll if dll is not None else SME_DLL()
+        self.atmosphere_interpolator = None
         logger.critical("Don't forget to cite your sources. Use sme.citation()")
 
     def get_atmosphere(self, sme):
@@ -60,23 +61,23 @@ class Synthesizer:
 
         # Handle atmosphere grid or user routine.
         atmo = sme.atmo
-        func = self
-
-        if hasattr(func, "msdi_save"):
-            msdi_save = func.msdi_save
-            prev_msdi = func.prev_msdi
-        else:
-            msdi_save = None
-            prev_msdi = None
 
         if atmo.method == "grid":
-            reload = msdi_save is None or atmo.source != prev_msdi[1]
-            atmo = interp_atmo_grid(
-                sme.teff, sme.logg, sme.monh, sme.atmo, self.lfs_atmo, reload=reload
+            if self.atmosphere_interpolator is None:
+                self.atmosphere_interpolator = AtmosphereInterpolator(
+                    depth=atmo.depth,
+                    interp=atmo.depth,
+                    geom=atmo.geom,
+                    lfs_atmo=self.lfs_atmo,
+                )
+            else:
+                self.atmosphere_interpolator.depth = atmo.depth
+                self.atmosphere_interpolator.interp = atmo.interp
+                self.atmosphere_interpolator.geom = atmo.geom
+
+            atmo = self.atmosphere_interpolator.interp_atmo_grid(
+                atmo.source, sme.teff, sme.logg, sme.monh
             )
-            prev_msdi = [atmo.method, atmo.source, atmo.depth, atmo.interp]
-            setattr(func, "prev_msdi", prev_msdi)
-            setattr(func, "msdi_save", True)
         elif atmo.method == "routine":
             atmo = atmo.source(sme, atmo)
         elif atmo.method == "embedded":

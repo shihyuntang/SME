@@ -21,7 +21,6 @@ from .abund import Abund
 from .atmosphere.atmosphere import AtmosphereError
 from .atmosphere.savfile import SavFile
 from .atmosphere.krzfile import KrzFile
-from .atmosphere.interpolation import interp_atmo_grid
 from .config import Config
 from .continuum_and_radial_velocity import match_rv_continuum
 from .large_file_storage import setup_lfs
