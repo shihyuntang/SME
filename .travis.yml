@@ -1,46 +1,50 @@
+os: linux
+
 jobs:
+  allow_failures:
+    - os: osx
   include:
-  - os: linux
-    dist: bionic
-    language: python
-    python: 3.8
-    addons:
-      apt:
-        packages:
-        - libgfortran5
-  - os: linux
-    dist: xenial
-    language: python
-    python: 3.6
-    addons:
-      apt:
-        packages:
-        - libgfortran3
-  - os: osx
-    language: shell
-    addons:
-      homebrew:
-        update: true
-        packages:
-        - python@3.8
-        casks:
-        - gfortran
-    before_cache:
-    - brew cleanup
-    cache:
-      directories:
-      - "$HOME/Library/Caches/Homebrew"
-    before_install:
-    - alias python3="/usr/local/opt/python@3.8/bin/python3"
-    - alias pip3="/usr/local/opt/python@3.8/bin/pip3"
+    - os: linux
+      dist: bionic
+      language: python
+      python: 3.8
+      addons:
+        apt:
+          packages:
+            - libgfortran5
+    - os: linux
+      dist: xenial
+      language: python
+      python: 3.6
+      addons:
+        apt:
+          packages:
+            - libgfortran3
+    - os: osx
+      language: shell
+      addons:
+        homebrew:
+          update: true
+          packages:
+            - python@3.8
+          casks:
+            - gfortran
+      before_cache:
+        - brew cleanup
+      cache:
+        directories:
+          - "$HOME/Library/Caches/Homebrew"
+      before_install:
+        - alias python3="/usr/local/opt/python@3.8/bin/python3"
+        - alias pip3="/usr/local/opt/python@3.8/bin/pip3"
 
 install:
-- python3 -m pip install -r requirements.txt
-- python3 -m pip install -r test-requirements.txt
-- python3 -m pip install -v .
+  - python3 -m pip install -r requirements.txt
+  - python3 -m pip install -r test-requirements.txt
+  - python3 -m pip install -v .
 
 script:
-- python3 -m pytest
+  - python3 -m pytest
 
 deploy:
   provider: pypi
@@ -51,4 +55,4 @@ deploy:
   on:
     tags: true
     repo: AWehrhahn/SME
-  skip_cleanup: 'true'
+  skip_cleanup: "true"
