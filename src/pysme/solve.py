@@ -448,7 +448,7 @@ class SME_Solver:
         # Clean parameter values
         if param_names is None:
             param_names = sme.fitparameters
-        if param_names is None:
+        if param_names is None or len(param_names) == 0:
             logger.warning(
                 "No Fit Parameters have been set. Using ('teff', 'logg', 'monh') instead."
             )
@@ -531,7 +531,6 @@ class SME_Solver:
             ):
                 logger.info("%s\t%.5f +- %.5g", name.ljust(10), value, unc)
             logger.info("%s\t%s +- %s", "v_rad".ljust(10), sme.vrad, sme.vrad_unc)
-
         elif len(param_names) > 0:
             # This happens when vrad and/or cscale are given as parameters but nothing else
             # We could try to reuse the already calculated synthetic spectrum (if it already exists)

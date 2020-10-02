@@ -60,8 +60,10 @@ def oneof(*options):
     return f
 
 
-def astype(func):
+def astype(func, allow_None=False):
     def f(self, value):
+        if allow_None and value is None:
+            return value
         if isinstance(value, func):
             return value
         return func(value)
