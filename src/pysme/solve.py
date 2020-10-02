@@ -515,6 +515,7 @@ class SME_Solver:
                     loss="soft_l1",
                     method="trf",
                     verbose=2,
+                    max_nfev=sme.fitresults.maxiter,
                     args=(sme, spec, uncs, mask),
                     kwargs={"bounds": bounds, "segments": segments},
                 )
