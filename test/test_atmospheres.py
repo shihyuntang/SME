@@ -3,7 +3,7 @@ import pytest
 import numpy as np
 from pysme.atmosphere.atmosphere import Atmosphere
 from pysme.atmosphere.savfile import SavFile
-from pysme.atmosphere.interpolation import interp_atmo_grid
+from pysme.atmosphere.interpolation import AtmosphereInterpolator
 from pysme.large_file_storage import setup_atmo
 
 from .test_largefilestorage import skipif_lfs, lfs_atmo
@@ -23,6 +23,18 @@ def atmosphere(atmosphere_name):
 
 @pytest.fixture
 @pytest.mark.usefixtures("lfs_atmo")
+def interpolator(atmosphere, lfs_atmo):
+    interp = AtmosphereInterpolator(
+        depth=atmosphere.depth,
+        interp=atmosphere.depth,
+        geom=atmosphere.geom,
+        lfs_atmo=lfs_atmo,
+    )
+    return interp
+
+
+@pytest.fixture
+@pytest.mark.usefixtures("lfs_atmo")
 def atmosphere_grid(atmosphere_name, lfs_atmo):
     name = lfs_atmo.get(atmosphere_name)
     atmo = SavFile(name)
@@ -31,13 +43,13 @@ def atmosphere_grid(atmosphere_name, lfs_atmo):
 
 @skipif_lfs
 @pytest.mark.usefixtures("lfs_atmo")
-def test_grid_point(atmosphere, atmosphere_grid, lfs_atmo):
+def test_grid_point(atmosphere_name, atmosphere_grid, lfs_atmo, interpolator):
     # TODO: get this values from the grid
     teff = 7000
     logg = 4
     monh = 0
 
-    atmo_interp = interp_atmo_grid(teff, logg, monh, atmosphere, lfs_atmo)
+    atmo_interp = interpolator.interp_atmo_grid(atmosphere_name, teff, logg, monh)
     atmo_grid = atmosphere_grid.get(teff, logg, monh)
 
     assert np.allclose(atmo_interp.temp, atmo_grid.temp[1:])
