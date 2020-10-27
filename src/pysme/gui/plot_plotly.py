@@ -239,7 +239,7 @@ class FinalPlot:
                 visible += [seg]
 
             # mark important lines
-            if self.lines is not None:
+            if self.lines is not None and len(self.lines) != 0:
                 seg_annotations = []
                 xlimits = self.wave[seg][[0, -1]]
                 xlimits *= 1 - self.vrad[seg] / clight
@@ -253,7 +253,8 @@ class FinalPlot:
                     lines.sort("depth", ascending=False)
                     lines = lines[:20]
                 else:
-                    idx = np.random.choice(len(lines), 20, replace=False)
+                    nsamples = min(20, len(lines))
+                    idx = np.random.choice(len(lines), nsamples, replace=False)
                     lines = lines[idx]
 
                 x = lines.wlcent * (1 + self.vrad[seg] / clight)
