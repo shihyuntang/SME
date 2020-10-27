@@ -251,7 +251,14 @@ class Grid:
     """
 
     def __init__(
-        self, sme, elem, lfs_nlte, selection="energy", solar=None, abund_format="Fe=12",
+        self,
+        sme,
+        elem,
+        lfs_nlte,
+        selection="energy",
+        solar=None,
+        abund_format="Fe=12",
+        min_energy_diff=None,
     ):
         #:str: Element of the NLTE grid
         self.elem = elem
@@ -263,6 +270,8 @@ class Grid:
         self.fname = lfs_nlte.get(sme.nlte.grids[elem])
         #:{"levels", "energy"}: Selection algorithm to match lines in grid with linelist
         self.selection = selection
+        #:float: Minimum difference between energy levels to match, only relevant for selection=='energy'
+        self.min_energy_diff = min_energy_diff
 
         #:DirectAccessFile: The NLTE data file
         self.directory = DirectAccessFile(self.fname)
@@ -639,7 +648,11 @@ class Grid:
         # Maximum energy in the grid
         max_energy = np.max(energies)
         # Maximum seperation between energy levels
-        energy_diff_limit = np.max(np.abs(np.diff(energies)))
+        if self.min_energy_diff is None:
+            diff = np.abs(np.diff(energies))
+            energy_diff_limit = np.min(diff[diff != 0])
+        else:
+            energy_diff_limit = np.abs(self.min_energy_diff)
 
         def match(label, level):
             # Try to match the label and the level
@@ -651,58 +664,58 @@ class Grid:
             # 1. Try to match conf/term/spec/J as usual
             idx = idx_species & idx_conf & idx_term & idx_j
             if np.any(idx):
-                return idx
+                return np.where(idx)[0][0]
             # 2. If it fails, try to match conf/term/spec, but ignore J
-            idx = idx_species & idx_conf & idx_term
+            # TODO: Unless there is another match!
+            idx = idx_species & idx_conf & idx_term  # & ~idx_j
             if np.any(idx):
-                return idx
+                return np.where(idx)[0][0]
             # 3. Try to match H
             # If spec is 'H 1', then try to match conf with conf,
             # *or* try to match term with term, *or* try to match conf with term,
             # *or* try to match term with conf
             if level.species == "H 1":
                 # TODO
-                idx = (
-                    idx_conf
-                    | idx_term
-                    | (label.term == level.configuration)
-                    | (label.configuration == level.term)
-                )
+                idx_term_conf = label.term == level.configuration
+                idx_conf_term = label.configuration == level.term
+                idx = idx_conf | idx_term | idx_term_conf | idx_conf_term
                 if np.any(idx):
-                    return idx
+                    return np.where(idx)[0][0]
             # 4. Try to match energies (including H, if step 3 failed)
             # Find the level in the nlte grid with the same spec,
             # and the closest energy; *provided* that the desired energy does
             # not exceed the highest energy out of all the levels in the nlte grid with this spec
             idx = idx_species
             if np.any(idx):
-                if level.energy > max_energy or level.energy < 0:
+                if level.energy > max_energy or level.energy <= 0:
                     # We exceed the maximum energy of the grid, ignore NLTE
-                    return []
+                    return -1
                 diff = np.abs(label[idx].energy - level.energy)
                 idx2 = np.argmin(diff)
                 mindiff = diff[idx2]
                 # difference needs to be smaller than some limit?
                 if mindiff < energy_diff_limit:
-                    return idx_map[idx][idx2]
+                    return np.where(idx_map[idx][idx2])[0][0]
                 else:
-                    return []
+                    return -1
             # 5. If everything fails return nothing
-            return []
+            return -1
 
-        # Loop through the NLTE levels
-        # and match line levels
-        for i, level in enumerate(level_labels):
-            idx_l = match(line_label_low, level)
-            linerefs[idx_l, 0] = i
-            iused[i] |= np.any(idx_l)
+        # Loop through the linelist line levels
+        # and match to NLTE line levels
+        # match() return -1 of no match is found, or the index otherwise
+        for i, level in enumerate(line_label_low):
+            idx_l = match(level_labels, level)
+            linerefs[i, 0] = idx_l
+            iused[idx_l] |= idx_l != -1
 
-            idx_u = match(line_label_upp, level)
-            linerefs[idx_u, 1] = i
-            iused[i] |= np.any(idx_u)
+        for i, level in enumerate(line_label_upp):
+            idx_u = match(level_labels, level)
+            linerefs[i, 1] = idx_u
+            iused[idx_u] |= idx_u != -1
 
         # Lineindices as integer pointers
-        lineindices = np.arange(len(lineindices))[lineindices]
+        lineindices = np.where(lineindices)[0]
         # Remap the linelevel references
         for j, i in enumerate(np.where(iused)[0]):
             linerefs[linerefs == i] = j
@@ -811,6 +824,7 @@ class NLTE(Collection):
         ("solar", None, this, this, "str: defines which default to use as the solar metallicitiies"),
         ("abund_format", "H=12", astype(str), this, "str: which abundance format to use for comparison"),
         ("selection", "energy", oneof("energy", "levels"), this, "str: which selection algorithm to use to match linelist and departure coefficients"),
+        ("min_energy_diff", None, this, this, "float: difference between energy levels that are still matched. If None will default to the smallest non zero difference between energy levels in the grid.")
     ]
     # fmt: on
 
@@ -991,6 +1005,7 @@ class NLTE(Collection):
                 solar=self.solar,
                 abund_format=self.abund_format,
                 selection=self.selection,
+                min_energy_diff=self.min_energy_diff,
             )
             self.grid_data[elem] = grid
 
