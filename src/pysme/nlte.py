@@ -11,7 +11,7 @@ import numpy as np
 from scipy import interpolate
 
 from .abund import Abund, elements as abund_elem
-from .data_structure import Collection, CollectionFactory, astype, array, this
+from .data_structure import Collection, CollectionFactory, astype, array, this, oneof
 
 logger = logging.getLogger(__name__)
 
@@ -332,8 +332,6 @@ class Grid:
         #:str: citations in bibtex format, if known
         self.citation_info = ""
 
-        self.line_match_mode = "level"
-
         conf = self.directory["conf"].astype("U")
         term = self.directory["term"].astype("U")
         species = self.directory["spec"].astype("U")
@@ -524,8 +522,8 @@ class Grid:
         low = self.linelist["term_lower"][lineindices]
         upp = self.linelist["term_upper"][lineindices]
         # Remove quotation marks (if any are there)
-        # parts_low = [s.replace("'", "") for s in parts_low]
-        # parts_upp = [s.replace("'", "") for s in parts_upp]
+        low = np.char.replace(low, "'", "")
+        upp = np.char.replace(upp, "'", "")
         # Get only the relevant part
         parts_low = np.char.partition(low, " ")[:, (0, 2)]
         parts_upp = np.char.partition(upp, " ")[:, (0, 2)]
@@ -563,11 +561,11 @@ class Grid:
         for i, level in enumerate(level_labels):
             idx_l = line_label_low == level
             linerefs[idx_l, 0] = i
-            iused[i] = iused[i] or np.any(idx_l)
+            iused[i] |= np.any(idx_l)
 
             idx_u = line_label_upp == level
             linerefs[idx_u, 1] = i
-            iused[i] = iused[i] or np.any(idx_u)
+            iused[i] |= np.any(idx_u)
 
         lineindices = np.where(lineindices)[0]
 
@@ -588,12 +586,16 @@ class Grid:
         # Extract data from linelist
         term_low = self.linelist["term_lower"][lineindices]
         term_upp = self.linelist["term_upper"][lineindices]
+        # Remove quotation marks (if any are there)
+        term_low = np.char.replace(term_low, "'", "")
+        term_upp = np.char.replace(term_upp, "'", "")
         # Split the string into configuration and term
         term_low = np.char.partition(term_low, " ")
         term_upp = np.char.partition(term_upp, " ")
         # Remove whitespaces
         term_low = np.char.replace(term_low, " ", "")
         term_upp = np.char.replace(term_upp, " ", "")
+
         # Get only the relevant part
         conf_low, term_low = term_low[:, 0], term_low[:, 2]
         conf_upp, term_upp = term_upp[:, 0], term_upp[:, 2]
@@ -808,6 +810,7 @@ class NLTE(Collection):
             "array: contains a flag for each line, whether it was calculated in NLTE (True) or not (False)"),
         ("solar", None, this, this, "str: defines which default to use as the solar metallicitiies"),
         ("abund_format", "H=12", astype(str), this, "str: which abundance format to use for comparison"),
+        ("selection", "energy", oneof("energy", "levels"), this, "str: which selection algorithm to use to match linelist and departure coefficients"),
     ]
     # fmt: on
 
@@ -957,7 +960,7 @@ class NLTE(Collection):
             grid = self.get_grid(sme, elem, lfs_nlte)
             bmat = grid.get(sme.abund, sme.teff, sme.logg, sme.monh, sme.atmo)
 
-            if bmat is None or len(grid.linerefs) < 2:
+            if bmat is None or grid.linerefs.size == 0:
                 # no data were returned. Don't bother?
                 logger.warning(f"No NLTE transitions found for {elem}")
             else:
@@ -982,7 +985,12 @@ class NLTE(Collection):
             grid = self.grid_data[elem]
         else:
             grid = Grid(
-                sme, elem, lfs_nlte, solar=self.solar, abund_format=self.abund_format
+                sme,
+                elem,
+                lfs_nlte,
+                solar=self.solar,
+                abund_format=self.abund_format,
+                selection=self.selection,
             )
             self.grid_data[elem] = grid
 
