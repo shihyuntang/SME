@@ -248,15 +248,40 @@ class FinalPlot:
                 )
                 lines = self.lines[lines]
 
-                # Keep only the 100 stongest lines for performance
-                if "depth" in lines.columns:
-                    lines.sort("depth", ascending=False)
-                    lines = lines[:20]
-                else:
-                    idx = np.random.choice(len(lines), 20, replace=False)
-                    lines = lines[idx]
+                # Filter out closely packaged lines of the same species
+                # Threshold for the distance between lines
+                wlcent, labels = [], []
+                threshold = np.diff(xlimits)[0] / 100
+                species = np.unique(lines["species"])
+                for sp in species:
+                    sp_lines = lines["wlcent"][lines["species"] == sp]
+                    diff = np.diff(sp_lines)
+                    sp_mask = diff < threshold
+                    if np.any(sp_mask):
+                        idx = np.where(np.diff(sp_mask))[0]
+                        idx = [0, *idx, len(sp_mask) + 1]
+                        for i, j in zip(idx[:-1], idx[1:]):
+                            sp_wmid = np.mean(sp_lines[i:j])
+                            sp_label = f"{sp} +{j-i-1}"
+                            wlcent += [sp_wmid]
+                            labels += [sp_label]
+                    else:
+                        for sp_wmid in sp_lines:
+                            wlcent += [sp_wmid]
+                            labels += [sp]
 
-                x = lines.wlcent * (1 + self.vrad[seg] / clight)
+                wlcent = np.array(wlcent)
+                labels = np.array(labels)
+
+                # Keep only the 100 stongest lines for performance
+                # if "depth" in lines.columns:
+                #     lines.sort("depth", ascending=False)
+                #     lines = lines[:20]
+                # else:
+                #     idx = np.random.choice(len(lines), 20, replace=False)
+                #     lines = lines[idx]
+
+                x = wlcent * (1 + self.vrad[seg] / clight)
                 if self.spec is not None:
                     y = np.interp(x, self.wave[seg], self.spec[seg])
                 else:
@@ -269,15 +294,15 @@ class FinalPlot:
                 else:
                     ytop = 1
 
-                for i, line in enumerate(lines):
+                for i, line in enumerate(labels):
                     seg_annotations += [
                         {
                             "x": x[i],
                             "y": y[i],
                             "xref": "x",
                             "yref": "y",
-                            "text": f"{line.species}",
-                            "hovertext": f"{line.wlcent}",
+                            "text": f"{labels[i]}",
+                            "hovertext": f"{wlcent[i]}",
                             "textangle": 90,
                             "opacity": 1,
                             "ax": 0,
