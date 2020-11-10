@@ -71,20 +71,28 @@ class AtmosphereInterpolator:
             self.atmo_grid = atmo_grid
             self.source = atmo_grid.source
 
+        if self.geom is not None:
+            if self.geom == "PP":
+                atmo_grid = self.atmo_grid[self.atmo_grid.radius <= 1]
+            elif self.geom == "SPH":
+                atmo_grid = self.atmo_grid[self.atmo_grid.radius > 1]
+        else:
+            atmo_grid = self.atmo_grid
+
         # Get field names in ATMO and ATMO_GRID structures.
-        depth = self.determine_depth_scale(self.depth, self.atmo_grid)
-        interp = self.determine_interpolation_scale(self.interp, self.atmo_grid)
+        depth = self.determine_depth_scale(self.depth, atmo_grid)
+        interp = self.determine_interpolation_scale(self.interp, atmo_grid)
 
         # Find the corner models bracketing the given values
-        icor = self.find_corner_models(teff, logg, monh, self.atmo_grid)
+        icor = self.find_corner_models(teff, logg, monh, atmo_grid)
 
         # Interpolate the corner models
         atmo = self.interpolate_corner_models(
-            teff, logg, monh, icor, self.atmo_grid, interp=interp
+            teff, logg, monh, icor, atmo_grid, interp=interp
         )
 
         # TODO: Or should we only consider spherical models for interpolation of spherical modesl are requested?
-        geom, radius = self.spherical_model_correction(self.atmo_grid, icor, logg)
+        geom, radius = self.spherical_model_correction(atmo_grid, icor, logg)
         # Create ATMO.GEOM, if necessary, and set value.
         if self.geom is not None and self.geom != geom:
             if self.geom == "SPH":
@@ -566,12 +574,6 @@ class AtmosphereInterpolator:
         """
 
         nb = 2  # number of bracket points
-
-        if self.geom is not None:
-            if self.geom == "PP":
-                atmo_grid = atmo_grid[atmo_grid.radius <= 1]
-            elif self.geom == "SPH":
-                atmo_grid = atmo_grid[atmo_grid.radius > 1]
 
         # *** DETERMINATION OF METALICITY BRACKET ***
         # Find unique set of [M/H] values in grid.

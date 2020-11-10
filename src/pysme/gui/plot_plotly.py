@@ -239,7 +239,7 @@ class FinalPlot:
                 visible += [seg]
 
             # mark important lines
-            if self.lines is not None:
+            if self.lines is not None and len(self.lines) != 0:
                 seg_annotations = []
                 xlimits = self.wave[seg][[0, -1]]
                 xlimits *= 1 - self.vrad[seg] / clight
