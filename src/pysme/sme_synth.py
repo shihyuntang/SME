@@ -160,11 +160,14 @@ class SME_DLL:
         gamma6 : float
             van der Waals scaling factor
         """
+        logger.debug("Setting Van der Waals scale in smelib")
         self.lib.SetVWscale(gamma6, type="double")
         self.vw_scale = gamma6
 
     def SetH2broad(self, h2_flag=True):
         """ Set flag for H2 molecule """
+        logger.debug("Setting H2 broadening in smelib")
+
         if h2_flag:
             self.lib.SetH2broad()
             self.h2broad = True
@@ -204,6 +207,7 @@ class SME_DLL:
             atomic.shape[0] == 8
         ), f"Got wrong Linelist shape, expected ({nlines}, 8) but got {atomic.shape}"
 
+        logger.debug("Passing linelist to smelib")
         self.lib.InputLineList(
             nlines, species, atomic, type=("int", "string", "double")
         )
@@ -253,6 +257,7 @@ class SME_DLL:
 
         atomic = atomic.T
 
+        logger.debug("Updating linelist in smelib")
         self.lib.UpdateLineList(
             nlines, species, atomic, index, type=("int", "str", "double", "short")
         )
@@ -326,6 +331,7 @@ class SME_DLL:
         except AttributeError as ae:
             raise TypeError(f"atmo has to be an Atmo type, {ae}")
 
+        logger.debug("Inputing atmosphere model to smelib")
         self.lib.InputModel(*args, type=type)
 
         self.teff = teff
@@ -352,6 +358,8 @@ class SME_DLL:
         abund = abund("sme", raw=True)
         assert isinstance(abund, np.ndarray)
         abund[np.isnan(abund)] = -99
+
+        logger.debug("Inputing abundances to smelib")
         self.lib.InputAbund(abund, type="double")
 
         self.abund = abund
@@ -461,6 +469,7 @@ class SME_DLL:
         ion : int
             flag that determines the behaviour of the C function
         """
+        logger.debug("Calculating ionization in smelib")
         self.lib.Ionization(ion, type="short", raise_error=False, raise_warning=True)
         self.ion = ion
 
@@ -573,6 +582,7 @@ class SME_DLL:
 
         type = "sdddiiddddss"  # s: short, d:double, i:int, u:unicode (string)
 
+        logger.debug("Starting radiative Transfer calculations in smelib")
         self.lib.Transf(
             nmu,
             mu,

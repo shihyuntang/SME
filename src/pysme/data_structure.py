@@ -200,6 +200,18 @@ class Collection(persistence.IPersist):
     def __contains__(self, key):
         return key in dir(self) and getattr(self, key) is not None
 
+    def __str__(self):
+        with np.printoptions(threshold=10):
+            lines = []
+            for name in self._names:
+                lines += [f"{name}={self[name]!r}"]
+            lines = ",\n".join(lines)
+            output = f"{self.__class__.__name__}({lines})"
+        return output
+
+    def __repr__(self):
+        return self.__str__()
+
     def create_citation(self, citation_info, output="string"):
         if output == "bibtex":
             return citation_info

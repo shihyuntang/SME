@@ -209,7 +209,7 @@ class SME_Solver:
 
         return g
 
-    def __get_bounds(self, sme):
+    def get_bounds(self, sme):
         """
         Create Bounds based on atmosphere grid and general rules
 
@@ -307,7 +307,7 @@ class SME_Solver:
         else:
             return [-np.inf, np.inf]
 
-    def __get_scale(self):
+    def get_scale(self):
         """
         Returns scales for each parameter so that values are on order ~1
 
@@ -331,7 +331,7 @@ class SME_Solver:
         ]
         return scales
 
-    def __get_default_values(self, sme):
+    def get_default_values(self, sme):
         """ Default parameter values for each name """
         d = {"teff": 5778, "logg": 4.4, "monh": 0, "vmac": 1, "vmic": 1}
         d.update({f"{el} abund": v for el, v in Abund.solar()().items()})
@@ -434,6 +434,7 @@ class SME_Solver:
         sme : SME_Struct
             same sme structure with fit results in sme.fitresults, and best fit spectrum in sme.smod
         """
+
         assert "wave" in sme, "SME Structure has no wavelength"
         assert "spec" in sme, "SME Structure has no observation"
 
@@ -462,10 +463,10 @@ class SME_Solver:
                 break
 
         # Create appropiate bounds
-        bounds = self.__get_bounds(sme)
-        scales = self.__get_scale()
+        bounds = self.get_bounds(sme)
+        scales = self.get_scale()
         # Starting values
-        p0 = self.__get_default_values(sme)
+        p0 = self.get_default_values(sme)
         if np.any((p0 < bounds[0]) | (p0 > bounds[1])):
             logger.warning(
                 "Initial values are incompatible with the bounds, clipping initial values"
@@ -483,6 +484,8 @@ class SME_Solver:
         uncs /= spec
 
         logger.info("Fitting Spectrum with Parameters: %s", ",".join(param_names))
+        logger.debug("Initial values: %s", p0)
+        logger.debug("Bounds: %s", bounds)
 
         if (
             sme.wran.min() * (1 - 100 / 3e5) > sme.linelist.wlcent.min()

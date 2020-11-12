@@ -210,6 +210,9 @@ class LineList(IPersist):
     def __str__(self):
         return str(self._lines)
 
+    def __repr__(self):
+        return self.__str__()
+
     def __iter__(self):
         return self._lines.itertuples(index=False)
 

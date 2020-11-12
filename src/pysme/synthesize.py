@@ -34,6 +34,8 @@ class Synthesizer:
         # dll: the smelib object used for the radiative transfer calculation
         self.dll = dll if dll is not None else SME_DLL()
         self.atmosphere_interpolator = None
+        # This stores a reference to the currently used sme structure, so we only log it once
+        self.known_sme = None
         logger.critical("Don't forget to cite your sources. Use sme.citation()")
 
     def get_atmosphere(self, sme):
@@ -463,6 +465,11 @@ class Synthesizer:
             same sme structure with synthetic spectrum in sme.smod
         """
 
+        if sme is not self.known_sme:
+            logger.debug("Synthesize spectrum")
+            logger.debug("%s", sme)
+            self.known_sme = sme
+
         # Define constants
         n_segments = sme.nseg
         cscale_degree = sme.cscale_degree
@@ -616,7 +623,7 @@ class Synthesizer:
         cont_flux : array of shape (npoints,)
             The continuum Flux of the synthesized spectrum
         """
-        logger.debug("Segment %i", segment)
+        logger.debug("Segment %i out of %i", segment, sme.nseg)
 
         # Input Wavelength range and Opacity
         vrad_seg = sme.vrad[segment] if sme.vrad[segment] is not None else 0
@@ -649,6 +656,7 @@ class Synthesizer:
             # Create new geomspaced wavelength grid, to be used for intermediary steps
             wgrid, vstep = self.new_wavelength_grid(wint)
 
+            logger.debug("Integrate specific intensities")
             # Radiative Transfer Integration
             # Continuum
             cint = self.integrate_flux(sme.mu, cint, 1, 0, 0)
@@ -667,6 +675,7 @@ class Synthesizer:
 
         # instrument broadening
         if "iptype" in sme:
+            logger.debug("Apply detector broadening")
             ipres = sme.ipres if np.size(sme.ipres) == 1 else sme.ipres[segment]
             sint = broadening.apply_broadening(
                 ipres, wint, sint, type=sme.iptype, sme=sme

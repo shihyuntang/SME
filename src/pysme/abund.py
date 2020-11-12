@@ -270,6 +270,9 @@ class Abund(IPersist):
                     out += "\n"
             return out
 
+    def __repr__(self):
+        return self.__str__()
+
     # These are there for the atmosphere interpolation
     # The internal format is always H=12, so that should be fine
     def __add__(self, other):

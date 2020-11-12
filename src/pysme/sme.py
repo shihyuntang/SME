@@ -206,38 +206,7 @@ class SME_Structure(Parameters):
         ("atmo", Atmosphere(), astype(Atmosphere), this, "Atmosphere: model atmosphere data"),
         ("nlte", NLTE(), astype(NLTE), this, "NLTE: nlte calculation data"),
         ("system_info", Version(), astype(Version), this,
-            "Version: information about the host system running the calculation for debugging"),
-        ("citation_info", r"""
-            @ARTICLE{2017A&A...597A..16P,
-                author = {{Piskunov}, Nikolai and {Valenti}, Jeff A.},
-                title = "{Spectroscopy Made Easy: Evolution}",
-                journal = {\aap},
-                keywords = {stars: abundances, radiative transfer, stars: fundamental parameters, stars: atmospheres, techniques: spectroscopic, Astrophysics - Instrumentation and Methods for Astrophysics, Astrophysics - Solar and Stellar Astrophysics},
-                year = "2017",
-                month = "Jan",
-                volume = {597},
-                eid = {A16},
-                pages = {A16},
-                doi = {10.1051/0004-6361/201629124},
-                archivePrefix = {arXiv},
-                eprint = {1606.06073},
-                primaryClass = {astro-ph.IM},
-                adsurl = {https://ui.adsabs.harvard.edu/abs/2017A&A...597A..16P},
-                adsnote = {Provided by the SAO/NASA Astrophysics Data System}
-            }
-            @ARTICLE{1996A&AS..118..595V,
-                author = {{Valenti}, J.~A. and {Piskunov}, N.},
-                title = "{Spectroscopy made easy: A new tool for fitting observations with synthetic spectra.}",
-                journal = {\aaps},
-                keywords = {RADIATIVE TRANSFER, METHODS: NUMERICAL, TECHNIQUES: SPECTROSCOPIC, STARS: FUNDAMENTAL PARAMETERS, SUN: FUNDAMENTAL PARAMETERS, ATOMIC DATA},
-                year = "1996",
-                month = "Sep",
-                volume = {118},
-                pages = {595-603},
-                adsurl = {https://ui.adsabs.harvard.edu/abs/1996A&AS..118..595V},
-                adsnote = {Provided by the SAO/NASA Astrophysics Data System}
-            }
-            """, asstr, this, "str: BibTex entry for SME")
+            "Version: information about the host system running the calculation for debugging")
     ]
     # fmt: on
 
@@ -294,6 +263,38 @@ class SME_Structure(Parameters):
         )
         self.atmo = Atmosphere(**atmo, abund=atmo_abund, monh=atmo_monh,)
         self.nlte = NLTE(**nlte)
+
+        self.citation_info = r"""
+            @ARTICLE{2017A&A...597A..16P,
+                author = {{Piskunov}, Nikolai and {Valenti}, Jeff A.},
+                title = "{Spectroscopy Made Easy: Evolution}",
+                journal = {\aap},
+                keywords = {stars: abundances, radiative transfer, stars: fundamental parameters, stars: atmospheres, techniques: spectroscopic, Astrophysics - Instrumentation and Methods for Astrophysics, Astrophysics - Solar and Stellar Astrophysics},
+                year = "2017",
+                month = "Jan",
+                volume = {597},
+                eid = {A16},
+                pages = {A16},
+                doi = {10.1051/0004-6361/201629124},
+                archivePrefix = {arXiv},
+                eprint = {1606.06073},
+                primaryClass = {astro-ph.IM},
+                adsurl = {https://ui.adsabs.harvard.edu/abs/2017A&A...597A..16P},
+                adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+            }
+            @ARTICLE{1996A&AS..118..595V,
+                author = {{Valenti}, J.~A. and {Piskunov}, N.},
+                title = "{Spectroscopy made easy: A new tool for fitting observations with synthetic spectra.}",
+                journal = {\aaps},
+                keywords = {RADIATIVE TRANSFER, METHODS: NUMERICAL, TECHNIQUES: SPECTROSCOPIC, STARS: FUNDAMENTAL PARAMETERS, SUN: FUNDAMENTAL PARAMETERS, ATOMIC DATA},
+                year = "1996",
+                month = "Sep",
+                volume = {118},
+                pages = {595-603},
+                adsurl = {https://ui.adsabs.harvard.edu/abs/1996A&AS..118..595V},
+                adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+            }
+            """
 
         # Apply final conversions from IDL to Python version
         if "wave" in self:
