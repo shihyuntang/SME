@@ -333,7 +333,7 @@ def log_version():
     logger.debug("Pandas version: %s", pdversion)
 
 
-def start_logging(log_file="log.log"):
+def start_logging(log_file="log.log", level="DEBUG"):
     """Start logging to log file and command line
 
     Parameters
@@ -342,11 +342,24 @@ def start_logging(log_file="log.log"):
         name of the logging file (default: "log.log")
     """
 
-    logging.basicConfig(
-        filename=log_file,
-        level=logging.DEBUG,
-        format="%(asctime)-15s - %(levelname)s - %(name)-8s - %(message)s",
+    try:
+        level = getattr(logging, str(level).upper())
+    except:
+        raise ValueError(
+            f"Logging level not recognized, try one of ['DEBUG', 'INFO', 'WARNING']"
+        )
+
+    name, _ = __name__.split(".", 1)
+    logger = logging.getLogger(name)
+
+    logger.setLevel(level)
+    filehandler = logging.FileHandler(log_file, mode="w")
+    formatter = logging.Formatter(
+        "%(asctime)-15s - %(levelname)s - %(name)-8s - %(message)s"
     )
+    filehandler.setFormatter(formatter)
+    logger.addHandler(filehandler)
+
     logging.captureWarnings(True)
     log_version()
 
