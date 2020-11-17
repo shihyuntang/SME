@@ -104,7 +104,7 @@ class Version(Collection):
 class Fitresults(Collection):
     # fmt: off
     _fields = Collection._fields + [
-        ("maxiter", 100, astype(int), this, "int: maximum number of iterations in the solver"),
+        ("maxiter", None, astype(int, allow_None=True), this, "int: maximum number of iterations in the solver"),
         ("chisq", None, this, this, "float: reduced chi-square of the solution"),
         ("parameters", None, this, this, "list: parameter names"),
         ("values", None, array(None, float), this, "array: best fit values for the fit parameters"),
@@ -248,7 +248,7 @@ class SME_Structure(Parameters):
         self.fitparameters = np.unique(fitparameters)
 
         self.fitresults = Fitresults(
-            maxiter=kwargs.get("maxiter", 0),
+            maxiter=kwargs.get("maxiter", None),
             chisq=kwargs.get("chisq", 0),
             uncertainties=kwargs.get("punc", None),
             covariance=kwargs.get("covar", None),
