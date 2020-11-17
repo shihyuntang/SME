@@ -46,10 +46,10 @@ def determine_continuum(sme, segment):
     if segment < 0:
         return sme.cscale
 
-    if "spec" not in sme or "mask" not in sme or "wave" not in sme or "uncs" not in sme:
+    if "spec" not in sme or "wave" not in sme:
         # If there is no observation, we have no continuum scale
         warnings.warn("Missing data for continuum fit")
-        cscale = None
+        cscale = [1]
     elif sme.cscale_flag in ["none", -3]:
         cscale = [1]
     elif sme.cscale_flag in ["fix", -1, -2]:
@@ -60,7 +60,18 @@ def determine_continuum(sme, segment):
         ndeg = sme.cscale_degree
 
         # Extract points in this segment
-        x, y, m, u = sme.wave, sme.spec, sme.mask, sme.uncs
+        x, y
+        if "mask" in sme:
+            m = sme.mask
+        else:
+            m = sme.spec.copy()
+            m[:] = 1
+
+        if "uncs" in sme:
+            u = sme.uncs
+        else:
+            u = sme.spec.copy()
+            u[:] = 1
         x, y, m, u = x[segment], y[segment], m[segment], u[segment]
 
         # Set continuum mask
