@@ -46,10 +46,10 @@ def determine_continuum(sme, segment):
     if segment < 0:
         return sme.cscale
 
-    if "spec" not in sme or "mask" not in sme or "wave" not in sme or "uncs" not in sme:
+    if "spec" not in sme or "wave" not in sme:
         # If there is no observation, we have no continuum scale
         warnings.warn("Missing data for continuum fit")
-        cscale = None
+        cscale = [1]
     elif sme.cscale_flag in ["none", -3]:
         cscale = [1]
     elif sme.cscale_flag in ["fix", -1, -2]:
@@ -60,7 +60,18 @@ def determine_continuum(sme, segment):
         ndeg = sme.cscale_degree
 
         # Extract points in this segment
-        x, y, m, u = sme.wave, sme.spec, sme.mask, sme.uncs
+        x, y = sme.wave, sme.spec
+        if "mask" in sme:
+            m = sme.mask
+        else:
+            m = sme.spec.copy()
+            m[:] = sme.mask_value["line"]
+
+        if "uncs" in sme:
+            u = sme.uncs
+        else:
+            u = sme.spec.copy()
+            u[:] = 1
         x, y, m, u = x[segment], y[segment], m[segment], u[segment]
 
         # Set continuum mask
@@ -182,10 +193,10 @@ def determine_radial_velocity(sme, segment, cscale, x_syn, y_syn):
         or None if no observation is present
     """
 
-    if "spec" not in sme or "mask" not in sme or "wave" not in sme or "uncs" not in sme:
+    if "spec" not in sme or "wave" not in sme:
         # No observation no radial velocity
         warnings.warn("Missing data for radial velocity determination")
-        rvel = None
+        rvel = 0
     elif sme.vrad_flag == "none":
         # vrad_flag says don't determine radial velocity
         rvel = sme.vrad[segment]
@@ -197,7 +208,19 @@ def determine_radial_velocity(sme, segment, cscale, x_syn, y_syn):
     else:
         # Fit radial velocity
         # Extract data
-        x, y, m, u = sme.wave, sme.spec, sme.mask, sme.uncs
+        x, y = sme.wave, sme.spec
+        if "mask" in sme:
+            m = sme.mask
+        else:
+            m = sme.spec.copy()
+            m[:] = sme.mask_value["line"]
+
+        if "uncs" in sme:
+            u = sme.uncs
+        else:
+            u = sme.spec.copy()
+            u[:] = 1
+
         # Only this one segment
         x_obs = x[segment]
         y_obs = y[segment].copy()
