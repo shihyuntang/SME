@@ -260,6 +260,7 @@ class FinalPlot:
                     if np.any(sp_mask):
                         idx = np.where(np.diff(sp_mask))[0]
                         idx = [0, *idx, len(sp_mask) + 1]
+                        idx = np.unique(idx)
                         for i, j in zip(idx[:-1], idx[1:]):
                             sp_wmid = np.mean(sp_lines[i:j])
                             sp_label = f"{sp} +{j-i-1}"
