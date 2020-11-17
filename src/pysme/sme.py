@@ -219,6 +219,8 @@ class SME_Structure(Parameters):
         atmo = kwargs.pop("atmo", {})
         nlte = kwargs.pop("nlte", {})
         idlver = kwargs.pop("idlver", {})
+        self.wave = None
+        self.wran = None
         super().__init__(**kwargs)
 
         if wind is not None and self.wave is not None:
@@ -474,7 +476,7 @@ class SME_Structure(Parameters):
     @_ipres.setter
     def _ipres(self, value):
         size = np.size(value)
-        if size != 1 and size != self.nseg:
+        if self.nseg != 0 and size != 1 and size != self.nseg:
             raise ValueError(
                 f"The instrument resolution must have 1 or {self.nseg} elements"
             )
