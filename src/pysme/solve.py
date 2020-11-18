@@ -344,6 +344,48 @@ class SME_Solver:
             sme[s] if sme[s] is not None else default(s) for s in self.parameter_names
         ]
 
+    def estimate_uncertainties(self, sme, result):
+        popt = result.x
+        pder = result.jac
+        resid = result.fun
+        unc = np.concatenate(sme.uncs[sme.mask_line])
+
+        freep_name = self.parameter_names
+        nparameters = len(popt)
+        freep_unc = np.zeros(nparameters)
+
+        for i in range(nparameters):
+            gradlim = np.median(np.abs(pder[:, i]))
+            idx = (np.abs(pder[:, i]) > gradlim) & (np.abs(resid) < 5 * unc)
+            if np.count_nonzero(idx) < 5:
+                logger.warning(
+                    "Not enough datapoints to determine uncertainties for %s",
+                    freep_name[i],
+                )
+                continue
+            # Sort pixels according to the change of the i
+            # parameter needed to match the observations
+            idx_sort = np.argsort(resid[idx] / pder[idx, i])
+            ch_x = resid[idx][idx_sort] / pder[idx, i][idx_sort]
+            # Weights of the individual pixels also sorted
+            ch_y = np.abs(pder[idx, i][idx_sort]) / unc[idx][idx_sort]
+            # Cumulative weights
+            ch_y = np.cumsum(ch_y)
+            # Normalized cumulative weights
+            ch_y /= ch_y[-1]
+            # Median, note the inverted axes!
+            x_sigma = [0.5 - 0.6827 / 2, 0.5, 0.5 + 0.6827 / 2]
+            lowsigma, hmed, uppsigma = np.interp(x_sigma, ch_y, ch_x)
+            # mean value of sigma
+            sigmaestimate = (uppsigma - lowsigma) * 0.5
+            freep_unc[i] = sigmaestimate
+
+            logger.debug(
+                f"{freep_name[i]}: {hmed}, {lowsigma}, {uppsigma}, {sigmaestimate}"
+            )
+
+        return freep_unc
+
     def __update_fitresults(self, sme, result):
         # Update SME structure
         sme.fitresults.clear()
@@ -371,14 +413,15 @@ class SME_Solver:
         sme.fitresults.punc2 = [np.nan for _ in self.parameter_names]
         for i in range(len(self.parameter_names)):
             # Errors based on covariance matrix
-            sme.fitresults.uncertainties[i] = sig[i]
+            sme.fitresults.fit_uncertainties[i] = sig[i]
             # Errors based on ad-hoc metric
-            tmp = np.abs(result.fun) / np.clip(
-                np.median(np.abs(result.jac[:, i])), 1e-5, None
-            )
-            sme.fitresults.punc2[i] = np.median(tmp)
+            # tmp = np.abs(result.fun) / np.clip(
+            #     np.median(np.abs(result.jac[:, i])), 1e-5, None
+            # )
+            # sme.fitresults.punc2[i] = np.median(tmp)
 
-        # punc3 = uncertainties(res.jac, res.fun, uncs, param_names, plot=False)
+        sme.fitresults.uncertainties = self.estimate_uncertainties(sme, result)
+
         return sme
 
     def sanitize_parameter_names(self, sme, param_names):

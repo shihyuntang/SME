@@ -108,12 +108,12 @@ class Fitresults(Collection):
         ("chisq", None, this, this, "float: reduced chi-square of the solution"),
         ("parameters", None, this, this, "list: parameter names"),
         ("values", None, array(None, float), this, "array: best fit values for the fit parameters"),
-        ("uncertainties", None, array(None, float), this, "array of size(nfree,): uncertainties of the free parameters"),
+        ("uncertainties", None, array(None, float), this, "array of size(nfree,): uncertainties of the free parameters bases on SME statistics"),
         ("covariance", None, array(None, float), this, "array of size (nfree, nfree): covariance matrix"),
         ("gradient", None, array(None, float), this, "array of size (nfree,): final gradients of the free parameters on the cost function"),
         ("derivative", None, array(None, float), this, "array of size (npoints, nfree): final Jacobian of each point and each parameter"),
         ("residuals", None, array(None, float), this, "array of size (npoints,): final residuals of the fit"),
-        ("punc2", None, this, this, "array: old school uncertainties")
+        ("fit_uncertainties", None, this, this, "array: uncertainties based solely on the least_squares fit")
     ]
     # fmt: on
 
