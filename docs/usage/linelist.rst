@@ -49,6 +49,14 @@ In addition the long format has the following fields
 :term_upper: The electron configuration of the upper level
 :error: An uncertainty estimate for this linedata
 
+Important Note
+--------------
+As far as the radiative transfer code is concerned the ionization is defined as part of the species term.
+I.e. a line with species = "Fe 2" will be calculated as ionization = 2.
+If no number is set within the species field, SME will use an ionization of 1.
+
+Also atom_number is ignored in the radiative transfer calculations and therefore does not need to be set.
+
 VALD integration
 ----------------
 
