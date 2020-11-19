@@ -346,30 +346,51 @@ class SME_Solver:
             sme[s] if sme[s] is not None else default(s) for s in self.parameter_names
         ]
 
-    def estimate_uncertainties(self, sme, result):
-        resid = result.fun
-        unc = np.concatenate(sme.uncs[sme.mask_good])
+    def estimate_uncertainties(self, unc, resid, deriv):
+        """
+        Estimate the uncertainties by fitting the cumulative distribution of
+        derivative / uncertainties vs. residual / derivative
+        with the generalized normal distribution and use the 68% percentile
+        as the 1 sigma approximation for a normally distributed variable
+
+        Parameters
+        ----------
+        unc : array of shape (n,)
+            uncertainties
+        resid : array of shape (n,)
+            residuals of the least squares fit
+        deriv : array of shape (n, p)
+            derivatives (jacobian) of the least squares fit for each parameter
+
+        Returns
+        -------
+        freep_unc : array of shape (p,)
+            uncertainties for each free paramater, in the same order as self.parameter_names
+        """
 
         freep_name = self.parameter_names
-        nparameters = len(result.x)
+        nparameters = len(freep_name)
         freep_unc = np.zeros(nparameters)
 
         # Cumulative distribution function of the normal distribution
         # cdf = lambda x, mu, sig: 0.5 * (1 + erf((x - mu) / (np.sqrt(2) * sig)))
         # std = lambda mu, sig: sig
 
-        # Cumulative distribution function of the generalized normal distribution
-        # the factor sqrt(2) is a conversion between generalized and regular normal distribution
-        cdf = lambda x, mu, alpha, beta: gennorm.cdf(
-            x, beta, loc=mu, scale=alpha * np.sqrt(2)
-        )
-        # 1 sigma (68.27 %) quantile, assuming symmetric distribution
-        std = lambda mu, alpha, beta: np.mean(
-            np.abs(gennorm.interval(0.6827, beta, loc=mu, scale=alpha * np.sqrt(2)))
-        )
+        def cdf(x, mu, alpha, beta):
+            """
+            Cumulative distribution function of the generalized normal distribution
+            the factor sqrt(2) is a conversion between generalized and regular normal distribution
+            """
+            return gennorm.cdf(x, beta, loc=mu, scale=alpha * np.sqrt(2))
+
+        def std(mu, alpha, beta):
+            """ 1 sigma (68.27 %) quantile, assuming symmetric distribution """
+            interval = gennorm.interval(0.6827, beta, loc=mu, scale=alpha * np.sqrt(2))
+            sigma = (interval[1] - interval[0]) / 2
+            return sigma
 
         for i in range(nparameters):
-            pder = result.jac[:, i]
+            pder = deriv[:, i]
             gradlim = np.median(np.abs(pder))
             idx = np.abs(pder) > gradlim
             if np.count_nonzero(idx) <= 5:
@@ -398,15 +419,9 @@ class SME_Solver:
 
             logger.debug(f"{freep_name[i]}: {hmed}, {sigma_estimate}")
 
-            # import matplotlib.pyplot as plt
-
-            # plt.plot(ch_x, ch_y)
-            # plt.plot(ch_x, cdf(ch_x, *sopt))
-            # plt.show()
-
         return freep_unc
 
-    def __update_fitresults(self, sme, result):
+    def update_fitresults(self, sme, result):
         # Update SME structure
         sme.fitresults.clear()
 
@@ -434,7 +449,10 @@ class SME_Solver:
             # Errors based on covariance matrix
             sme.fitresults.fit_uncertainties[i] = sig[i]
 
-        sme.fitresults.uncertainties = self.estimate_uncertainties(sme, result)
+        unc = np.concatenate(sme.uncs[sme.mask_good])
+        sme.fitresults.uncertainties = self.estimate_uncertainties(
+            unc, result.fun, result.jac
+        )
 
         return sme
 
@@ -585,7 +603,7 @@ class SME_Solver:
             res.jac = self._last_jac
             for i, name in enumerate(self.parameter_names):
                 sme[name] = res.x[i]
-            sme = self.__update_fitresults(sme, res)
+            sme = self.update_fitresults(sme, res)
             logger.debug("Reduced chi square: %.3f", sme.fitresults.chisq)
             for name, value, unc in zip(
                 self.parameter_names, res.x, sme.fitresults.uncertainties
