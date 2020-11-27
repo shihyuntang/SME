@@ -131,7 +131,6 @@ class SME_Structure(Parameters):
         ("id", dt.now(), asstr, this, "str: DateTime when this structure was created"),
         ("meta", {}, this, this, "dict: Arbitrary extra information"),
         ("version", __version__, this, this, "str: PySME version used to create this structure"),
-        ("vrad", 0, array(None, float), this, "array of size (nseg,): radial velocity of each segment in km/s"),
         ("vrad_flag", "none", lowercase(oneof(-2, -1, 0, "none", "each", "whole", "fix")), this,
             """str: flag that determines how the radial velocity is determined
 
@@ -140,11 +139,7 @@ class SME_Structure(Parameters):
                * "each": Determine radial velocity for each segment individually
                * "whole": Determine one radial velocity for the whole spectrum
             """),
-        ("cscale", 1, array(None, float), this,
-            """array of size (nseg, ndegree): Continumm polynomial coefficients for each wavelength segment
-            The x coordinates of each polynomial are chosen so that x = 0, at the first wavelength point,
-            i.e. x is shifted by wave[segment][0]
-            """),
+        ("vrad", 0, array(None, float), this, "array of size (nseg,): radial velocity of each segment in km/s"),
         ("cscale_flag", "none", lowercase(oneof(-3, -2, -1, 0, 1, 2, 3, 4, 5, "none", "fix", "constant", "linear", "quadratic", "cubic", "quintic", "quantic")), this,
             """str: Flag that describes how to correct for the continuum
 
@@ -163,6 +158,11 @@ class SME_Structure(Parameters):
             allowed values are:
               * "whole": Fit the whole synthetic spectrum to the observation to determine the best fit
               * "mask": Fit a polynomial to the pixels marked as continuum in the mask
+            """),
+        ("cscale", 1, array(None, float), this,
+            """array of size (nseg, ndegree): Continumm polynomial coefficients for each wavelength segment
+            The x coordinates of each polynomial are chosen so that x = 0, at the first wavelength point,
+            i.e. x is shifted by wave[segment][0]
             """),
         ("normalize_by_continuum", True, asbool, this,
             "bool: Whether to normalize the synthetic spectrum by the synthetic continuum spectrum or not"),
@@ -392,6 +392,8 @@ class SME_Structure(Parameters):
 
     @property
     def _vrad_flag(self):
+        if not hasattr(self, "__vrad_flag"):
+            self.__vrad_flag = "none"
         return self.__vrad_flag
 
     @_vrad_flag.setter
@@ -451,6 +453,8 @@ class SME_Structure(Parameters):
 
     @property
     def _cscale_flag(self):
+        if not hasattr(self, "__cscale_flag"):
+            self.__cscale_flag = "none"
         return self.__cscale_flag
 
     @_cscale_flag.setter
