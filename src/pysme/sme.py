@@ -403,6 +403,7 @@ class SME_Structure(Parameters):
         if self.__cscale is None:
             cs = np.zeros((nseg, self.cscale_degree + 1))
             cs[:, -1] = 1
+            self.__cscale = cs
             return cs
 
         if self.cscale_flag == "none":
@@ -424,6 +425,10 @@ class SME_Structure(Parameters):
             cs[:ns, :] = self.__cscale[:ns, :]
 
         cs[ns:, -1] = self.__cscale[-1, -1]
+
+        # We need to update our internal representation as well
+        # since we might operate on that array
+        self.__cscale = cs
 
         return cs
 
