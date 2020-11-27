@@ -392,7 +392,9 @@ class SME_Structure(Parameters):
 
     @property
     def _vrad_flag(self):
-        if not hasattr(self, "__vrad_flag"):
+        try:
+            _ = self.__vrad_flag
+        except AttributeError:
             self.__vrad_flag = "none"
         return self.__vrad_flag
 
@@ -453,7 +455,9 @@ class SME_Structure(Parameters):
 
     @property
     def _cscale_flag(self):
-        if not hasattr(self, "__cscale_flag"):
+        try:
+            _ = self.__cscale_flag
+        except AttributeError:
             self.__cscale_flag = "none"
         return self.__cscale_flag
 
