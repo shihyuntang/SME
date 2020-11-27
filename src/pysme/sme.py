@@ -342,7 +342,8 @@ class SME_Structure(Parameters):
                     values[i] = [self.wave[i][0], self.wave[i][-1]]
                 else:
                     values[i] = self.__wran[i]
-            return values
+            self.__wran = values
+            return self.__wran
         return self.__wran
 
     @_wran.setter
@@ -382,6 +383,11 @@ class SME_Structure(Parameters):
 
     @_vrad.setter
     def _vrad(self, value):
+        if self.vrad_flag == "none":
+            logger.warning(
+                "Setting the radial velocity with radial velocity flag 'none', setting the flag 'fix' instead"
+            )
+            self.vrad_flag = "fix"
         self.__vrad = np.atleast_1d(value) if value is not None else None
 
     @property
@@ -436,6 +442,11 @@ class SME_Structure(Parameters):
 
     @_cscale.setter
     def _cscale(self, value):
+        if self.cscale_flag == "none":
+            logger.warning(
+                "Setting continuum scale with continuum scale flag 'none', setting the flag to 'fix' instead."
+            )
+            self.cscale_flag = "fix"
         self.__cscale = np.atleast_2d(value) if value is not None else None
 
     @property
