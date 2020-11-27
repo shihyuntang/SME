@@ -362,7 +362,8 @@ class SME_Structure(Parameters):
         nseg = self.nseg if self.nseg is not None else 1
 
         if self.__vrad is None:
-            return np.zeros(nseg)
+            self.__vrad = np.zeros(nseg)
+            return self.__vrad
 
         if self.vrad_flag == "none":
             return np.zeros(nseg)
@@ -374,7 +375,8 @@ class SME_Structure(Parameters):
             rv = np.zeros(self.nseg)
             rv[:nseg] = self.__vrad[:nseg]
             rv[nseg:] = self.__vrad[-1]
-            return rv
+            self.__vrad = rv
+            return self.__vrad
 
         return self.__vrad
 
@@ -430,7 +432,7 @@ class SME_Structure(Parameters):
         # since we might operate on that array
         self.__cscale = cs
 
-        return cs
+        return self.__cscale
 
     @_cscale.setter
     def _cscale(self, value):
