@@ -3,7 +3,7 @@ scipy==1.5.4
 numpy==1.19.4
 astropy==4.2
 wget==3.2
-requests==2.24.0
+requests==2.25.0
 tqdm==4.51.0
 colorlog==4.4.0
 emcee==3.0.2
