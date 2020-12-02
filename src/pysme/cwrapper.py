@@ -16,6 +16,7 @@ from os.path import join, dirname, basename
 import os
 import wget
 import tarfile
+import zipfile
 
 import numpy as np
 
@@ -102,25 +103,18 @@ def download_libsme(loc=None):
         loc = dirname(__file__)
     # Download compiled library from github releases
     print("Downloading and installing the latest libsme version for this system")
-    aliases = {"Linux": "manylinux2010", "Windows": "win64", "Darwin": "osx"}
+    aliases = {"Linux": "linux", "Windows": "windows", "Darwin": "macos"}
     system = platform.system()
 
-    if system == "Linux":
-        fversion = find_library("gfortran")
-        if "4" in basename(fversion) or "3" in basename(fversion):
-            system = "linux-libgfortran3"
-        else:
-            system = "manylinux2010"
-    else:
-        try:
-            system = aliases[system]
-        except KeyError:
-            raise KeyError(
-                "Could not find the associated compiled library for this system {}. Either compile it yourself and place it in src/pysme/ or open an issue on Github"
-            )
+    try:
+        system = aliases[system]
+    except KeyError:
+        raise KeyError(
+            "Could not find the associated compiled library for this system {}. Either compile it yourself and place it in src/pysme/ or open an issue on Github"
+        )
 
     github_releases_url = "https://github.com/AWehrhahn/SMElib/releases/latest/download"
-    github_releases_fname = "smelib_{system}.tar.gz".format(system=system)
+    github_releases_fname = "{system}-f2c.zip".format(system=system)
     url = github_releases_url + "/" + github_releases_fname
     fname = join(loc, github_releases_fname)
 
@@ -131,8 +125,8 @@ def download_libsme(loc=None):
     os.makedirs(loc, exist_ok=True)
     wget.download(url, out=loc)
 
-    with tarfile.open(fname) as tar:
-        tar.extractall(loc)
+    zipfile.ZipFile(fname).extractall(loc)
+
     os.remove(fname)
 
 
