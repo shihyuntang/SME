@@ -75,7 +75,17 @@ asint = astype(int)
 asfloat = astype(float)
 asstr = astype(str)
 asbool = astype(bool)
-absolute = lambda self, value: abs(value)
+
+
+def absolute(self, value):
+    try:
+        return abs(value)
+    except TypeError:
+        logger.warning(
+            "Tried setting number field with %s, trying to use the 0th element of it instead",
+            type(value),
+        )
+        return abs(value[0])
 
 
 def array(shape, dtype, allow_None=True):
