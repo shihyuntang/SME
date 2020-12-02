@@ -1,4 +1,5 @@
 import io
+import os
 import logging
 from zipfile import ZipFile, ZIP_STORED, ZIP_LZMA
 import json
