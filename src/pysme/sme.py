@@ -108,12 +108,12 @@ class Fitresults(Collection):
         ("chisq", None, this, this, "float: reduced chi-square of the solution"),
         ("parameters", None, this, this, "list: parameter names"),
         ("values", None, array(None, float), this, "array: best fit values for the fit parameters"),
-        ("uncertainties", None, array(None, float), this, "array of size(nfree,): uncertainties of the free parameters"),
+        ("uncertainties", None, array(None, float), this, "array of size(nfree,): uncertainties of the free parameters bases on SME statistics"),
         ("covariance", None, array(None, float), this, "array of size (nfree, nfree): covariance matrix"),
         ("gradient", None, array(None, float), this, "array of size (nfree,): final gradients of the free parameters on the cost function"),
         ("derivative", None, array(None, float), this, "array of size (npoints, nfree): final Jacobian of each point and each parameter"),
         ("residuals", None, array(None, float), this, "array of size (npoints,): final residuals of the fit"),
-        ("punc2", None, this, this, "array: old school uncertainties")
+        ("fit_uncertainties", None, this, this, "array: uncertainties based solely on the least_squares fit")
     ]
     # fmt: on
 
@@ -131,7 +131,6 @@ class SME_Structure(Parameters):
         ("id", dt.now(), asstr, this, "str: DateTime when this structure was created"),
         ("meta", {}, this, this, "dict: Arbitrary extra information"),
         ("version", __version__, this, this, "str: PySME version used to create this structure"),
-        ("vrad", 0, array(None, float), this, "array of size (nseg,): radial velocity of each segment in km/s"),
         ("vrad_flag", "none", lowercase(oneof(-2, -1, 0, "none", "each", "whole", "fix")), this,
             """str: flag that determines how the radial velocity is determined
 
@@ -140,11 +139,7 @@ class SME_Structure(Parameters):
                * "each": Determine radial velocity for each segment individually
                * "whole": Determine one radial velocity for the whole spectrum
             """),
-        ("cscale", 1, array(None, float), this,
-            """array of size (nseg, ndegree): Continumm polynomial coefficients for each wavelength segment
-            The x coordinates of each polynomial are chosen so that x = 0, at the first wavelength point,
-            i.e. x is shifted by wave[segment][0]
-            """),
+        ("vrad", 0, array(None, float), this, "array of size (nseg,): radial velocity of each segment in km/s"),
         ("cscale_flag", "none", lowercase(oneof(-3, -2, -1, 0, 1, 2, 3, 4, 5, "none", "fix", "constant", "linear", "quadratic", "cubic", "quintic", "quantic")), this,
             """str: Flag that describes how to correct for the continuum
 
@@ -163,6 +158,11 @@ class SME_Structure(Parameters):
             allowed values are:
               * "whole": Fit the whole synthetic spectrum to the observation to determine the best fit
               * "mask": Fit a polynomial to the pixels marked as continuum in the mask
+            """),
+        ("cscale", 1, array(None, float), this,
+            """array of size (nseg, ndegree): Continumm polynomial coefficients for each wavelength segment
+            The x coordinates of each polynomial are chosen so that x = 0, at the first wavelength point,
+            i.e. x is shifted by wave[segment][0]
             """),
         ("normalize_by_continuum", True, asbool, this,
             "bool: Whether to normalize the synthetic spectrum by the synthetic continuum spectrum or not"),
@@ -342,7 +342,8 @@ class SME_Structure(Parameters):
                     values[i] = [self.wave[i][0], self.wave[i][-1]]
                 else:
                     values[i] = self.__wran[i]
-            return values
+            self.__wran = values
+            return self.__wran
         return self.__wran
 
     @_wran.setter
@@ -362,7 +363,8 @@ class SME_Structure(Parameters):
         nseg = self.nseg if self.nseg is not None else 1
 
         if self.__vrad is None:
-            return np.zeros(nseg)
+            self.__vrad = np.zeros(nseg)
+            return self.__vrad
 
         if self.vrad_flag == "none":
             return np.zeros(nseg)
@@ -374,16 +376,26 @@ class SME_Structure(Parameters):
             rv = np.zeros(self.nseg)
             rv[:nseg] = self.__vrad[:nseg]
             rv[nseg:] = self.__vrad[-1]
-            return rv
+            self.__vrad = rv
+            return self.__vrad
 
         return self.__vrad
 
     @_vrad.setter
     def _vrad(self, value):
+        if self.vrad_flag == "none":
+            logger.warning(
+                "Setting the radial velocity with radial velocity flag 'none', setting the flag 'fix' instead"
+            )
+            self.vrad_flag = "fix"
         self.__vrad = np.atleast_1d(value) if value is not None else None
 
     @property
     def _vrad_flag(self):
+        try:
+            _ = self.__vrad_flag
+        except AttributeError:
+            self.__vrad_flag = "none"
         return self.__vrad_flag
 
     @_vrad_flag.setter
@@ -403,6 +415,7 @@ class SME_Structure(Parameters):
         if self.__cscale is None:
             cs = np.zeros((nseg, self.cscale_degree + 1))
             cs[:, -1] = 1
+            self.__cscale = cs
             return cs
 
         if self.cscale_flag == "none":
@@ -425,14 +438,27 @@ class SME_Structure(Parameters):
 
         cs[ns:, -1] = self.__cscale[-1, -1]
 
-        return cs
+        # We need to update our internal representation as well
+        # since we might operate on that array
+        self.__cscale = cs
+
+        return self.__cscale
 
     @_cscale.setter
     def _cscale(self, value):
+        if self.cscale_flag == "none":
+            logger.warning(
+                "Setting continuum scale with continuum scale flag 'none', setting the flag to 'fix' instead."
+            )
+            self.cscale_flag = "fix"
         self.__cscale = np.atleast_2d(value) if value is not None else None
 
     @property
     def _cscale_flag(self):
+        try:
+            _ = self.__cscale_flag
+        except AttributeError:
+            self.__cscale_flag = "none"
         return self.__cscale_flag
 
     @_cscale_flag.setter

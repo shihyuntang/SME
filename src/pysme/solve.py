@@ -13,8 +13,10 @@ import builtins
 import numpy as np
 from tqdm import tqdm
 from scipy.constants import speed_of_light
-from scipy.optimize import OptimizeWarning, least_squares
+from scipy.optimize import OptimizeWarning, least_squares, curve_fit
 from scipy.optimize._numdiff import approx_derivative
+from scipy.special import erf
+from scipy.stats import gennorm
 
 from . import __file_ending__, broadening
 from .abund import Abund
@@ -344,7 +346,82 @@ class SME_Solver:
             sme[s] if sme[s] is not None else default(s) for s in self.parameter_names
         ]
 
-    def __update_fitresults(self, sme, result):
+    def estimate_uncertainties(self, unc, resid, deriv):
+        """
+        Estimate the uncertainties by fitting the cumulative distribution of
+        derivative / uncertainties vs. residual / derivative
+        with the generalized normal distribution and use the 68% percentile
+        as the 1 sigma approximation for a normally distributed variable
+
+        Parameters
+        ----------
+        unc : array of shape (n,)
+            uncertainties
+        resid : array of shape (n,)
+            residuals of the least squares fit
+        deriv : array of shape (n, p)
+            derivatives (jacobian) of the least squares fit for each parameter
+
+        Returns
+        -------
+        freep_unc : array of shape (p,)
+            uncertainties for each free paramater, in the same order as self.parameter_names
+        """
+
+        freep_name = self.parameter_names
+        nparameters = len(freep_name)
+        freep_unc = np.zeros(nparameters)
+
+        # Cumulative distribution function of the normal distribution
+        # cdf = lambda x, mu, sig: 0.5 * (1 + erf((x - mu) / (np.sqrt(2) * sig)))
+        # std = lambda mu, sig: sig
+
+        def cdf(x, mu, alpha, beta):
+            """
+            Cumulative distribution function of the generalized normal distribution
+            the factor sqrt(2) is a conversion between generalized and regular normal distribution
+            """
+            return gennorm.cdf(x, beta, loc=mu, scale=alpha * np.sqrt(2))
+
+        def std(mu, alpha, beta):
+            """ 1 sigma (68.27 %) quantile, assuming symmetric distribution """
+            interval = gennorm.interval(0.6827, beta, loc=mu, scale=alpha * np.sqrt(2))
+            sigma = (interval[1] - interval[0]) / 2
+            return sigma
+
+        for i in range(nparameters):
+            pder = deriv[:, i]
+            gradlim = np.median(np.abs(pder))
+            idx = np.abs(pder) > gradlim
+            if np.count_nonzero(idx) <= 5:
+                logger.warning(
+                    "Not enough data points with a suitable derivative to determine the uncertainties of %s",
+                    freep_name[i],
+                )
+                continue
+            # Sort pixels according to the change of the i
+            # parameter needed to match the observations
+            idx_sort = np.argsort(resid[idx] / pder[idx])
+            ch_x = resid[idx][idx_sort] / pder[idx][idx_sort]
+            # Weights of the individual pixels also sorted
+            ch_y = np.abs(pder[idx][idx_sort]) / unc[idx][idx_sort]
+            # Cumulative weights
+            ch_y = np.cumsum(ch_y)
+            # Normalized cumulative weights
+            ch_y /= ch_y[-1]
+
+            # Fit the distribution
+            sopt, _ = curve_fit(cdf, ch_x, ch_y)
+
+            hmed = sopt[0]
+            sigma_estimate = std(*sopt)
+            freep_unc[i] = sigma_estimate
+
+            logger.debug(f"{freep_name[i]}: {hmed}, {sigma_estimate}")
+
+        return freep_unc
+
+    def update_fitresults(self, sme, result):
         # Update SME structure
         sme.fitresults.clear()
 
@@ -367,18 +444,16 @@ class SME_Solver:
             result.cost * 2 / (sme.spec.size - len(self.parameter_names))
         )
 
-        sme.fitresults.uncertainties = [np.nan for _ in self.parameter_names]
-        sme.fitresults.punc2 = [np.nan for _ in self.parameter_names]
+        sme.fitresults.fit_uncertainties = [np.nan for _ in self.parameter_names]
         for i in range(len(self.parameter_names)):
             # Errors based on covariance matrix
-            sme.fitresults.uncertainties[i] = sig[i]
-            # Errors based on ad-hoc metric
-            tmp = np.abs(result.fun) / np.clip(
-                np.median(np.abs(result.jac[:, i])), 1e-5, None
-            )
-            sme.fitresults.punc2[i] = np.median(tmp)
+            sme.fitresults.fit_uncertainties[i] = sig[i]
 
-        # punc3 = uncertainties(res.jac, res.fun, uncs, param_names, plot=False)
+        unc = np.concatenate(sme.uncs[sme.mask_good])
+        sme.fitresults.uncertainties = self.estimate_uncertainties(
+            unc, result.fun, result.jac
+        )
+
         return sme
 
     def sanitize_parameter_names(self, sme, param_names):
@@ -528,7 +603,7 @@ class SME_Solver:
             res.jac = self._last_jac
             for i, name in enumerate(self.parameter_names):
                 sme[name] = res.x[i]
-            sme = self.__update_fitresults(sme, res)
+            sme = self.update_fitresults(sme, res)
             logger.debug("Reduced chi square: %.3f", sme.fitresults.chisq)
             for name, value, unc in zip(
                 self.parameter_names, res.x, sme.fitresults.uncertainties
