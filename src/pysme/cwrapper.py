@@ -114,7 +114,7 @@ def download_libsme(loc=None):
         )
 
     github_releases_url = "https://github.com/AWehrhahn/SMElib/releases/latest/download"
-    github_releases_fname = "{system}-f2c.zip".format(system=system)
+    github_releases_fname = "{system}-gfortran.zip".format(system=system)
     url = github_releases_url + "/" + github_releases_fname
     fname = join(loc, github_releases_fname)
 
