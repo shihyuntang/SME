@@ -51,7 +51,8 @@ jobs:
   
     - name: Zip data
       id: zip_data
-      run: zip -r dist dist
+      run: zip -r dist dist && echo "::set-output name=filename::dist.zip"
+
   
     - name: Create Release
       id: create_release
@@ -71,8 +72,8 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
-        asset_path: ./dist.zip
-        asset_name: dist.zip
+        asset_path: ./${{ steps.zip_data.filename }}
+        asset_name: ${{ steps.zip_data.filename }}
         asset_content_type: application/zip
   
     - name: Publish a Python distribution to PyPI
