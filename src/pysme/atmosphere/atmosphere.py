@@ -78,6 +78,8 @@ class Atmosphere(Collection):
         monh = kwargs.pop("monh", kwargs.pop("feh", 0))
         abund = kwargs.pop("abund", "empty")
         abund_format = kwargs.pop("abund_format", "sme")
+        if "geom" in kwargs.keys() and kwargs["geom"] == "":
+            kwargs["geom"] = None
         super().__init__(**kwargs)
         self.abund = Abund(monh=monh, pattern=abund, type=abund_format)
 
