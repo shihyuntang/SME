@@ -37,10 +37,9 @@ jobs:
     
     - name: GitHub Tag
       id: tag_release
-      uses: mathieudutour/github-tag-action@v5
+      uses: mathieudutour/github-tag-action@v5.0
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
-        custom_tag: 0.4.14
     
     - uses: actions/checkout@v2
       with:
