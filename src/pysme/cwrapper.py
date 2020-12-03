@@ -103,7 +103,7 @@ def download_libsme(loc=None):
         loc = dirname(__file__)
     # Download compiled library from github releases
     print("Downloading and installing the latest libsme version for this system")
-    aliases = {"Linux": "linux", "Windows": "windows", "Darwin": "macos"}
+    aliases = {"Linux": "ubuntu", "Windows": "windows", "Darwin": "macos"}
     system = platform.system()
 
     try:
