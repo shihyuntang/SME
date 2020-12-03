@@ -784,8 +784,8 @@ class AtmosphereInterpolator:
         p = monh
 
         for (i, j) in np.ndindex(2, 2):
-            m0 = atmo_grid[icor[0, i, j]]
-            m1 = atmo_grid[icor[1, i, j]]
+            m0 = atmo_grid[icor[0, j, i]]
+            m1 = atmo_grid[icor[1, j, i]]
             p0 = getattr(m0, param)
             p1 = getattr(m1, param)
             pfrac = (p - p0) / (p1 - p0) if p0 != p1 else 0
@@ -796,11 +796,11 @@ class AtmosphereInterpolator:
         # Interpolate 4 models at the desired [M/H] to create 2 models at desired
         # [M/H] and log(g).
         atmo2 = [None, None]
-        param = "teff"
-        p = teff
+        param = "logg"
+        p = logg
         for (k,) in np.ndindex(2):
-            m0 = atmo[0, k]
-            m1 = atmo[1, k]
+            m0 = atmo[k, 0]
+            m1 = atmo[k, 1]
             p0 = getattr(m0, param)
             p1 = getattr(m1, param)
             pfrac = (p - p0) / (p1 - p0) if p0 != p1 else 0
