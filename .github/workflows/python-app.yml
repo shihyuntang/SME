@@ -16,6 +16,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+          
     - name: Set up Python 3.8
       uses: actions/setup-python@v2
       with:
@@ -39,8 +42,13 @@ jobs:
       id: tag_release
       uses: mathieudutour/github-tag-action@v5
       with:
-        github_token: ${{ secrets.GITHUB_TOKEN }} 
+        github_token: ${{ secrets.GITHUB_TOKEN }}
     
+    - uses: actions/checkout@v2
+      with:
+        ref:  ${{ steps.tag_release.outputs.new_tag }}
+        clean: false
+
     - name: Build Wheel
       run: pip install wheel && python setup.py sdist bdist_wheel
   
