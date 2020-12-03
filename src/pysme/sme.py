@@ -242,6 +242,8 @@ class SME_Structure(Parameters):
         # Parse free parameters into one list
         pname = kwargs.get("pname", [])
         glob_free = kwargs.get("glob_free", [])
+        if isinstance(glob_free, str):
+            glob_free = [glob_free]
         ab_free = kwargs.get("ab_free", [])
         if len(ab_free) != 0:
             ab_free = [f"abund {el}" for i, el in zip(ab_free, abund_elem) if i == 1]

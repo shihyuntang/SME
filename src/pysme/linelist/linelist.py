@@ -79,7 +79,9 @@ class LineList(IPersist):
         }
         error = np.ones(len(error_flags), dtype=float)
         for i, (flag, _) in enumerate(zip(error_flags, values)):
-            if flag[0] in [" ", "_", "P"]:
+            if len(flag) == 0:
+                error[i] = 0.5
+            elif flag[0] in [" ", "_", "P"]:
                 # undefined or predicted
                 error[i] = 0.5
             elif flag[0] == "E":
@@ -88,22 +90,46 @@ class LineList(IPersist):
                 error[i] = 10 ** float(flag[1:])
             elif flag[0] == "C":
                 # Cancellation Factor, i.e. relative error
-                error[i] = abs(float(flag[1:]))
+                try:
+                    error[i] = abs(float(flag[1:]))
+                except ValueError:
+                    error[i] = 0.5
             elif flag[0] == "N":
                 # NIST quality class
                 flag = flag[1:5].strip()
-                error[i] = nist[flag]
+                try:
+                    error[i] = nist[flag]
+                except KeyError:
+                    error[i] = 0.5
         return error
 
     @staticmethod
-    def from_IDL_SME(**kwargs):
+    def guess_format(kwargs):
+        short_line_format = kwargs.pop(
+            "short_line_format", kwargs.pop("short_format", None)
+        )
+        if short_line_format is not None:
+            return short_line_format
+
+        keys = kwargs.keys()
+        if (
+            "line_extra" in keys
+            and "line_lulande" in keys
+            and "line_term_low" in keys
+            and "line_term_upp" in keys
+        ):
+            return 2
+        return 1
+
+    @classmethod
+    def from_IDL_SME(cls, **kwargs):
         """ extract LineList from IDL SME structure keywords """
         species = kwargs.pop("species").astype("U")
         atomic = np.asarray(kwargs.pop("atomic"), dtype="<f8")
         lande = np.asarray(kwargs.pop("lande"), dtype="<f8")
         depth = np.asarray(kwargs.pop("depth"), dtype="<f8")
         lineref = kwargs.pop("lineref").astype("U")
-        short_line_format = kwargs.pop("short_line_format")
+        short_line_format = cls.guess_format(kwargs)
         if short_line_format == 2:
             line_extra = np.asarray(kwargs.pop("line_extra"), dtype="<f8")
             line_lulande = np.asarray(kwargs.pop("line_lulande"), dtype="<f8")
