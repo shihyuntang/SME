@@ -778,40 +778,29 @@ class AtmosphereInterpolator:
             Interpolated atmosphere
         """
 
-        # Interpolate 8 corner models to create 4 models at the desired [M/H].
-        atmo = np.empty((2, 2), dtype=object)
-        param = "monh"
-        p = monh
-
-        for (i, j) in np.ndindex(2, 2):
-            m0 = atmo_grid[icor[0, j, i]]
-            m1 = atmo_grid[icor[1, j, i]]
+        # We do this for every pair of atmosphere models
+        def interpolate(m0, m1, p, param, **kwargs):
             p0 = getattr(m0, param)
             p1 = getattr(m1, param)
             pfrac = (p - p0) / (p1 - p0) if p0 != p1 else 0
-            atmo[i, j] = self.interp_atmo_pair(
-                m0, m1, pfrac, interpvar=interp, itop=itop
-            )
+            return self.interp_atmo_pair(m0, m1, pfrac, interpvar=interp, **kwargs)
+
+        # Interpolate 8 corner models to create 4 models at the desired [M/H].
+        atmo = [[None, None], [None, None]]
+        for (i, j) in np.ndindex(2, 2):
+            m0 = atmo_grid[icor[0, j, i]]
+            m1 = atmo_grid[icor[1, j, i]]
+            atmo[i][j] = interpolate(m0, m1, monh, "monh", itop=itop)
 
         # Interpolate 4 models at the desired [M/H] to create 2 models at desired
         # [M/H] and log(g).
         atmo2 = [None, None]
-        param = "logg"
-        p = logg
-        for (k,) in np.ndindex(2):
-            m0 = atmo[k, 0]
-            m1 = atmo[k, 1]
-            p0 = getattr(m0, param)
-            p1 = getattr(m1, param)
-            pfrac = (p - p0) / (p1 - p0) if p0 != p1 else 0
-            atmo2[k] = self.interp_atmo_pair(m0, m1, pfrac, interpvar=interp)
+        for k in range(2):
+            atmo2[k] = interpolate(atmo[k][0], atmo[k][1], logg, "logg")
 
         # Interpolate the 2 models at desired [M/H] and log(g) to create final
         # model at desired [M/H], log(g), and Teff
-        t0 = atmo2[0].teff
-        t1 = atmo2[1].teff
-        tfrac = 0 if t0 == t1 else (teff - t0) / (t1 - t0)
-        atmo3 = self.interp_atmo_pair(atmo2[0], atmo2[1], tfrac, interpvar=interp)
+        atmo3 = interpolate(atmo2[0], atmo2[1], teff, "teff")
 
         return atmo3
 
