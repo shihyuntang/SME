@@ -146,7 +146,10 @@ def load_library(libfile):
     try:
         os.add_dll_directory(dirname(libfile))
     except AttributeError:
-        os.environ["PATH"] = dirname(libfile) + os.pathsep + os.environ["PATH"]
+        newpath = dirname(libfile)
+        if "PATH" in os.environ:
+            newpath += os.pathsep + os.environ["PATH"]
+        os.environ["PATH"] = newpath
     return ct.CDLL(str(libfile))
 
 
