@@ -673,13 +673,13 @@ class Synthesizer:
             sint = self.integrate_flux(sme.mu, y_integrated, vstep, sme.vsini, sme.vmac)
             wint = wgrid
 
-        # instrument broadening
-        if "iptype" in sme:
-            logger.debug("Apply detector broadening")
-            ipres = sme.ipres if np.size(sme.ipres) == 1 else sme.ipres[segment]
-            sint = broadening.apply_broadening(
-                ipres, wint, sint, type=sme.iptype, sme=sme
-            )
+            # instrument broadening
+            if "iptype" in sme:
+                logger.debug("Apply detector broadening")
+                ipres = sme.ipres if np.size(sme.ipres) == 1 else sme.ipres[segment]
+                sint = broadening.apply_broadening(
+                    ipres, wint, sint, type=sme.iptype, sme=sme
+                )
 
         # Divide calculated spectrum by continuum
         if sme.normalize_by_continuum:
