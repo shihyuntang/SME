@@ -5,5 +5,5 @@
     "data.cache.atmospheres": "~/.sme/atmospheres/cache",
     "data.cache.nlte_grids": "~/.sme/nlte_grids/cache",
     "data.pointers.atmospheres": "datafiles_atmospheres.json",
-    "data.pointers.nlte_grids": "datafiles_nlte.json",
+    "data.pointers.nlte_grids": "datafiles_nlte.json"
 }
