@@ -3,7 +3,7 @@ Handle the Json configuration file
 At the moment it is only used for the LargeFileStorage
 """
 import logging
-from os.path import expanduser
+from os.path import expanduser, exists, dirname, join
 import json
 
 logger = logging.getLogger(__name__)
@@ -22,6 +22,12 @@ class Config:
     def __init__(self, fname="~/.sme/config.json"):
         self.filename = fname
         self._cfg = None
+
+        if not exists(self.filename):
+            logger.info(
+                f"No cconfiguration file found at {self.filename}, using default values instead"
+            )
+            self.filename = join(dirname(__file__), "config_default.json")
 
     @property
     def filename(self):
