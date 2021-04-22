@@ -61,11 +61,10 @@ class KrzFile(Atmosphere):
         self.teff = float(re.findall(r"T ?EFF=?\s*(\d+.?\d*)", header)[0])
         self.logg = float(re.findall(r"GRAV(ITY)?=?\s*(\d+.?\d*)", header)[0][1])
 
-        model_type = re.findall(r"MODEL TYPE=?\s*(\d)", header)
-        self.model_type = model_type
+        model_type = re.findall(r"MODEL TYPE=?\s*(\d)", header)[0]
+        self.model_type = int(model_type)
 
         model_type_key = {0: "rhox", 1: "tau", 3: "sph"}
-        self.model_type = int(header[i + k : j])
         self.depth = model_type_key[self.model_type]
         self.geom = "pp"
 
