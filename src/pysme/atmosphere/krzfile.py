@@ -1,3 +1,4 @@
+import re
 import numpy as np
 
 from ..abund import Abund
@@ -50,34 +51,25 @@ class KrzFile(Atmosphere):
             abund = [file.readline() for _ in range(10)]
             table = file.readlines()
 
-            # Parse header
-            # vturb
-        i = header1.find("VTURB")
-        self.vturb = float(header1[i + 5 : i + 9])
-        # L/H, metalicity
-        i = header1.find("L/H")
-        self.lonh = float(header1[i + 3 :])
+        # Combine the first two lines
+        header = header1 + header2
+        # Parse header
+        # vturb
 
-        k = len("T EFF=")
-        i = header2.find("T EFF=")
-        j = header2.find("GRAV=", i + k)
-        self.teff = float(header2[i + k : j])
+        self.vturb = float(re.findall(r"VTURB=?\s*(\d)", header)[0])
+        self.lonh = float(re.findall(r"L/H=?(\d+.?\d*)", header)[0])
+        self.teff = float(re.findall(r"T ?EFF=?\s*(\d+.?\d*)", header)[0])
+        self.logg = float(re.findall(r"GRAV(ITY)?=?\s*(\d+.?\d*)", header)[0][1])
 
-        i = j
-        k = len("GRAV=")
-        j = header2.find("MODEL TYPE=", i + k)
-        self.logg = float(header2[i + k : j])
+        model_type = re.findall(r"MODEL TYPE=?\s*(\d)", header)
+        self.model_type = model_type
 
-        i, k = j, len("MODEL TYPE=")
-        j = header2.find("WLSTD=", i + k)
         model_type_key = {0: "rhox", 1: "tau", 3: "sph"}
-        self.model_type = int(header2[i + k : j])
+        self.model_type = int(header[i + k : j])
         self.depth = model_type_key[self.model_type]
         self.geom = "pp"
 
-        i = j
-        k = len("WLSTD=")
-        self.wlstd = float(header2[i + k :])
+        self.wlstd = float(re.findall(r"WLSTD=?\s*(/d+.?\d*)", header)[0])
 
         # parse opacity
         i = opacity.find("-")
