@@ -393,6 +393,11 @@ class LineList(IPersist):
         }
         self._lines = self._lines.append([linedata])
 
+    def trim(self, wave_min, wave_max):
+        selection = self._lines["wlcent"] > wave_min
+        selection &= self._lines["wlcent"] < wave_max
+        return LineList(self._lines[selection])
+
     def _save(self):
         header = {
             "lineformat": self.lineformat,
