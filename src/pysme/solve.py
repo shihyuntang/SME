@@ -411,7 +411,14 @@ class SME_Solver:
             ch_y /= ch_y[-1]
 
             # Fit the distribution
-            sopt, _ = curve_fit(cdf, ch_x, ch_y)
+            try:
+                sopt, _ = curve_fit(cdf, ch_x, ch_y)
+            except RuntimeError:
+                # Fit failed, use dogbox instead
+                try:
+                    sopt, _ = curve_fit(cdf, ch_x, ch_y, method="dogbox")
+                except RuntimeError:
+                    sopt = [0, 0, 0]
 
             hmed = sopt[0]
             sigma_estimate = std(*sopt)
@@ -421,7 +428,7 @@ class SME_Solver:
 
         return freep_unc
 
-    def update_fitresults(self, sme, result):
+    def update_fitresults(self, sme, result, segments):
         # Update SME structure
         sme.fitresults.clear()
 
@@ -449,7 +456,9 @@ class SME_Solver:
             # Errors based on covariance matrix
             sme.fitresults.fit_uncertainties[i] = sig[i]
 
-        unc = np.concatenate(sme.uncs[sme.mask_good])
+        mask = sme.mask_good[segments]
+        unc = sme.uncs[segments][mask]
+        unc = np.concatenate(unc)
         sme.fitresults.uncertainties = self.estimate_uncertainties(
             unc, result.fun, result.jac
         )
@@ -603,7 +612,7 @@ class SME_Solver:
             res.jac = self._last_jac
             for i, name in enumerate(self.parameter_names):
                 sme[name] = res.x[i]
-            sme = self.update_fitresults(sme, res)
+            sme = self.update_fitresults(sme, res, segments)
             logger.debug("Reduced chi square: %.3f", sme.fitresults.chisq)
             for name, value, unc in zip(
                 self.parameter_names, res.x, sme.fitresults.uncertainties
