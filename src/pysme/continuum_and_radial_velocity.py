@@ -12,7 +12,7 @@ import numpy as np
 from scipy.constants import speed_of_light
 from scipy.linalg import lu_factor, lu_solve
 from scipy.ndimage.filters import median_filter
-from scipy.optimize import least_squares, minimize_scalar
+from scipy.optimize import least_squares, minimize_scalar, curve_fit
 from scipy.signal import correlate, find_peaks
 from tqdm import tqdm
 
@@ -144,7 +144,7 @@ def get_continuum_mask(wave, synth, linelist, threshold=0.1, mask=None):
     dll.linelist = linelist
 
     width = dll.GetLineRange()
-
+    # TODO: optimize this
     temp = False
     while np.count_nonzero(temp) < len(wave) * 0.1:
         temp = np.full(len(wave), True)
@@ -629,87 +629,35 @@ def cont_fit(sme, segment, x_syn, y_syn, rvel=0):
         continuum fit polynomial coefficients
     """
 
-    eps = np.mean(sme.uncs[segment])
-    weights = sme.spec[segment] / sme.uncs[segment] ** 2
-    weights[sme.mask_bad[segment]] = 0
+    if sme.cscale_flag == "none":
+        return [1]
+    elif sme.cscale_flag == "fix":
+        return sme.cscale[segment]
+    # else
+    x = sme.wave[segment]
+    y = sme.spec[segment]
+    m = sme.mask_good[segment]
 
-    order = sme.cscale_degree
+    rv_factor = np.sqrt((1 - rvel / c_light) / (1 + rvel / c_light))
+    xp = x * rv_factor
+    yp = np.interp(xp, x_syn, y_syn)
 
-    xarg = sme.wave[segment]
-    yarg = sme.spec[segment]
-    yc = np.interp(xarg * (1 - rvel / c_light), x_syn, y_syn)
-    yarg = yarg / yc
+    xs = x - x[0]
+    xs, y, yp = xs[m], y[m], yp[m]
 
-    if order <= 0 or order > 2:
-        # Only polynomial orders up to 2 are supported
-        # Return a constant scale otherwise (same as order == 0)
-        scl = np.sum(weights * yarg) / np.sum(weights)
-        return [scl]
+    func = lambda x, *c: yp * np.polyval(c, xs)
 
-    iterations = 10
-    xx = (xarg - (np.max(xarg) - np.min(xarg)) * 0.5) / (
-        (np.max(xarg) - np.min(xarg)) * 0.5
-    )
-    fmin = np.min(yarg) - 1
-    fmax = np.max(yarg) + 1
-    ff = (yarg - fmin) / (fmax - fmin)
-    ff_old = ff
+    deg = sme.cscale_degree
+    p0 = np.zeros(deg + 1)
+    p0[-1] = np.nanmedian(y)
+    popt, pcov = curve_fit(func, xs, y, p0=p0)
 
-    def linear(a, b):
-        a[1, 1] -= a[0, 1] ** 2 / a[0, 0]
-        b -= b[::-1] * a[0, 1] / np.diag(a)[::-1]
-        cfit = b / np.diag(a)
-        return cfit[::-1]
+    # For debugging
+    # plt.plot(x, yp * np.polyval(popt, xs), label="model")
+    # plt.plot(x, y, label="observation")
+    # plt.show()
 
-    def quadratic(a, b):
-        lu, index = lu_factor(a)
-        cfit = lu_solve((lu, index), b)
-        return cfit[::-1]
-
-    if order == 1:
-        func = linear
-    elif order == 2:
-        func = quadratic
-
-    for _ in range(iterations):
-        n = order + 1
-        a = np.zeros((n, n))
-        b = np.zeros(n)
-
-        for j, k in product(range(order + 1), repeat=2):
-            a[j, k] = np.sum(weights * xx ** (j + k))
-
-        for j in range(order + 1):
-            b[j] = np.sum(weights * ff * xx ** j)
-
-        cfit = func(a, b)
-
-        dev = np.polyval(cfit, xx)
-        t = median_filter(dev, size=3)
-        tt = (t - ff) ** 2
-
-        for j in range(n):
-            b[j] = np.sum(weights * tt * xx ** j)
-
-        dev = np.polyval(cfit, xx)
-        dev = np.clip(dev, 0, None)
-        dev = np.sqrt(dev)
-
-        ff = np.clip(t - dev, ff, t + dev)
-        dev2 = np.max(weights * np.abs(ff - ff_old))
-        ff_old = ff
-
-        if dev2 < eps:
-            break
-
-    coef = np.polyfit(xx, ff, order)
-    t = np.polyval(coef, xx)
-
-    # Get coefficients in the wavelength scale
-    t = t * (fmax - fmin) + fmin
-    coef = np.polyfit(xarg - xarg[0], t, order)
-
-    return coef
+    return popt[None, :]
 
 
 def match_rv_continuum(sme, segments, x_syn, y_syn):
@@ -744,7 +692,7 @@ def match_rv_continuum(sme, segments, x_syn, y_syn):
     if np.isscalar(segments):
         segments = [segments]
 
-    if sme.cscale_type == "whole":
+    if sme.cscale_type in ["whole", "mcmc"]:
         if sme.vrad_flag in ["each", "none", "fix"]:
             for s in tqdm(segments, desc="RV/Cont", leave=False):
                 vrad[s], vrad_unc[s], cscale[s], cscale_unc[s] = determine_rv_and_cont(
@@ -769,15 +717,28 @@ def match_rv_continuum(sme, segments, x_syn, y_syn):
             vrad[s] = determine_radial_velocity(
                 sme, s, cscale[s], [x_syn[s] for s in s], [y_syn[s] for s in s]
             )
+    elif sme.cscale_type == "match":
+        for s in segments:
+            cscale[s][-1] = np.nanpercentile(sme.spec[s], 95)
+            vrad[s] = determine_radial_velocity(sme, s, cscale[s], x_syn[s], y_syn[s])
+            cscale[s] = cont_fit(sme, s, x_syn[s], y_syn[s], rvel=vrad[s])
+
+        if sme.vrad_flag == "whole":
+            s = segments
+            vrad[s] = determine_radial_velocity(
+                sme, s, cscale[s], [x_syn[s] for s in s], [y_syn[s] for s in s]
+            )
     else:
         raise ValueError(
             f"Did not understand cscale_type, expected one of ('whole', 'mask'), but got {sme.cscale_type}."
         )
 
     # Keep values from unused segments
-    for seg in range(sme.nseg):
-        if seg not in segments:
-            vrad[seg] = sme.vrad[seg]
-            cscale[seg] = sme.cscale[seg]
+    select = np.arange(sme.nseg)
+    mask = np.full(select.shape, True)
+    for seg in segments:
+        mask &= select != seg
+    vrad[mask] = sme.vrad[mask]
+    cscale[mask] = sme.cscale[mask]
 
     return cscale, cscale_unc, vrad, vrad_unc

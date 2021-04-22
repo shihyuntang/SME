@@ -150,7 +150,7 @@ class SME_Structure(Parameters):
                 * "linear": First order polynomial, i.e. approximate continuum by a straight line
                 * "quadratic": Second order polynomial, i.e. approximate continuum by a quadratic polynomial
             """),
-        ("cscale_type", "whole", lowercase(oneof("whole", "mask")), this,
+        ("cscale_type", "whole", lowercase(oneof("whole", "mask", "match")), this,
             """str: Flag that determines the algorithm to determine the continuum
 
             This is used in combination with cscale_flag, which determines the degree of the fit, if any.
