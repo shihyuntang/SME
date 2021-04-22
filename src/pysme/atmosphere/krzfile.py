@@ -57,7 +57,7 @@ class KrzFile(Atmosphere):
         # vturb
 
         self.vturb = float(re.findall(r"VTURB=?\s*(\d)", header)[0])
-        self.lonh = float(re.findall(r"L/H=?(\d+.?\d*)", header)[0])
+        self.lonh = float(re.findall(r"L/H=?\s*(\d+.?\d*)", header)[0])
         self.teff = float(re.findall(r"T ?EFF=?\s*(\d+.?\d*)", header)[0])
         self.logg = float(re.findall(r"GRAV(ITY)?=?\s*(\d+.?\d*)", header)[0][1])
 
@@ -68,8 +68,7 @@ class KrzFile(Atmosphere):
         self.depth = model_type_key[self.model_type]
         self.geom = "pp"
 
-        self.wlstd = float(re.findall(r"WLSTD=?\s*(/d+.?\d*)", header)[0])
-
+        self.wlstd = float(re.findall(r"WLSTD=?\s*(\d+.?\d*)", header)[0])
         # parse opacity
         i = opacity.find("-")
         opacity = opacity[:i].split()
