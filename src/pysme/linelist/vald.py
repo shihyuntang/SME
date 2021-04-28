@@ -498,6 +498,14 @@ class ValdFile(LineList):
             references += r.split("+")
         # And make it unique again, if necessary
         references = set(references)
+        # some data entries are case sensitive, but bibtex is case insnsitive
+        # so remove those and replace them with fixed versions
+        if "LWb" in references:
+            references.add("LWb2")
+            references.remove("LWb")
+        if "LGb" in references:
+            references.add("LGb2")
+            references.remove("LGb")
 
         # Get references from bibtex file
         # TODO: only load this once? But then again, how often will we do this?
