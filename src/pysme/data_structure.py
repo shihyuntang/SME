@@ -51,9 +51,12 @@ def lowercase(func):
     return f
 
 
-def oneof(*options):
+def oneof(*options, astype=False):
     def f(self, value):
         if value not in options:
+            if astype is not None:
+                if astype(value) == value:
+                    return astype(value)
             raise ValueError(f"Received {value} but expected one of {options}")
         return value
 
