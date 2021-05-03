@@ -283,7 +283,7 @@ class ValdFile(LineList):
         if unit == "A":
             self.unit = u.AA
         elif unit == "nm":
-            self.unit = u.AA
+            self.unit = u.nm
         elif unit == "cm^-1":
             self.unit = 1 / u.cm
         else:
