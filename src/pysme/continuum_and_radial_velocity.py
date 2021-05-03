@@ -226,6 +226,8 @@ def determine_radial_velocity(sme, segment, cscale, x_syn, y_syn):
         y_obs = y[segment].copy()
         u_obs = u[segment]
         mask = m[segment]
+        if sme.telluric is not None:
+            tell = sme.telluric[segment]
 
         if sme.vrad_flag == "each":
             # apply continuum
@@ -259,6 +261,8 @@ def determine_radial_velocity(sme, segment, cscale, x_syn, y_syn):
             x_syn = np.concatenate(x_syn)
             y_syn = np.concatenate(y_syn)
             mask = mask.ravel()
+            if sme.telluric is not None:
+                tell = tell.ravel()
         else:
             raise ValueError(
                 f"Radial velocity flag {sme.vrad_flag} not recognised, expected one of 'each', 'whole', 'none'"
@@ -269,6 +273,10 @@ def determine_radial_velocity(sme, segment, cscale, x_syn, y_syn):
         y_obs = y_obs[mask]
         u_obs = u_obs[mask]
         y_tmp = np.interp(x_obs, x_syn, y_syn)
+        if sme.telluric is not None:
+            tell = tell[mask]
+        else:
+            tell = 1
 
         rv_bounds = (-100, 100)
         if np.all(sme.vrad[segment] == 0):
@@ -296,7 +304,7 @@ def determine_radial_velocity(sme, segment, cscale, x_syn, y_syn):
             rv_factor = np.sqrt((1 - rv / c_light) / (1 + rv / c_light))
             shifted = interpolator(x_obs * rv_factor)
             # shifted = np.interp(x_obs[lines], x_syn * rv_factor, y_syn)
-            resid = (y_obs - shifted) / u_obs
+            resid = (y_obs - shifted * tell) / u_obs
             resid = np.nan_to_num(resid, copy=False)
             return resid
 
@@ -636,6 +644,7 @@ def cont_fit(sme, segment, x_syn, y_syn, rvel=0):
     # else
     x = sme.wave[segment]
     y = sme.spec[segment]
+    u = sme.uncs[segment]
     m = sme.mask_good[segment]
 
     rv_factor = np.sqrt((1 - rvel / c_light) / (1 + rvel / c_light))
@@ -643,14 +652,24 @@ def cont_fit(sme, segment, x_syn, y_syn, rvel=0):
     yp = np.interp(xp, x_syn, y_syn)
 
     xs = x - x[0]
-    xs, y, yp = xs[m], y[m], yp[m]
+    xs, y, u, yp = xs[m], y[m], u[m], yp[m]
 
-    func = lambda x, *c: yp * np.polyval(c, xs)
+    if sme.telluric is not None:
+        # by definition sme.telluric is on the same wavelength grid as sme.spec
+        # also it should be in the correct restframe
+        tell = sme.telluric[segment][m]
+        yp *= tell
+
+    def func(p):
+        val = yp * np.polyval(p, xs)
+        resid = y - val
+        resid /= u
+        return resid
 
     deg = sme.cscale_degree
-    p0 = np.zeros(deg + 1)
-    p0[-1] = np.nanmedian(y)
-    popt, pcov = curve_fit(func, xs, y, p0=p0)
+    p0 = sme.cscale[segment]
+    res = least_squares(func, x0=p0, loss="soft_l1", method="trf", xtol=None)
+    popt = res.x
 
     # For debugging
     # plt.plot(x, yp * np.polyval(popt, xs), label="model")
