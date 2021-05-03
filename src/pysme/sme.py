@@ -140,7 +140,7 @@ class SME_Structure(Parameters):
                * "whole": Determine one radial velocity for the whole spectrum
             """),
         ("vrad", 0, array(None, float), this, "array of size (nseg,): radial velocity of each segment in km/s"),
-        ("cscale_flag", "none", lowercase(oneof(-3, -2, -1, 0, 1, 2, 3, 4, 5, "none", "fix", "constant", "linear", "quadratic", "cubic", "quintic", "quantic")), this,
+        ("cscale_flag", "none", lowercase(oneof("none", "fix", "constant", "linear", "quadratic", "cubic", "quintic", "quantic", astype=int)), this,
             """str: Flag that describes how to correct for the continuum
 
             allowed values are:
@@ -456,17 +456,20 @@ class SME_Structure(Parameters):
     @_cscale_flag.setter
     def _cscale_flag(self, value):
         if isinstance(value, (int, np.integer)):
-            value = {
-                -3: "none",
-                -2: "fix",
-                -1: "fix",
-                0: "constant",
-                1: "linear",
-                2: "quadratic",
-                3: "cubic",
-                4: "quintic",
-                5: "quantic",
-            }[value]
+            try:
+                value = {
+                    -3: "none",
+                    -2: "fix",
+                    -1: "fix",
+                    0: "constant",
+                    1: "linear",
+                    2: "quadratic",
+                    3: "cubic",
+                    4: "quintic",
+                    5: "quantic",
+                }[value]
+            except KeyError:
+                value = value
         if value in ["quadratic", "cubic", "quintic", "quantic"]:
             logger.warning(f"{value} continuum scale is experimental")
 
@@ -564,6 +567,7 @@ class SME_Structure(Parameters):
                 return 0
         if self.cscale_flag == "none":
             return 0
+        return self.cscale_flag
         raise ValueError("This should never happen")
 
     @property
