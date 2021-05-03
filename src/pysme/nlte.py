@@ -522,7 +522,7 @@ class Grid:
         lineindices = np.asarray(self.species, "U")
         lineindices = np.char.startswith(lineindices, self.elem)
         if not np.any(lineindices):
-            warnings.warn(f"No NLTE transitions for {self.elem} found")
+            logger.warning(f"No NLTE transitions for {self.elem} found")
             return None, None, np.full(len(species), False)
 
         sme_species = self.species[lineindices]
@@ -589,7 +589,7 @@ class Grid:
         lineindices = np.char.startswith(lineindices, self.elem)
         if not np.any(lineindices):
             logger.warning("No NLTE transitions for %s found", self.elem)
-            return [], [], []
+            return None, None, np.full(len(species), False)
         sme_species = self.species[lineindices]
 
         # Extract data from linelist
@@ -976,7 +976,8 @@ class NLTE(Collection):
 
             if bmat is None or grid.linerefs.size == 0:
                 # no data were returned. Don't bother?
-                logger.warning(f"No NLTE transitions found for {elem}")
+                # logger.warning(f"No NLTE transitions found for {elem}")
+                self.remove_nlte(elem)
             else:
                 # Put corrections into the nlte_b matrix, don't cache the data
                 for lr, li in zip(grid.linerefs, grid.lineindices):
