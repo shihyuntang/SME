@@ -4,6 +4,7 @@ include src/pysme/share/libsme/*
 
 include src/pysme/datafiles_atmospheres.json
 include src/pysme/datafiles_nlte.json
+include src/pysme/config_default.json
 
 include src/pysme/linelist/VALD3_ref.bib
 
