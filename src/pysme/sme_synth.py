@@ -377,24 +377,27 @@ class SME_DLL:
 
         Returns
         -------
-        copblu : array of size (nmu,)
+        copblu : array of size (nrhox,)
             only if getData is True
-        copred : array of size (nmu,)
+        copred : array of size (nrhox,)
             only if getData is True
-        copstd : array of size (nmu,)
+        copstd : array of size (nrhox,)
             only if getData is True and motype is 0
         """
         args = []
         type = ""
         if getData:
-            nmu = self.nmu
-            copblu = np.zeros(nmu)
-            copred = np.zeros(nmu)
-            args = [nmu, copblu, copred]
+            assert (
+                self.atmo is not None
+            ), "Need to set the atmosphere model before retrievieng Opacities"
+            nrhox = len(self.atmo.rhox)
+            copblu = np.zeros(nrhox)
+            copred = np.zeros(nrhox)
+            args = [nrhox, copblu, copred]
             type = ["s", "d", "d"]
 
             if motype == 0:
-                copstd = np.zeros(nmu)
+                copstd = np.zeros(nrhox)
                 args += [copstd]
                 type += ["d"]
 
@@ -661,14 +664,17 @@ class SME_DLL:
         csf : array
             Continuum source function
         """
-        nmu = self.nmu
-        lop = np.zeros(nmu)
-        cop = np.zeros(nmu)
-        scr = np.zeros(nmu)
-        tsf = np.zeros(nmu)
-        csf = np.zeros(nmu)
+        assert (
+            self.atmo is not None
+        ), "Need to set the atmosphere model before retrievieng Opacities"
+        nrhox = len(self.atmo.rhox)
+        lop = np.zeros(nrhox)
+        cop = np.zeros(nrhox)
+        scr = np.zeros(nrhox)
+        tsf = np.zeros(nrhox)
+        csf = np.zeros(nrhox)
         type = "dsddddd"
-        self.lib.GetLineOpacity(wave, nmu, lop, cop, scr, tsf, csf, type=type)
+        self.lib.GetLineOpacity(wave, nrhox, lop, cop, scr, tsf, csf, type=type)
         return lop, cop, scr, tsf, csf
 
     def GetLineRange(self):
