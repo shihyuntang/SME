@@ -163,7 +163,7 @@ def get_continuum_mask(wave, synth, linelist, threshold=0.1, mask=None):
     return mask
 
 
-def determine_radial_velocity(sme, segment, cscale, x_syn, y_syn):
+def determine_radial_velocity(sme, segment, cscale, x_syn, y_syn, only_mask=False):
     """
     Calculate radial velocity by using cross correlation and
     least-squares between observation and synthetic spectrum
@@ -268,7 +268,12 @@ def determine_radial_velocity(sme, segment, cscale, x_syn, y_syn):
                 f"Radial velocity flag {sme.vrad_flag} not recognised, expected one of 'each', 'whole', 'none'"
             )
 
-        mask = mask == sme.mask_values["line"]
+        if only_mask:
+            mask = mask == sme.mask_values["continuum"]
+        else:
+            mask = mask == sme.mask_values["line"]
+            mask |= mask == sme.mask_values["continuum"]
+
         x_obs = x_obs[mask]
         y_obs = y_obs[mask]
         u_obs = u_obs[mask]
@@ -303,7 +308,6 @@ def determine_radial_velocity(sme, segment, cscale, x_syn, y_syn):
         def func(rv):
             rv_factor = np.sqrt((1 - rv / c_light) / (1 + rv / c_light))
             shifted = interpolator(x_obs * rv_factor)
-            # shifted = np.interp(x_obs[lines], x_syn * rv_factor, y_syn)
             resid = (y_obs - shifted * tell) / u_obs
             resid = np.nan_to_num(resid, copy=False)
             return resid
@@ -614,7 +618,7 @@ def determine_rv_and_cont(sme, segment, x_syn, y_syn):
     return vrad, vrad_unc, cscale, cscale_unc
 
 
-def cont_fit(sme, segment, x_syn, y_syn, rvel=0):
+def cont_fit(sme, segment, x_syn, y_syn, rvel=0, only_mask=False):
     """
     Fit a continuum when no continuum points exist
 
@@ -645,7 +649,11 @@ def cont_fit(sme, segment, x_syn, y_syn, rvel=0):
     x = sme.wave[segment]
     y = sme.spec[segment]
     u = sme.uncs[segment]
-    m = sme.mask_good[segment]
+
+    if only_mask:
+        m = sme.mask_cont[segment]
+    else:
+        m = sme.mask_good[segment]
 
     rv_factor = np.sqrt((1 - rvel / c_light) / (1 + rvel / c_light))
     xp = x * rv_factor
@@ -738,9 +746,22 @@ def match_rv_continuum(sme, segments, x_syn, y_syn):
             )
     elif sme.cscale_type == "match":
         for s in segments:
-            cscale[s][-1] = np.nanpercentile(sme.spec[s], 95)
             vrad[s] = determine_radial_velocity(sme, s, cscale[s], x_syn[s], y_syn[s])
             cscale[s] = cont_fit(sme, s, x_syn[s], y_syn[s], rvel=vrad[s])
+
+        if sme.vrad_flag == "whole":
+            s = segments
+            vrad[s] = determine_radial_velocity(
+                sme, s, cscale[s], [x_syn[s] for s in s], [y_syn[s] for s in s]
+            )
+    elif sme.cscale_type in ["match+mask", "mask+match"]:
+        for s in segments:
+            vrad[s] = determine_radial_velocity(
+                sme, s, cscale[s], x_syn[s], y_syn[s], only_mask=True
+            )
+            cscale[s] = cont_fit(
+                sme, s, x_syn[s], y_syn[s], rvel=vrad[s], only_mask=True
+            )
 
         if sme.vrad_flag == "whole":
             s = segments
