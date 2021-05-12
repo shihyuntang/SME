@@ -258,11 +258,11 @@ class SME_Solver:
                 bounds["teff"] = teff
 
                 logg = np.unique(atmo_grid.logg)
-                logg = np.min(logg), np.inf
+                logg = np.min(logg), np.max(logg) * 1.5
                 bounds["logg"] = logg
 
                 monh = np.unique(atmo_grid.monh)
-                monh = np.min(monh), np.inf
+                monh = np.min(monh), np.max(monh) * 1.5
                 bounds["monh"] = monh
             elif ext == ".krz":
                 # krz atmospheres are fixed to one parameter set
