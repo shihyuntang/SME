@@ -45,8 +45,8 @@ if __name__ == "__main__":
     fitparameters = ["teff", "logg", "monh"]
 
     # Start SME solver
-    # sme = synthesize_spectrum(sme)
-    sme = solve(sme, fitparameters)
+    sme = synthesize_spectrum(sme)
+    # sme = solve(sme, fitparameters)
 
     print(sme.citation())
 
