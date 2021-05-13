@@ -238,7 +238,7 @@ if __name__ == "__main__":
     # clf = PLSRegression(max_degree + 1)
     # clf.fit(XS_train, y_train)
     clf = ContinuumModel(verbose=True, loss="mse")
-    history = clf.fit(XS_train, y_train, validation_data=(X_validate, y_validate))
+    history = clf.fit(X_train, y_train, validation_data=(X_validate, y_validate))
 
     clf.model.save("model.dat")
 
