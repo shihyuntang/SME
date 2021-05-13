@@ -164,7 +164,7 @@ class ContinuumModel:
         X = X[:, None, ...]
         if validation_data is not None:
             X_val, y_val = validation_data
-            X_val = scaler.transform(X_val)
+            X_val = self.scaler.transform(X_val)
             validation_data = (X_val[:, None, ...], y_val)
 
         self.history = self.model.fit(
