@@ -668,20 +668,27 @@ def cont_fit(sme, segment, x_syn, y_syn, rvel=0, only_mask=False):
         tell = sme.telluric[segment][m]
         yp *= tell
 
-    def func(p):
-        val = yp * np.polyval(p, xs)
-        resid = y - val
-        resid /= u
-        return resid
+    # def func(p):
+    #     val = yp * np.polyval(p, xs)
+    #     resid = y - val
+    #     resid /= u
+    #     return resid
 
     deg = sme.cscale_degree
     p0 = sme.cscale[segment]
-    res = least_squares(func, x0=p0, loss="soft_l1", method="trf", xtol=None)
-    popt = res.x
+    func = lambda x, *p: yp * np.polyval(p, x)
+    try:
+        popt, pcov = curve_fit(
+            func, xs, y, sigma=u, p0=p0, loss="soft_l1", method="trf", xtol=None
+        )
+    except RuntimeError:
+        logger.warning("Could not determine the continuum")
+        popt = p0
+    # popt = res.x
 
     # For debugging
-    # plt.plot(x, yp * np.polyval(popt, xs), label="model")
-    # plt.plot(x, y, label="observation")
+    # plt.plot(x_syn / rv_factor, y_syn * np.polyval(popt, x_syn - x[0]), label="model")
+    # plt.plot(sme.wave[segment], sme.spec[segment], label="observation")
     # plt.show()
 
     return popt[None, :]
@@ -756,8 +763,10 @@ def match_rv_continuum(sme, segments, x_syn, y_syn):
             )
     elif sme.cscale_type in ["match+mask", "mask+match"]:
         for s in segments:
+            # We only use the continuum mask for the continuum fit,
+            # we need the lines for the radial velocity
             vrad[s] = determine_radial_velocity(
-                sme, s, cscale[s], x_syn[s], y_syn[s], only_mask=True
+                sme, s, cscale[s], x_syn[s], y_syn[s], only_mask=False
             )
             cscale[s] = cont_fit(
                 sme, s, x_syn[s], y_syn[s], rvel=vrad[s], only_mask=True
