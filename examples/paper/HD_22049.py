@@ -649,12 +649,12 @@ if __name__ == "__main__":
     #     raise ValueError("No data file found")
 
     # in_file = os.path.join(data_dir, fname)
-    in_file = os.path.join(examples_dir, f"results/{target}_mask.sme")
+    in_file = os.path.join(examples_dir, f"results/{target}_mask_new.sme")
 
     vald_file = os.path.join(examples_dir, f"data/hd22049.lin")
 
-    out_file = os.path.join(examples_dir, f"results/{target}_mask_out.sme")
-    plot_file = os.path.join(examples_dir, f"results/{target}_mask_out.html")
+    out_file = os.path.join(examples_dir, f"results/{target}_mask_new_out.sme")
+    plot_file = os.path.join(examples_dir, f"results/{target}_mask_new_out.html")
     date_string = datetime.datetime.now().isoformat().replace(":", ".")
     log_file = os.path.join(examples_dir, f"results/{target}_{date_string}.log")
 
@@ -781,7 +781,7 @@ if __name__ == "__main__":
 
     # Set radial velocity and continuum settings
     # Set RV and Continuum flags
-    sme.vrad_flag = "each"
+    sme.vrad_flag = "fix"
     sme.cscale_flag = 2
     sme.cscale_type = "match+mask"
 
@@ -808,12 +808,11 @@ if __name__ == "__main__":
     # sme.linelist = sme.linelist.trim(wmin, wmax)
 
     # Start SME solver
-    # sme = synthesize_spectrum(sme, segments=[6])
+    # sme = synthesize_spectrum(sme, segments=np.arange(6, 31))
     # sme.cscale_flag = "fix"
 
     # sme.save(out_file)
-
-    sme = solve(sme, fitparameters, segments=np.arange(2, 31))
+    sme = solve(sme, fitparameters, segments=np.arange(6, 31))
 
     print(sme.citation())
 
@@ -821,6 +820,7 @@ if __name__ == "__main__":
     sme.save(out_file)
 
     # Plot results
+    sme.synth *= sme.telluric
     fig = plot_plotly.FinalPlot(sme)
     fig.save(filename=plot_file)
     print(f"Finished: {target}")

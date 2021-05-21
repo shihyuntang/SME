@@ -715,7 +715,7 @@ if __name__ == "__main__":
 
     # Set radial velocity and continuum settings
     # Set RV and Continuum flags
-    sme.vrad_flag = "each"
+    sme.vrad_flag = "fix"
     sme.cscale_flag = 3
     sme.cscale_type = "match+mask"
 
@@ -755,5 +755,7 @@ if __name__ == "__main__":
     sme.save(out_file)
 
     # Plot results
+    sme.synth *= sme.telluric
     fig = plot_plotly.FinalPlot(sme)
     fig.save(filename=plot_file)
+    print(f"Finished: {target}")

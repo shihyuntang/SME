@@ -811,5 +811,6 @@ if __name__ == "__main__":
     sme.save(out_file)
 
     # Plot results
+    sme.synth *= sme.telluric
     fig = plot_plotly.FinalPlot(sme)
     fig.save(filename=plot_file)

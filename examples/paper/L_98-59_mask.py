@@ -626,7 +626,9 @@ if __name__ == "__main__":
     # Define the location of all your files
     # this will put everything into the example dir
     target = "L_98-59"
-    star = StellarDB().load(target)
+    sdb = StellarDB()
+    # sdb.auto_fill(target)
+    star = sdb.load(target)
     alias = [re.sub(r"[-_ ]", "", s).lower() for s in star["id"]]
 
     examples_dir = dirname(realpath(__file__))
@@ -666,7 +668,7 @@ if __name__ == "__main__":
 
     # Get first guess from literature values
     sme.teff = star["t_eff"].to_value("K") if "t_eff" in star else 6000
-    sme.logg = star["logg"].to_value(1) if "logg" in star else 4
+    sme.logg = star["logg"].to_value(1) if "logg" in star else 4.9
     monh = star["metallicity"].to_value(1) if "metallicity" in star else 0
     sme.abund = Abund(monh, "asplund2009")
     sme.vmic = (
@@ -754,5 +756,7 @@ if __name__ == "__main__":
     sme.save(out_file)
 
     # Plot results
+    sme.synth *= sme.telluric
     fig = plot_plotly.FinalPlot(sme)
     fig.save(filename=plot_file)
+    print(f"Finished: {target}")
