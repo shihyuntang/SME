@@ -51,6 +51,8 @@ class FinalPlot:
         self.spec = sme.spec
         self.mask = sme.mask
         self.smod = sme.synth
+        if sme.telluric is not None:
+            self.smod = self.smod * sme.telluric
         self.nsegments = len(self.wave)
         self.segment = segment
         self.wran = sme.wran
