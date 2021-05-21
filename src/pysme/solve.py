@@ -558,7 +558,7 @@ class SME_Solver:
             p0 = np.clip(p0, bounds[0], bounds[1])
 
         # Get constant data from sme structure
-        sme.mask[segments][sme.uncs[segments] == 0] = 0
+        sme.mask[segments][sme.uncs[segments] == 0] = sme.mask_values["bad"]
         mask = sme.mask_good[segments]
         spec = sme.spec[segments][mask]
         uncs = sme.uncs[segments][mask]
