@@ -147,7 +147,7 @@ class SME_Solver:
         if sme.telluric is not None:
             tell = sme.telluric[segments]
             tell = tell[mask] if mask is not None else tell
-            synth *= tell
+            synth = synth * tell
 
         # TODO: update based on lineranges
         uncs_linelist = 0
@@ -246,34 +246,39 @@ class SME_Solver:
             or "logg" in self.parameter_names
             or "monh" in self.parameter_names
         ):
-            atmo_file = sme.atmo.source
-            _, ext = splitext(atmo_file)
-            atmo_file = self.lfs_atmo.get(atmo_file)
+            if sme.atmo.method == "grid":
+                atmo_file = sme.atmo.source
+                _, ext = splitext(atmo_file)
+                atmo_file = self.lfs_atmo.get(atmo_file)
 
-            if ext == ".sav":
-                atmo_grid = SavFile(atmo_file)
+                if ext == ".sav":
+                    atmo_grid = SavFile(atmo_file)
 
-                teff = np.unique(atmo_grid.teff)
-                teff = np.min(teff), np.max(teff)
-                bounds["teff"] = teff
+                    teff = np.unique(atmo_grid.teff)
+                    teff = np.min(teff), np.max(teff)
+                    bounds["teff"] = teff
 
-                logg = np.unique(atmo_grid.logg)
-                logg = np.min(logg), np.max(logg) * 1.5
-                bounds["logg"] = logg
+                    logg = np.unique(atmo_grid.logg)
+                    logg = np.min(logg), np.max(logg) * 1.5
+                    bounds["logg"] = logg
 
-                monh = np.unique(atmo_grid.monh)
-                monh = np.min(monh), np.max(monh) * 1.5
-                bounds["monh"] = monh
-            elif ext == ".krz":
-                # krz atmospheres are fixed to one parameter set
-                # allow just "small" area around that
-                atmo = KrzFile(atmo_file)
+                    monh = np.unique(atmo_grid.monh)
+                    monh = np.min(monh), np.max(monh) * 1.5
+                    bounds["monh"] = monh
+                elif ext == ".krz":
+                    # krz atmospheres are fixed to one parameter set
+                    # allow just "small" area around that
+                    atmo = KrzFile(atmo_file)
+                    bounds["teff"] = atmo.teff - 500, atmo.teff + 500
+                    bounds["logg"] = atmo.logg - 1, atmo.logg + 1
+                    bounds["monh"] = atmo.monh - 1, atmo.monh + 1
+                else:
+                    raise IOError(f"File extension {ext} not recognized")
+            if sme.atmo.method == "embedded":
+                atmo = sme.atmo
                 bounds["teff"] = atmo.teff - 500, atmo.teff + 500
                 bounds["logg"] = atmo.logg - 1, atmo.logg + 1
                 bounds["monh"] = atmo.monh - 1, atmo.monh + 1
-            else:
-                raise IOError(f"File extension {ext} not recognized")
-
         # Add generic bounds
         bounds.update({"vmic": [0, clight], "vmac": [0, clight], "vsini": [0, clight]})
         # bounds.update({"abund %s" % el: [-10, 11] for el in abund_elem})
@@ -498,7 +503,7 @@ class SME_Solver:
                 )
         return param_names
 
-    def solve(self, sme, param_names=None, segments="all"):
+    def solve(self, sme, param_names=None, segments="all", bounds=None):
         """
         Find the least squares fit parameters to an observed spectrum
 
@@ -547,7 +552,8 @@ class SME_Solver:
                 break
 
         # Create appropiate bounds
-        bounds = self.get_bounds(sme)
+        if bounds is None:
+            bounds = self.get_bounds(sme)
         scales = self.get_scale()
         # Starting values
         p0 = self.get_default_values(sme)
@@ -565,7 +571,7 @@ class SME_Solver:
 
         # Divide the uncertainties by the spectrum, to improve the fit in the continuum
         # Just as in IDL SME, this increases the relative error for points inside lines
-        uncs /= spec
+        # uncs /= spec
 
         logger.info("Fitting Spectrum with Parameters: %s", ",".join(param_names))
         logger.debug("Initial values: %s", p0)
@@ -599,7 +605,7 @@ class SME_Solver:
                     jac=self.__jacobian,
                     bounds=bounds,
                     x_scale="jac",
-                    loss="soft_l1",
+                    loss="linear",
                     method="trf",
                     verbose=2,
                     max_nfev=sme.fitresults.maxiter,
@@ -634,6 +640,6 @@ class SME_Solver:
         return sme
 
 
-def solve(sme, param_names=None, segments="all", filename=None):
+def solve(sme, param_names=None, segments="all", filename=None, **kwargs):
     solver = SME_Solver(filename=filename)
-    return solver.solve(sme, param_names, segments)
+    return solver.solve(sme, param_names, segments, **kwargs)
