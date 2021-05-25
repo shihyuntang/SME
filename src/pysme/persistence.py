@@ -46,7 +46,7 @@ def from_flex(ff, sme):
     return sme
 
 
-def save(fname, sme, compressed=False):
+def save(filename, sme, format="flex"):
     """
     Create a folder structure inside a tarfile
     See flex-format for details
@@ -61,7 +61,26 @@ def save(fname, sme, compressed=False):
         whether to compress the output
     """
     ff = to_flex(sme)
-    ff.write(fname)
+
+    if format == "flex":
+        file_ending = ".sme"
+    else:
+        file_ending = "." + format
+    if not filename.endswith(file_ending):
+        filename = filename + file_ending
+
+    if format == "flex":
+        ff.write(filename)
+    elif format == "fits":
+        ff.to_fits(filename, overwrite=True)
+    elif format == "json":
+        ff.to_json(filename)
+    else:
+        raise ValueError(
+            "Format {!r} not understood, expected one of ['flex', 'fits', 'json'].".format(
+                format
+            )
+        )
 
 
 def load(fname, sme):
