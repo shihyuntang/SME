@@ -687,7 +687,9 @@ def cont_fit(sme, segment, x_syn, y_syn, rvel=0, only_mask=False):
     # popt = res.x
 
     # For debugging
-    # plt.plot(x_syn / rv_factor, y_syn * np.polyval(popt, x_syn - x[0]), label="model")
+    # import matplotlib.pyplot as plt
+    # tell = np.interp(x_syn / rv_factor, sme.wave[segment], sme.telluric[segment])
+    # plt.plot(x_syn / rv_factor, y_syn * np.polyval(popt, x_syn - x[0]) * tell, label="model")
     # plt.plot(sme.wave[segment], sme.spec[segment], label="observation")
     # plt.show()
 
