@@ -343,11 +343,11 @@ def write_as_idl(sme):
     """
 
     vrad_flag = {"none": -2, "whole": -1, "each": 0, "fix": -2}[sme.vrad_flag]
-    cscale_flag = {"none": -3, "fix": -3, "constant": 0, "linear": 1, "quadratic": 1,}[
-        sme.cscale_flag
-    ]
-    if not sme.normalize_by_continuum:
-        cscale_flag = -2
+    # cscale_flag = {"none": -3, "fix": -3, "constant": 0, "linear": 1, "quadratic": 1, }[
+    #     sme.cscale_flag
+    # ]
+    # if not sme.normalize_by_continuum:
+    #     cscale_flag = -2
 
     abund = sme.abund.get_pattern(type="sme", raw=True)
     abund[np.isnan(abund)] = -99
@@ -391,7 +391,7 @@ def write_as_idl(sme):
         "mu": sme.mu.tolist() if sme.nmu > 1 else sme.mu[0],
         "obs_name": "",
         "obs_type": 0,
-        "glob_free": fitvars,
+        "glob_free": fitvars if len(fitvars) != 0 else "",
         "atmo": {
             "method": str(sme.atmo.method),
             "source": str(sme.atmo.source),
@@ -456,7 +456,7 @@ def write_as_idl(sme):
 
     for key, value in idl_fields.items():
         if isinstance(value, dict):
-            text += f"{sep}{key!s}:{{$\n"
+            text += f"{sep}{key!s}:{{{key!s},$\n"
             sep = ""
             for key2, value2 in value.items():
                 text += f"{sep}{key2!s}:{value2!r}$\n"
@@ -485,7 +485,7 @@ def save_as_idl(sme, fname):
     with tempfile.NamedTemporaryFile("w+", suffix=".pro") as temp:
         tempname = temp.name
         temp.write("print, 'Hello'\n")
-        temp.write("sme = {")
+        temp.write("sme = {sme,")
         # TODO: Save data as idl compatible data
         temp.write(write_as_idl(sme))
         temp.write("} \n")
@@ -542,6 +542,7 @@ sme = new_sme\n"""
         temp.flush()
 
         # with open(os.devnull, 'w') as devnull:
+        print("IDL Script: ", tempname)
         subprocess.run(["idl", "-e", ".r %s" % tempname])
         # input("Wait for me...")
         clean_temps()

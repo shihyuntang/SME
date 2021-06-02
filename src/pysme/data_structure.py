@@ -6,8 +6,9 @@ from copy import copy
 from datetime import datetime as dt
 
 import numpy as np
-from flex.extensions.bindata import BinaryDataExtension
+from flex.extensions.bindata import BinaryDataExtension, MultipleDataExtension
 from flex.flex import FlexExtension
+from numpy.lib.arraysetops import isin
 import pybtex
 
 
@@ -239,15 +240,24 @@ class Collection(persistence.IPersist):
 
     def _save(self):
         header = {}
-        data = None
+        data = {}
 
         for name in self._names:
-            header[name] = self[name]
+            value = self[name]
+            if isinstance(value, np.ndarray) and value.size > 5:
+                data[name] = value
+            else:
+                header[name] = value
 
-        ext = BinaryDataExtension(header)
+        ext = MultipleDataExtension(header, data)
         return ext
 
     @classmethod
-    def _load(cls, ext: BinaryDataExtension):
+    def _load(cls, ext: MultipleDataExtension):
+        if isinstance(ext, MultipleDataExtension):
+            data = dict(ext.data)
+        else:
+            data = {}
+        ext.header.update(data)
         obj = cls(**ext.header)
         return obj
