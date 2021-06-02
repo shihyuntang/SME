@@ -676,12 +676,11 @@ def cont_fit(sme, segment, x_syn, y_syn, rvel=0, only_mask=False):
 
     deg = sme.cscale_degree
     p0 = sme.cscale[segment]
-    func = lambda x, *p: yp * np.polyval(p, x)
+    func = lambda x, *p: (yp * np.polyval(p, xs) - y) / u
     try:
-        popt, pcov = curve_fit(
-            func, xs, y, sigma=u, p0=p0, loss="soft_l1", method="trf", xtol=None
-        )
-    except RuntimeError:
+        res = least_squares(func, x0=p0, loss="soft_l1", method="trf", xtol=None)
+        popt = res.x
+    except RuntimeError as ex:
         logger.warning("Could not determine the continuum")
         popt = p0
     # popt = res.x
