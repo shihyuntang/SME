@@ -244,7 +244,7 @@ class Collection(persistence.IPersist):
 
         for name in self._names:
             value = self[name]
-            if isinstance(value, np.ndarray) and value.size > 5:
+            if isinstance(value, np.ndarray) and value.size > 10:
                 data[name] = value
             else:
                 header[name] = value
