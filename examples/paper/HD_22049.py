@@ -626,7 +626,9 @@ if __name__ == "__main__":
     # Define the location of all your files
     # this will put everything into the example dir
     target = "HD_22049"
-    star = StellarDB().load(target)
+    sdb = StellarDB()
+    # star = sdb.auto_fill(target)
+    star = sdb.load(target)
     alias = [re.sub(r"[-_ ]", "", s).lower() for s in star["id"]]
 
     examples_dir = dirname(realpath(__file__))
@@ -651,7 +653,7 @@ if __name__ == "__main__":
     # in_file = os.path.join(data_dir, fname)
     in_file = os.path.join(examples_dir, f"results/{target}_mask_new.sme")
 
-    vald_file = os.path.join(examples_dir, f"data/hd22049.lin")
+    vald_file = os.path.join(examples_dir, f"data/harps.lin")
 
     out_file = os.path.join(examples_dir, f"results/{target}_mask_new_out.sme")
     plot_file = os.path.join(examples_dir, f"results/{target}_mask_new_out.html")
@@ -731,19 +733,19 @@ if __name__ == "__main__":
     # sme.telluric = Iliffe_vector(values=ftapas)
 
     # Get first guess from literature values
-    sme.teff = star["t_eff"].to_value("K") if "t_eff" in star else 6000
-    sme.logg = star["logg"].to_value(1) if "logg" in star else 4
-    monh = star["metallicity"].to_value(1) if "metallicity" in star else 0
+    sme.teff = 5065  # star["t_eff"].to_value("K") if "t_eff" in star else 6000
+    sme.logg = 4.61  # star["logg"].to_value(1) if "logg" in star else 4
+    monh = -0.050  # star["metallicity"].to_value(1) if "metallicity" in star else 0
     sme.abund = Abund(monh, "asplund2009")
-    sme.vmic = (
-        star["velocity_turbulence"].to_value("km/s")
-        if "velocity_turbulence" in star
-        else 3
-    )
+    # sme.vmic = (
+    #     star["velocity_turbulence"].to_value("km/s")
+    #     if "velocity_turbulence" in star
+    #     else 3
+    # )
     # Test this
-    sme.vmic = 2
-    sme.vsini = 1
+    sme.vmic = 1
     sme.vmac = 2
+    sme.vsini = 2.4
 
     # load the linelist
     sme.linelist = ValdFile(vald_file)
@@ -781,7 +783,7 @@ if __name__ == "__main__":
 
     # Set radial velocity and continuum settings
     # Set RV and Continuum flags
-    sme.vrad_flag = "fix"
+    sme.vrad_flag = "each"
     sme.cscale_flag = 2
     sme.cscale_type = "match+mask"
 
@@ -791,36 +793,53 @@ if __name__ == "__main__":
     # sme.vrad -= correction
     # checked manually
     sme.vrad = -66 + 103
-    # sme.cscale[:, -1] = [1 for f in sme.spec]
 
     # Define any fitparameters you want
     # For abundances use: 'abund {El}', where El is the element (e.g. 'abund Fe')
     # For linelist use: 'linelist {Nr} {p}', where Nr is the number in the
     # linelist and p is the line parameter (e.g. 'linelist 17 gflog')
-    fitparameters = ["teff", "logg", "monh", "vmic", "vmac", "vsini"]
+    fitparameters = [
+        ["monh"],
+        ["teff"],
+        ["logg", "vmic", "vmac", "vsini"],
+        ["monh", "teff", "logg", "vmic", "vmac", "vsini"],
+    ]
 
     # Restrict the linelist to relevant lines
     # for this segment
-    # rvel = 100
-    # wmin, wmax = sme.wran[0]
-    # wmin *= 1 - rvel / 3e5
-    # wmax *= 1 + rvel / 3e5
-    # sme.linelist = sme.linelist.trim(wmin, wmax)
+    rvel = 100
+    wmin, wmax = sme.wran[6][0], sme.wran[30][1]
+    wmin *= 1 - rvel / 3e5
+    wmax *= 1 + rvel / 3e5
+    sme.linelist = sme.linelist.trim(wmin, wmax)
 
     # Start SME solver
     # sme = synthesize_spectrum(sme, segments=np.arange(6, 31))
     # sme.cscale_flag = "fix"
+    sme.wave = sme.wave[6:31]
+    sme.spec = sme.spec[6:31]
+    sme.synth = sme.synth[6:31]
+    sme.mask = sme.mask[6:31]
+    sme.telluric = sme.telluric[6:31]
+    save_as_idl(sme, "epseri.inp")
 
     # sme.save(out_file)
-    sme = solve(sme, fitparameters, segments=np.arange(6, 31))
+    for fp in fitparameters:
+        sme = solve(sme, fp, segments=np.arange(6, 31))
+        fname = f"{target}_mask_new_out_{'_'.join(fp)}"
+        out_file = os.path.join(examples_dir, "results", fname + ".sme")
+        sme.save(out_file)
 
-    print(sme.citation())
+        plot_file = os.path.join(examples_dir, "results", fname + ".html")
+        fig = plot_plotly.FinalPlot(sme)
+        fig.save(filename=plot_file)
+
+    # print(sme.citation())
 
     # Save results
-    sme.save(out_file)
+    # sme.save(out_file)
 
     # Plot results
-    sme.synth *= sme.telluric
     fig = plot_plotly.FinalPlot(sme)
     fig.save(filename=plot_file)
     print(f"Finished: {target}")
