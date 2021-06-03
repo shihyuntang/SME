@@ -431,32 +431,32 @@ class SME_Solver:
             sigma_estimate = std(*sopt)
             freep_unc[i] = sigma_estimate
 
-            # Debug plots
-            import matplotlib.pyplot as plt
+            # # Debug plots
+            # import matplotlib.pyplot as plt
 
-            # Plot 1 (cumulative distribution)
-            r = (sopt[0] - 20 * sopt[1], sopt[0] + 20 * sopt[1])
-            x = np.linspace(ch_x.min(), ch_x.max(), ch_x.size * 10)
-            plt.plot(ch_x, ch_y, "+", label="measured")
-            plt.plot(x, cdf(x, *sopt), label="fit")
-            plt.xlabel(freep_name[i])
-            plt.ylabel("cumulative probability")
-            plt.show()
-            # Plot 2 (density distribution)
-            x = np.linspace(r[0], r[-1], ch_x.size * 10)
-            plt.hist(
-                ch_x,
-                bins="auto",
-                density=True,
-                histtype="step",
-                range=r,
-                label="measured",
-            )
-            plt.plot(x, norm.pdf(x, loc=sopt[0], scale=sopt[1]), label="fit")
-            plt.xlabel(freep_name[i])
-            plt.ylabel("probability")
-            plt.xlim(r)
-            plt.show()
+            # # Plot 1 (cumulative distribution)
+            # r = (sopt[0] - 20 * sopt[1], sopt[0] + 20 * sopt[1])
+            # x = np.linspace(ch_x.min(), ch_x.max(), ch_x.size * 10)
+            # plt.plot(ch_x, ch_y, "+", label="measured")
+            # plt.plot(x, cdf(x, *sopt), label="fit")
+            # plt.xlabel(freep_name[i])
+            # plt.ylabel("cumulative probability")
+            # plt.show()
+            # # Plot 2 (density distribution)
+            # x = np.linspace(r[0], r[-1], ch_x.size * 10)
+            # plt.hist(
+            #     ch_x,
+            #     bins="auto",
+            #     density=True,
+            #     histtype="step",
+            #     range=r,
+            #     label="measured",
+            # )
+            # plt.plot(x, norm.pdf(x, loc=sopt[0], scale=sopt[1]), label="fit")
+            # plt.xlabel(freep_name[i])
+            # plt.ylabel("probability")
+            # plt.xlim(r)
+            # plt.show()
 
             logger.debug(f"{freep_name[i]}: {hmed}, {sigma_estimate}")
 
