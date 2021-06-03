@@ -16,7 +16,7 @@ from scipy.constants import speed_of_light
 from scipy.optimize import OptimizeWarning, least_squares, curve_fit
 from scipy.optimize._numdiff import approx_derivative
 from scipy.special import erf
-from scipy.stats import gennorm
+from scipy.stats import gennorm, norm
 
 from . import __file_ending__, broadening
 from .abund import Abund
@@ -381,16 +381,18 @@ class SME_Solver:
         # cdf = lambda x, mu, sig: 0.5 * (1 + erf((x - mu) / (np.sqrt(2) * sig)))
         # std = lambda mu, sig: sig
 
-        def cdf(x, mu, alpha, beta):
+        def cdf(x, mu, alpha):
             """
             Cumulative distribution function of the generalized normal distribution
             the factor sqrt(2) is a conversion between generalized and regular normal distribution
             """
-            return gennorm.cdf(x, beta, loc=mu, scale=alpha * np.sqrt(2))
+            # return gennorm.cdf(x, beta, loc=mu, scale=alpha * np.sqrt(2))
+            return norm.cdf(x, loc=mu, scale=alpha)
 
-        def std(mu, alpha, beta):
+        def std(mu, alpha):
             """ 1 sigma (68.27 %) quantile, assuming symmetric distribution """
-            interval = gennorm.interval(0.6827, beta, loc=mu, scale=alpha * np.sqrt(2))
+            # interval = gennorm.interval(0.6827, beta, loc=mu, scale=alpha * np.sqrt(2))
+            interval = norm.interval(0.6827, loc=mu, scale=alpha)
             sigma = (interval[1] - interval[0]) / 2
             return sigma
 
@@ -428,6 +430,33 @@ class SME_Solver:
             hmed = sopt[0]
             sigma_estimate = std(*sopt)
             freep_unc[i] = sigma_estimate
+
+            # Debug plots
+            import matplotlib.pyplot as plt
+
+            # Plot 1 (cumulative distribution)
+            r = (sopt[0] - 20 * sopt[1], sopt[0] + 20 * sopt[1])
+            x = np.linspace(ch_x.min(), ch_x.max(), ch_x.size * 10)
+            plt.plot(ch_x, ch_y, "+", label="measured")
+            plt.plot(x, cdf(x, *sopt), label="fit")
+            plt.xlabel(freep_name[i])
+            plt.ylabel("cumulative probability")
+            plt.show()
+            # Plot 2 (density distribution)
+            x = np.linspace(r[0], r[-1], ch_x.size * 10)
+            plt.hist(
+                ch_x,
+                bins="auto",
+                density=True,
+                histtype="step",
+                range=r,
+                label="measured",
+            )
+            plt.plot(x, norm.pdf(x, loc=sopt[0], scale=sopt[1]), label="fit")
+            plt.xlabel(freep_name[i])
+            plt.ylabel("probability")
+            plt.xlim(r)
+            plt.show()
 
             logger.debug(f"{freep_name[i]}: {hmed}, {sigma_estimate}")
 

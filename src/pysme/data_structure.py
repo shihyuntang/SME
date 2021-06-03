@@ -254,10 +254,10 @@ class Collection(persistence.IPersist):
 
     @classmethod
     def _load(cls, ext: MultipleDataExtension):
+        header = ext.header
         if isinstance(ext, MultipleDataExtension):
             data = dict(ext.data)
-        else:
-            data = {}
-        ext.header.update(data)
-        obj = cls(**ext.header)
+            header.update(data)
+
+        obj = cls(**header)
         return obj
