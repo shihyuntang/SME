@@ -39,12 +39,14 @@ jobs:
       run: pytest
     
     - name: GitHub Tag
+      if: github.event_name != 'pull_request'
       id: tag_release
       uses: mathieudutour/github-tag-action@v5
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
     
     - uses: actions/checkout@v2
+      if: github.event_name != 'pull_request'
       with:
         ref:  ${{ steps.tag_release.outputs.new_tag }}
         clean: false
@@ -58,6 +60,7 @@ jobs:
 
   
     - name: Create Release
+      if: github.event_name != 'pull_request'
       id: create_release
       uses: actions/create-release@v1
       env:
@@ -69,6 +72,7 @@ jobs:
         prerelease: false
   
     - name: Upload Release Asset
+      if: github.event_name != 'pull_request'
       id: upload-release-asset 
       uses: actions/upload-release-asset@v1
       env:
@@ -80,6 +84,7 @@ jobs:
         asset_content_type: application/zip
   
     - name: Publish a Python distribution to PyPI
+      if: github.event_name != 'pull_request'
       uses: pypa/gh-action-pypi-publish@master
       with:
         user: __token__
