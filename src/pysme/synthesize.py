@@ -68,7 +68,7 @@ class Synthesizer:
             if self.atmosphere_interpolator is None:
                 self.atmosphere_interpolator = AtmosphereInterpolator(
                     depth=atmo.depth,
-                    interp=atmo.depth,
+                    interp=atmo.interp,
                     geom=atmo.geom,
                     lfs_atmo=self.lfs_atmo,
                 )
