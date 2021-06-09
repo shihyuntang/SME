@@ -235,7 +235,7 @@ class Abund(IPersist):
         pattern = np.copy(self._pattern)
         if self.monh is not None:
             pattern[2:] += self.monh
-        return self.totype(pattern, type, raw=raw)
+        return self.totype(pattern, type, raw=raw, copy=False)
 
     def __getitem__(self, elem):
         return self.get_element(elem)
@@ -352,7 +352,7 @@ class Abund(IPersist):
             return {el: abund[elements_dict[el]] for el in elements}
 
     @staticmethod
-    def totype(pattern, totype, raw=False):
+    def totype(pattern, totype, raw=False, copy=True):
         """Return a copy of the input abundance pattern, transformed from
         the 'H=12' type to the output type. Valid abundance pattern types
         are 'sme', 'n/nTot', 'n/nH', and 'H=12'.
@@ -360,8 +360,10 @@ class Abund(IPersist):
         if isinstance(pattern, dict):
             abund = [pattern[el] if el in pattern.keys() else np.nan for el in elements]
             abund = np.array(abund)
-        else:
+        elif copy:
             abund = np.copy(pattern)
+        else:
+            abund = pattern
 
         type = totype.lower()
 
