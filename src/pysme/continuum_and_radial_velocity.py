@@ -163,7 +163,9 @@ def get_continuum_mask(wave, synth, linelist, threshold=0.1, mask=None):
     return mask
 
 
-def determine_radial_velocity(sme, segment, cscale, x_syn, y_syn, only_mask=False):
+def determine_radial_velocity(
+    sme, segment, cscale, x_syn, y_syn, only_mask=False, rv_bounds=(-100, 100)
+):
     """
     Calculate radial velocity by using cross correlation and
     least-squares between observation and synthetic spectrum
@@ -213,7 +215,7 @@ def determine_radial_velocity(sme, segment, cscale, x_syn, y_syn, only_mask=Fals
             m = sme.mask
         else:
             m = sme.spec.copy()
-            m[:] = sme.mask_value["line"]
+            m[:] = sme.mask_values["line"]
 
         if "uncs" in sme:
             u = sme.uncs
@@ -283,20 +285,21 @@ def determine_radial_velocity(sme, segment, cscale, x_syn, y_syn, only_mask=Fals
         else:
             tell = 1
 
-        rv_bounds = (-100, 100)
         if np.all(sme.vrad[segment] == 0):
             # Get a first rough estimate from cross correlation
             # Subtract continuum level of 1, for better correlation
             corr = correlate(
-                y_obs - np.median(y_obs), y_tmp - np.median(y_tmp), mode="same"
+                y_obs - np.percentile(y_obs, 95),
+                y_tmp - np.percentile(y_tmp, 95),
+                mode="same",
             )
+            x_mid = x_obs[len(x_obs) // 2]
+            x_shift = c_light * (1 - x_mid / x_obs)
+            idx = (x_shift >= rv_bounds[0]) & (x_shift <= rv_bounds[1])
+            x_shift = x_shift[idx]
+            corr = corr[idx]
             offset = np.argmax(corr)
-
-            x1 = x_obs[offset]
-            x2 = x_obs[len(x_obs) // 2]
-            rvel = c_light * (1 - x2 / x1)
-
-            rvel = np.clip(rvel, *rv_bounds)
+            rvel = x_shift[offset]
         else:
             if sme.vrad_flag == "whole":
                 rvel = sme.vrad[0]
