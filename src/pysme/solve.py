@@ -417,18 +417,22 @@ class SME_Solver:
             # Normalized cumulative weights
             ch_y /= ch_y[-1]
 
-            # Fit the distribution
-            try:
-                sopt, _ = curve_fit(cdf, ch_x, ch_y)
-            except RuntimeError:
-                # Fit failed, use dogbox instead
-                try:
-                    sopt, _ = curve_fit(cdf, ch_x, ch_y, method="dogbox")
-                except RuntimeError:
-                    sopt = [0, 0, 0]
+            hmed = np.interp(0.5, ch_y, ch_x)
+            interval = np.interp([0.16, 0.84], ch_y, ch_x)
+            sigma_estimate = (interval[1] - interval[0]) / 2
 
-            hmed = sopt[0]
-            sigma_estimate = std(*sopt)
+            # # Fit the distribution
+            # try:
+            #     sopt, _ = curve_fit(cdf, ch_x, ch_y)
+            # except RuntimeError:
+            #     # Fit failed, use dogbox instead
+            #     try:
+            #         sopt, _ = curve_fit(cdf, ch_x, ch_y, method="dogbox")
+            #     except RuntimeError:
+            #         sopt = [0, 0, 0]
+
+            # hmed = sopt[0]
+            # sigma_estimate = std(*sopt)
             freep_unc[i] = sigma_estimate
 
             # # Debug plots
