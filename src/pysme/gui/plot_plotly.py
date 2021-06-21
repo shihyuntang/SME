@@ -2,6 +2,7 @@
 Provide Plotting utility for Jupyter Notebook using Plot.ly
 Can also be used just for Plot.ly, which will then generated html files
 """
+from base64 import b64encode
 import numpy as np
 import plotly.offline as py
 import plotly.graph_objs as go
@@ -45,12 +46,14 @@ class FitPlot:
 class FinalPlot:
     """ Big plot that covers everything """
 
-    def __init__(self, sme, segment=0):
+    def __init__(self, sme, segment=0, orig=None, labels=None):
         self.sme = sme
         self.wave = sme.wave
         self.spec = sme.spec
         self.mask = sme.mask
         self.smod = sme.synth
+        self.orig = orig
+        self.labels = labels if labels is not None else {}
         if sme.telluric is not None:
             self.smod = self.smod * sme.telluric
         self.nsegments = len(self.wave)
@@ -99,7 +102,8 @@ class FinalPlot:
             # add selection callback
             self.fig.data[0].on_selection(self.selection_fn)
         else:
-            self.fig = go.Figure(data=data, layout=layout)
+            data = [go.Scattergl(d) for d in data]
+            self.fig = go.FigureWidget(data=data, layout=layout)
 
         # Add button to save figure
         if in_notebook:
@@ -119,7 +123,10 @@ class FinalPlot:
         """ save plot to html file """
         if filename.endswith(".html"):
             self.fig.layout.dragmode = "zoom"
+            kwargs.setdefault("include_plotlyjs", "cdn")
+            kwargs.setdefault("validate")
             py.plot(self.fig, filename=filename, **kwargs)
+            self.fig.to_html(**kwargs)
         else:
             write_image(self.fig, filename)
 
@@ -184,7 +191,7 @@ class FinalPlot:
                         fillcolor=fmt["LineMask"]["facecolor"],
                         fill="tozeroy",
                         mode="none",
-                        name="Line Mask",
+                        name=self.labels.get("linemask", "Line Mask"),
                         hoverinfo="none",
                         legendgroup=2,
                         visible=current_segment == seg,
@@ -204,7 +211,7 @@ class FinalPlot:
                         fillcolor=fmt["ContMask"]["facecolor"],
                         fill="tozeroy",
                         mode="none",
-                        name="Continuum Mask",
+                        name=self.labels.get("contmask", "Continuum Mask"),
                         hoverinfo="none",
                         legendgroup=2,
                         visible=current_segment == seg,
@@ -219,7 +226,7 @@ class FinalPlot:
                         x=self.wave[seg],
                         y=self.spec[seg],
                         line={"color": fmt["Obs"]["color"]},
-                        name="Observation",
+                        name=self.labels.get("obs", "Observation"),
                         legendgroup=0,
                         visible=current_segment == seg,
                     )
@@ -232,8 +239,20 @@ class FinalPlot:
                     dict(
                         x=self.wave[seg],
                         y=self.smod[seg],
-                        name="Synthethic",
+                        name=self.labels.get("synth", "Synthethic"),
                         line={"color": fmt["Syn"]["color"]},
+                        legendgroup=1,
+                        visible=current_segment == seg,
+                    )
+                ]
+                visible += [seg]
+            if self.orig is not None:
+                data += [
+                    dict(
+                        x=self.wave[seg],
+                        y=self.orig[seg],
+                        name=self.labels.get("orig", "Original"),
+                        line={"color": fmt["Orig"]["color"], "dash": "dash"},
                         legendgroup=1,
                         visible=current_segment == seg,
                     )
@@ -285,10 +304,10 @@ class FinalPlot:
                 #     lines = lines[idx]
 
                 x = wlcent * (1 + self.vrad[seg] / clight)
-                if self.spec is not None:
-                    y = np.interp(x, self.wave[seg], self.spec[seg])
-                else:
+                if self.smod is not None:
                     y = np.interp(x, self.wave[seg], self.smod[seg])
+                else:
+                    y = np.interp(x, self.wave[seg], self.spec[seg])
 
                 if self.smod is not None and len(self.smod[seg]) > 0:
                     ytop = np.max(self.smod[seg])
