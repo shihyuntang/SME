@@ -644,7 +644,7 @@ class Grid:
         linerefs = np.full((nlines, 2), -1)
         iused = np.zeros(len(species), dtype=bool)
 
-        idx_map = np.arange(nlines)
+        idx_map = np.arange(len(species))
         # Maximum energy in the grid
         max_energy = np.max(energies)
         # Maximum seperation between energy levels
