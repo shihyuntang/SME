@@ -142,33 +142,24 @@ class FinalPlot:
             data = json.dumps(fig["data"])
             layout = json.dumps(fig["layout"])
             html = (
-                r"""<html>
-<head><meta charset="utf-8" /></head>
-<body>
-    <div>
-        <script type="text/javascript">window.PlotlyConfig = {MathJaxConfig: 'local'};</script>
-        <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-        <div id="56dedbe2-a786-4b0b-8232-b68dfd7b9eb5" class="plotly-graph-div" style="height:100%; width:100%;"></div>
-            <script type="text/javascript">
-            window.PLOTLYENV=window.PLOTLYENV || {};
-            if (document.getElementById("56dedbe2-a786-4b0b-8232-b68dfd7b9eb5")) {"""
+                r"""<html><head><meta charset="utf-8" /></head><body><div>"""
+                r"""<script type="text/javascript">window.PlotlyConfig = {MathJaxConfig: 'local'};</script>"""
+                r"""<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>"""
+                r"""<div id="56dedbe2-a786-4b0b-8232-b68dfd7b9eb5" class="plotly-graph-div" style="height:100%; width:100%;"></div>"""
+                r"""<script type="text/javascript">"""
+                r"""window.PLOTLYENV=window.PLOTLYENV || {};"""
+                r"""if (document.getElementById("56dedbe2-a786-4b0b-8232-b68dfd7b9eb5")) {"""
                 f"data = {data};"
                 f"layout = {layout};"
-                r"""const FromBase64 = function (str) {
-                     return new Uint8Array(atob(str).split('').map(function (c) { return c.charCodeAt(0); }));
-                };
-                for (let i = 0; i < data.length; i++){
-                    let data_x = data[i].x.data;
-                    let data_y = data[i].y.data;
-                    data[i].x = new Float32Array(FromBase64(data_x).buffer);
-                    data[i].y = new Float32Array(FromBase64(data_y).buffer);
-                }
-                Plotly.newPlot("56dedbe2-a786-4b0b-8232-b68dfd7b9eb5", data, layout, {"responsive": true})};                            
-            </script>
-        </div>
-</body>
-</html>
-"""
+                r"""const FromBase64 = function (str) {return new Uint8Array(atob(str).split('').map(function (c) { return c.charCodeAt(0); }));};"""
+                r"""for (let i = 0; i < data.length; i++){"""
+                r"""let data_x = data[i].x.data;"""
+                r"""let data_y = data[i].y.data;"""
+                r"""data[i].x = new Float32Array(FromBase64(data_x).buffer);"""
+                r"""data[i].y = new Float32Array(FromBase64(data_y).buffer);"""
+                r"""}"""
+                r"""Plotly.newPlot("56dedbe2-a786-4b0b-8232-b68dfd7b9eb5", data, layout, {"responsive": true})};"""
+                r"""</script></div></body></html>"""
             )
             if htmlmin is not None:
                 html = htmlmin.minify(html, remove_empty_space=True)
