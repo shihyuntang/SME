@@ -679,7 +679,7 @@ def cont_fit(sme, segment, x_syn, y_syn, rvel=0, only_mask=False):
 
     deg = sme.cscale_degree
     p0 = sme.cscale[segment]
-    func = lambda x, *p: (yp * np.polyval(p, xs) - y) / u
+    func = lambda p: (yp * np.polyval(p, xs) - y) / u
     try:
         res = least_squares(func, x0=p0, loss="soft_l1", method="trf", xtol=None)
         popt = res.x
