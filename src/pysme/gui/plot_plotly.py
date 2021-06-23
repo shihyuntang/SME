@@ -4,6 +4,8 @@ Can also be used just for Plot.ly, which will then generated html files
 """
 from base64 import b64encode
 import numpy as np
+import json
+import logging
 import plotly.offline as py
 import plotly.graph_objs as go
 from plotly.io import write_image
@@ -21,8 +23,15 @@ try:
 except (AttributeError, ImportError, ModuleNotFoundError):
     in_notebook = False
 
+logger = logging.getLogger(__name__)
 clight = speed_of_light * 1e-3
 fmt = PlotColors()
+
+try:
+    import htmlmin
+except ImportError:
+    logger.info("Install htmlmin for minified html files")
+    htmlmin = None
 
 if in_notebook:
     py.init_notebook_mode()
@@ -123,10 +132,49 @@ class FinalPlot:
         """ save plot to html file """
         if filename.endswith(".html"):
             self.fig.layout.dragmode = "zoom"
-            kwargs.setdefault("include_plotlyjs", "cdn")
-            kwargs.setdefault("validate")
-            py.plot(self.fig, filename=filename, **kwargs)
-            self.fig.to_html(**kwargs)
+            fig = self.fig.to_plotly_json()
+            for i in range(len(fig["data"])):
+                for ax in ["x", "y"]:
+                    data = fig["data"][i][ax].astype("float32")
+                    b64data = b64encode(data).decode("utf8")
+                    fig["data"][i][ax] = {"data": b64data, "dtype": "float32"}
+
+            data = json.dumps(fig["data"])
+            layout = json.dumps(fig["layout"])
+            html = (
+                r"""<html>
+<head><meta charset="utf-8" /></head>
+<body>
+    <div>
+        <script type="text/javascript">window.PlotlyConfig = {MathJaxConfig: 'local'};</script>
+        <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+        <div id="56dedbe2-a786-4b0b-8232-b68dfd7b9eb5" class="plotly-graph-div" style="height:100%; width:100%;"></div>
+            <script type="text/javascript">
+            window.PLOTLYENV=window.PLOTLYENV || {};
+            if (document.getElementById("56dedbe2-a786-4b0b-8232-b68dfd7b9eb5")) {"""
+                f"data = {data};"
+                f"layout = {layout};"
+                r"""const FromBase64 = function (str) {
+                     return new Uint8Array(atob(str).split('').map(function (c) { return c.charCodeAt(0); }));
+                };
+                for (let i = 0; i < data.length; i++){
+                    let data_x = data[i].x.data;
+                    let data_y = data[i].y.data;
+                    data[i].x = new Float32Array(FromBase64(data_x).buffer);
+                    data[i].y = new Float32Array(FromBase64(data_y).buffer);
+                }
+                Plotly.newPlot("56dedbe2-a786-4b0b-8232-b68dfd7b9eb5", data, layout, {"responsive": true})};                            
+            </script>
+        </div>
+</body>
+</html>
+"""
+            )
+            if htmlmin is not None:
+                html = htmlmin.minify(html, remove_empty_space=True)
+            with open(filename, "w") as f:
+                f.write(html)
+
         else:
             write_image(self.fig, filename)
 
