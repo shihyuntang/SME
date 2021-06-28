@@ -347,9 +347,10 @@ class SME_Solver:
             logger.info("No value for %s set, using default value %s", name, d[name])
             return d[name]
 
-        return [
+        values = [
             sme[s] if sme[s] is not None else default(s) for s in self.parameter_names
         ]
+        return np.array(values)
 
     def estimate_uncertainties(self, unc, resid, deriv):
         """
