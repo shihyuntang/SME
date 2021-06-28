@@ -7,6 +7,7 @@ from datetime import datetime as dt
 
 import numpy as np
 from scipy.io import readsav
+from scipy.constants import speed_of_light
 
 from . import __file_ending__, __version__, echelle, persistence
 from .abund import Abund, elements as abund_elem
@@ -624,14 +625,23 @@ class SME_Structure(Parameters):
         self : SME_Structure
             this sme structure
         """
-        wave = other.wave.ravel()
+        c_light = speed_of_light * 1e-3  # speed of light in km/s
+        wave = other.wave.copy()
+        for i in range(len(wave)):
+            rvel = other.vrad[i]
+            rv_factor = np.sqrt((1 - rvel / c_light) / (1 + rvel / c_light))
+            wave[i] *= rv_factor
+        wave = wave.ravel()
+
         line_mask = other.mask_line.ravel()
         cont_mask = other.mask_cont.ravel()
 
         for seg in range(self.nseg):
             # We simply interpolate between the masks, if most if the new pixel was
             # continuum / line mask then it will become that, otherwise bad
-            w = self.wave[seg]
+            rvel = self.vrad[seg]
+            rv_factor = np.sqrt((1 - rvel / c_light) / (1 + rvel / c_light))
+            w = self.wave[seg] * rv_factor
             cm = np.interp(w, wave, cont_mask) > 0.5
             lm = np.interp(w, wave, line_mask) > 0.5
             self.mask[seg][cm] = self.mask_values["continuum"]
