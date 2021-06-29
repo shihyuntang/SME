@@ -75,6 +75,7 @@ PySME has many options to determine them.
     Determines how the radial velocity is fitted, or if it is fitted at all.
 
     - none: No radial velocity fitting
+    - fix: Use the set value for the radial velocity, but don't change it
     - each: Fit each wavelength segment individally
     - whole: Fit the whole spectrum at once
 
