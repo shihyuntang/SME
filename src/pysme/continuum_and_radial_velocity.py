@@ -292,7 +292,9 @@ def determine_radial_velocity(
 
         if sme.vrad_flag == "each":
             # apply continuum
-            y_syn = apply_continuum(x_syn, y_syn, cscale, sme.cscale_type, [segment])
+            y_syn = apply_continuum(
+                {segment: x_syn}, {segment: y_syn}, cscale, sme.cscale_type, [segment]
+            )[segment]
         elif sme.vrad_flag == "whole":
             # All segments
             y_syn = apply_continuum(

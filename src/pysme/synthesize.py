@@ -16,6 +16,7 @@ from .atmosphere.interpolation import AtmosphereInterpolator
 from .continuum_and_radial_velocity import (
     match_rv_continuum,
     apply_radial_velocity_and_continuum,
+    null_result,
 )
 from .large_file_storage import setup_lfs
 from .iliffe_vector import Iliffe_vector
@@ -490,9 +491,7 @@ class Synthesizer:
         segments = Synthesizer.check_segments(sme, segments)
 
         # Prepare arrays
-        vrad = np.zeros(n_segments)
-        cscale = np.zeros((n_segments, cscale_degree + 1))
-        cscale[:, -1] = 1
+        vrad, _, cscale, _ = null_result(sme.nseg, sme.cscale_degree, sme.cscale_type)
 
         wave = [np.zeros(0) for _ in range(n_segments)]
         smod = [[] for _ in range(n_segments)]
@@ -579,7 +578,10 @@ class Synthesizer:
                 sme.synth[s] = smod[s]
                 sme.cont[s] = cmod[s]
 
-            if sme.cscale_flag not in ["fix", "none"]:
+            if sme.cscale_type == "smooth":
+                sme.cscale = cscale
+                sme.cscale_unc = cscale_unc
+            elif sme.cscale_flag not in ["fix", "none"]:
                 for s in segments:
                     sme.cscale[s] = cscale[s]
                 sme.cscale_unc = cscale_unc
