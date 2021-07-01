@@ -146,8 +146,7 @@ class ValdFile(LineList):
         lines : list(str)
             file contents
         """
-        header = lines[0]
-        header = header.strip().split()
+        header = lines[0].strip().split()
 
         if header[0] == "Damping":
             # short format extract all / extract element
@@ -171,6 +170,11 @@ class ValdFile(LineList):
 
         with open(filename, "r") as file:
             lines = file.readlines()
+
+        # Check for Warnings
+        while lines[0].lstrip().startswith("WARNING"):
+            logger.warning(f"VALD {lines[0].lstrip()}")
+            lines = lines[1:]
 
         # Determine File type and format
         valdtype, fmt = self.identify_valdtype(lines)
