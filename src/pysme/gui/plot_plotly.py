@@ -63,8 +63,10 @@ class FinalPlot:
         self.smod = sme.synth
         self.orig = orig
         self.labels = labels if labels is not None else {}
-        if sme.telluric is not None:
-            self.smod = self.smod * sme.telluric
+        if sme.telluric is not None and self.smod is not None:
+            for i in range(sme.nseg):
+                if len(self.smod[i]) != 0:
+                    self.smod[i] = self.smod[i] * sme.telluric[i]
         self.nsegments = len(self.wave)
         self.segment = segment
         self.wran = sme.wran
@@ -140,7 +142,7 @@ class FinalPlot:
             # Convert the data to base64
             for i in range(len(fig["data"])):
                 for ax in ["x", "y"]:
-                    data = fig["data"][i][ax].astype("float32")
+                    data = np.asarray(fig["data"][i][ax]).astype("float32")
                     b64data = b64encode(data).decode("utf8")
                     fig["data"][i][ax] = {"data": b64data, "dtype": "float32"}
 
@@ -352,7 +354,7 @@ class FinalPlot:
                 #     lines = lines[idx]
 
                 x = wlcent * (1 + self.vrad[seg] / clight)
-                if self.smod is not None:
+                if self.smod is not None and len(self.smod[seg]) != 0:
                     y = np.interp(x, self.wave[seg], self.smod[seg])
                 else:
                     y = np.interp(x, self.wave[seg], self.spec[seg])
