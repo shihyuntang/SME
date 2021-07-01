@@ -27,6 +27,8 @@ c_light = speed_of_light * 1e-3  # speed of light in km/s
 
 
 def apply_radial_velocity(wave, wmod, smod, vrad, segments):
+    if vrad is None:
+        return smod
     for il in segments:
         if vrad[il] is not None:
             rv_factor = np.sqrt((1 + vrad[il] / c_light) / (1 - vrad[il] / c_light))
@@ -36,6 +38,8 @@ def apply_radial_velocity(wave, wmod, smod, vrad, segments):
 
 
 def apply_continuum(wave, smod, cscale, cscale_type, segments):
+    if cscale is None:
+        return smod
     for il in segments:
         if cscale[il] is not None and not np.all(cscale[il] == 0):
             if cscale_type in ["smooth"]:
@@ -49,6 +53,32 @@ def apply_continuum(wave, smod, cscale, cscale_type, segments):
 def apply_radial_velocity_and_continuum(
     wave, wmod, smod, vrad, cscale, cscale_type, segments
 ):
+    """
+    Apply the radial velocity and continuum corrections
+    to a syntheic spectrum to match the observation
+
+    Parameters
+    ----------
+    wave : array
+        final wavelength array of the observation
+    wmod : array
+        wavelength array of the synthethic spectrum
+    smod : array
+        flux array of the synthetic spectrum
+    vrad : array, None
+        radial velocities in km/s for each segment
+    cscale : array, None
+        continnum scales for each segment, exact meaning depends on cscale_type
+    cscale_type : str
+        defines the continuum correction behaviour
+    segments : array
+        the segments to apply the correction to
+
+    Returns
+    -------
+    smod : array
+        the corrected synthetic spectrum
+    """
     smod = apply_radial_velocity(wave, wmod, smod, vrad, segments)
     smod = apply_continuum(wave, smod, cscale, cscale_type, segments)
     return smod

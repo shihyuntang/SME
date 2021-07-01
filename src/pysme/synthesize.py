@@ -13,7 +13,10 @@ from scipy.interpolate import interp1d, UnivariateSpline
 
 from . import broadening
 from .atmosphere.interpolation import AtmosphereInterpolator
-from .continuum_and_radial_velocity import match_rv_continuum
+from .continuum_and_radial_velocity import (
+    match_rv_continuum,
+    apply_radial_velocity_and_continuum,
+)
 from .large_file_storage import setup_lfs
 from .iliffe_vector import Iliffe_vector
 from .nlte import update_nlte_coefficients
@@ -165,21 +168,13 @@ class Synthesizer:
     def apply_radial_velocity_and_continuum(
         self, wave, spec, wmod, smod, cmod, vrad, cscale, cscale_type, segments
     ):
-        for il in segments:
-            if vrad[il] is not None:
-                rv_factor = np.sqrt((1 + vrad[il] / clight) / (1 - vrad[il] / clight))
-                wmod[il] *= rv_factor
-            smod[il] = np.interp(wave[il], wmod[il], smod[il])
-            if cmod is not None:
-                cmod[il] = np.interp(wave[il], wmod[il], cmod[il])
-
-            if cscale[il] is not None and not np.all(cscale[il] == 0):
-                if cscale_type in ["smooth"]:
-                    smod[il] += cscale[il]
-                else:
-                    x = wave[il] - wave[il][0]
-                    smod[il] *= np.polyval(cscale[il], x)
-        return smod
+        smod = apply_radial_velocity_and_continuum(
+            wave, wmod, smod, vrad, cscale, cscale_type, segments
+        )
+        cmod = apply_radial_velocity_and_continuum(
+            wave, wmod, cmod, vrad, None, None, segments
+        )
+        return smod, cmod
 
     def integrate_flux(self, mu, inten, deltav, vsini, vrt, osamp=1):
         """
@@ -564,7 +559,7 @@ class Synthesizer:
         else:
             raise ValueError("Radial Velocity mode not understood")
 
-        smod = self.apply_radial_velocity_and_continuum(
+        smod, cmod = self.apply_radial_velocity_and_continuum(
             wave, sme.spec, wmod, smod, cmod, vrad, cscale, sme.cscale_type, segments
         )
 
