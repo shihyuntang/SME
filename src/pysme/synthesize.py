@@ -7,8 +7,8 @@ import warnings
 import numpy as np
 from tqdm import tqdm
 from scipy.constants import speed_of_light
-from scipy.ndimage.filters import convolve
-from scipy.interpolate import interp1d
+from scipy.ndimage.filters import convolve, gaussian_filter1d
+from scipy.interpolate import interp1d, UnivariateSpline
 
 
 from . import broadening
@@ -163,7 +163,7 @@ class Synthesizer:
         return segments
 
     def apply_radial_velocity_and_continuum(
-        self, wave, wmod, smod, cmod, vrad, cscale, segments
+        self, wave, spec, wmod, smod, cmod, vrad, cscale, cscale_type, segments
     ):
         for il in segments:
             if vrad[il] is not None:
@@ -174,8 +174,11 @@ class Synthesizer:
                 cmod[il] = np.interp(wave[il], wmod[il], cmod[il])
 
             if cscale[il] is not None and not np.all(cscale[il] == 0):
-                x = wave[il] - wave[il][0]
-                smod[il] *= np.polyval(cscale[il], x)
+                if cscale_type in ["smooth"]:
+                    smod[il] += cscale[il]
+                else:
+                    x = wave[il] - wave[il][0]
+                    smod[il] *= np.polyval(cscale[il], x)
         return smod
 
     def integrate_flux(self, mu, inten, deltav, vsini, vrt, osamp=1):
@@ -562,7 +565,7 @@ class Synthesizer:
             raise ValueError("Radial Velocity mode not understood")
 
         smod = self.apply_radial_velocity_and_continuum(
-            wave, wmod, smod, cmod, vrad, cscale, segments
+            wave, sme.spec, wmod, smod, cmod, vrad, cscale, sme.cscale_type, segments
         )
 
         # Merge all segments

@@ -6,6 +6,7 @@ from copy import copy
 from datetime import datetime as dt
 
 import numpy as np
+from numpy.core.numeric import count_nonzero
 from scipy.io import readsav
 from scipy.constants import speed_of_light
 
@@ -151,7 +152,7 @@ class SME_Structure(Parameters):
                 * "linear": First order polynomial, i.e. approximate continuum by a straight line
                 * "quadratic": Second order polynomial, i.e. approximate continuum by a quadratic polynomial
             """),
-        ("cscale_type", "mask", lowercase(oneof("mcmc", "mask", "match", "match+mask")), this,
+        ("cscale_type", "match+mask", lowercase(oneof("mcmc", "mask", "match", "match+mask", "smooth")), this,
             """str: Flag that determines the algorithm to determine the continuum
 
             This is used in combination with cscale_flag, which determines the degree of the fit, if any.
@@ -160,7 +161,7 @@ class SME_Structure(Parameters):
               * "whole": Fit the whole synthetic spectrum to the observation to determine the best fit
               * "mask": Fit a polynomial to the pixels marked as continuum in the mask
             """),
-        ("cscale", 1, array(None, float), this,
+        ("cscale", None, this, this,
             """array of size (nseg, ndegree): Continumm polynomial coefficients for each wavelength segment
             The x coordinates of each polynomial are chosen so that x = 0, at the first wavelength point,
             i.e. x is shifted by wave[segment][0]
@@ -408,6 +409,9 @@ class SME_Structure(Parameters):
         The x coordinates of each polynomial are chosen so that x = 0, at the first wavelength point,
         i.e. x is shifted by wave[segment][0]
         """
+        if self.cscale_type == "smooth":
+            return self.__cscale
+
         nseg = self.nseg if self.nseg is not None else 1
 
         if self.__cscale is None:
@@ -444,7 +448,10 @@ class SME_Structure(Parameters):
 
     @_cscale.setter
     def _cscale(self, value):
-        self.__cscale = np.atleast_2d(value) if value is not None else None
+        if self.cscale_type == "smooth":
+            self.__cscale = value
+        else:
+            self.__cscale = np.atleast_2d(value) if value is not None else None
 
     @property
     def _cscale_flag(self):
@@ -471,8 +478,6 @@ class SME_Structure(Parameters):
                 }[value]
             except KeyError:
                 value = value
-        if value in ["quadratic", "cubic", "quintic", "quantic"]:
-            logger.warning(f"{value} continuum scale is experimental")
 
         self.__cscale_flag = value
 
@@ -548,28 +553,31 @@ class SME_Structure(Parameters):
     @property
     def cscale_degree(self):
         """int: Polynomial degree of the continuum as determined by cscale_flag """
-        if self.cscale_flag == "constant":
-            return 0
-        if self.cscale_flag == "linear":
-            return 1
-        if self.cscale_flag == "quadratic":
-            return 2
-        if self.cscale_flag == "cubic":
-            return 3
-        if self.cscale_flag == "quintic":
-            return 4
-        if self.cscale_flag == "quantic":
-            return 5
-        if self.cscale_flag == "fix":
-            # Use the underying element to avoid a loop
-            if self.__cscale is not None:
-                return self.__cscale.shape[1] - 1
-            else:
+        if self.cscale_type in ["smooth"]:
+            return [np.count_nonzero(mg) for mg in self.mask_good]
+        else:
+            if self.cscale_flag == "constant":
                 return 0
-        if self.cscale_flag == "none":
-            return 0
-        return self.cscale_flag
-        raise ValueError("This should never happen")
+            if self.cscale_flag == "linear":
+                return 1
+            if self.cscale_flag == "quadratic":
+                return 2
+            if self.cscale_flag == "cubic":
+                return 3
+            if self.cscale_flag == "quintic":
+                return 4
+            if self.cscale_flag == "quantic":
+                return 5
+            if self.cscale_flag == "fix":
+                # Use the underying element to avoid a loop
+                if self.__cscale is not None:
+                    return self.__cscale.shape[1] - 1
+                else:
+                    return 0
+            if self.cscale_flag == "none":
+                return 0
+            return self.cscale_flag
+            raise ValueError("This should never happen")
 
     @property
     def atomic(self):
@@ -625,6 +633,9 @@ class SME_Structure(Parameters):
         self : SME_Structure
             this sme structure
         """
+        if self.mask is None:
+            self.mask = self.mask_values["line"]
+
         c_light = speed_of_light * 1e-3  # speed of light in km/s
         wave = other.wave.copy()
         for i in range(len(wave)):

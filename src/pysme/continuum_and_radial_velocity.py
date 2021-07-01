@@ -11,9 +11,10 @@ import emcee
 import numpy as np
 from scipy.constants import speed_of_light
 from scipy.linalg import lu_factor, lu_solve
-from scipy.ndimage.filters import median_filter
+from scipy.ndimage.filters import median_filter, gaussian_filter1d
 from scipy.optimize import least_squares, minimize_scalar, curve_fit
 from scipy.signal import correlate, find_peaks
+from scipy.interpolate import UnivariateSpline
 from tqdm import tqdm
 
 from . import util
@@ -23,6 +24,34 @@ from .sme_synth import SME_DLL
 logger = logging.getLogger(__name__)
 
 c_light = speed_of_light * 1e-3  # speed of light in km/s
+
+
+def apply_radial_velocity(wave, wmod, smod, vrad, segments):
+    for il in segments:
+        if vrad[il] is not None:
+            rv_factor = np.sqrt((1 + vrad[il] / c_light) / (1 - vrad[il] / c_light))
+            wmod[il] *= rv_factor
+        smod[il] = np.interp(wave[il], wmod[il], smod[il])
+    return smod
+
+
+def apply_continuum(wave, smod, cscale, cscale_type, segments):
+    for il in segments:
+        if cscale[il] is not None and not np.all(cscale[il] == 0):
+            if cscale_type in ["smooth"]:
+                smod[il] += cscale[il]
+            else:
+                x = wave[il] - wave[il][0]
+                smod[il] *= np.polyval(cscale[il], x)
+    return smod
+
+
+def apply_radial_velocity_and_continuum(
+    wave, wmod, smod, vrad, cscale, cscale_type, segments
+):
+    smod = apply_radial_velocity(wave, wmod, smod, vrad, segments)
+    smod = apply_continuum(wave, smod, cscale, cscale_type, segments)
+    return smod
 
 
 def determine_continuum(sme, segment):
@@ -233,29 +262,12 @@ def determine_radial_velocity(
 
         if sme.vrad_flag == "each":
             # apply continuum
-            if cscale is not None:
-                cont = np.polyval(cscale, x_obs - x_obs[0])
-            else:
-                warnings.warn(
-                    "No continuum scale passed to radial velocity determination"
-                )
-                cont = np.ones_like(y_obs)
-            y_obs /= cont
+            y_syn = apply_continuum(x_syn, y_syn, cscale, sme.cscale_type, [segment])
         elif sme.vrad_flag == "whole":
             # All segments
-            if cscale is not None:
-                cscale = np.atleast_2d(cscale)
-                cont = [
-                    np.polyval(c, x_obs[i] - x_obs[i][0]) for i, c in enumerate(cscale)
-                ]
-            else:
-                warnings.warn(
-                    "No continuum scale passed to radial velocity determination"
-                )
-                cont = [1 for _ in range(len(x_obs))]
-
-            for i in range(len(y_obs)):
-                y_obs[i] /= cont[i]
+            y_syn = apply_continuum(
+                x_syn, y_syn, cscale, sme.cscale_type, range(len(y_obs))
+            )
 
             x_obs = x_obs.ravel()
             y_obs = y_obs.ravel()
@@ -322,10 +334,16 @@ def determine_radial_velocity(
     return rvel
 
 
-def null_result(nseg, ndeg=0):
+def null_result(nseg, ndeg=0, ctype=None):
     vrad, vrad_unc = np.zeros(nseg), np.zeros((nseg, 2))
-    cscale, cscale_unc = np.zeros((nseg, ndeg + 1)), np.zeros((nseg, ndeg + 1, 2))
-    cscale[:, -1] = 1
+    if ctype in ["smooth"]:
+        cscale = [np.zeros(ndeg[i]) for i in range(nseg)]
+        cscale = Iliffe_vector(values=cscale)
+        cscale_unc = [np.zeros(ndeg[i]) for i in range(nseg)]
+        cscale_unc = Iliffe_vector(values=cscale_unc)
+    else:
+        cscale, cscale_unc = np.zeros((nseg, ndeg + 1)), np.zeros((nseg, ndeg + 1, 2))
+        cscale[:, -1] = 1
     return vrad, vrad_unc, cscale, cscale_unc
 
 
@@ -698,6 +716,37 @@ def cont_fit(sme, segment, x_syn, y_syn, rvel=0, only_mask=False):
     return popt[None, :]
 
 
+def get_continuum_broadening(sme, segment, x_syn, y_syn, rvel=0, only_mask=False):
+    if sme.cscale_flag in ["none"]:
+        return [1]
+    elif sme.cscale_flag in ["fix"]:
+        return sme.cscale[segment]
+
+    w = sme.wave[segment]
+    s = sme.spec[segment]
+
+    rv_factor = np.sqrt((1 - rvel / c_light) / (1 + rvel / c_light))
+    wp = w * rv_factor
+    y = np.interp(wp, x_syn, y_syn)
+
+    if sme.telluric is not None:
+        tell = sme.telluric[segment]
+        y *= tell
+
+    if only_mask:
+        m = sme.mask_cont[segment]
+    else:
+        m = sme.mask_good[segment]
+
+    wm, sm, ym = w[m], s[m], y[m]
+
+    sf = UnivariateSpline(wm, sm, w=1 / np.sqrt(sm))(w)
+    yf = UnivariateSpline(wm, ym, w=1 / np.sqrt(ym))(w)
+    coef = -yf + sf
+
+    return coef
+
+
 def match_rv_continuum(sme, segments, x_syn, y_syn):
     """
     Match both the continuum and the radial velocity of observed/synthetic spectrum
@@ -723,7 +772,9 @@ def match_rv_continuum(sme, segments, x_syn, y_syn):
         new continuum coefficients
     """
 
-    vrad, vrad_unc, cscale, cscale_unc = null_result(sme.nseg, sme.cscale_degree)
+    vrad, vrad_unc, cscale, cscale_unc = null_result(
+        sme.nseg, sme.cscale_degree, sme.cscale_type
+    )
     if sme.cscale_flag == "none" and sme.vrad_flag == "none":
         return cscale, cscale_unc, vrad, vrad_unc
 
@@ -781,6 +832,22 @@ def match_rv_continuum(sme, segments, x_syn, y_syn):
             vrad[s] = determine_radial_velocity(
                 sme, s, cscale[s], [x_syn[s] for s in s], [y_syn[s] for s in s]
             )
+    elif sme.cscale_type in ["smooth"]:
+        for s in segments:
+            # We only use the continuum mask for the continuum fit,
+            # we need the lines for the radial velocity
+            vrad[s] = determine_radial_velocity(
+                sme, s, cscale[s], x_syn[s], y_syn[s], only_mask=False
+            )
+            cscale[s] = get_continuum_broadening(
+                sme, s, x_syn[s], y_syn[s], rvel=vrad[s], only_mask=False
+            )
+
+        if sme.vrad_flag == "whole":
+            s = segments
+            vrad[s] = determine_radial_velocity(
+                sme, s, cscale[s], [x_syn[s] for s in s], [y_syn[s] for s in s]
+            )
     else:
         raise ValueError(
             f"Did not understand cscale_type, expected one of ('whole', 'mask'), but got {sme.cscale_type}."
@@ -792,6 +859,11 @@ def match_rv_continuum(sme, segments, x_syn, y_syn):
     for seg in segments:
         mask &= select != seg
     vrad[mask] = sme.vrad[mask]
-    cscale[mask] = sme.cscale[mask]
+    if sme.cscale_type == "smooth":
+        for i in range(len(mask)):
+            if mask[i] and len(cscale[i]) == len(sme.cscale[i]):
+                cscale[i] = sme.cscale[i]
+    else:
+        cscale[mask] = sme.cscale[mask]
 
     return cscale, cscale_unc, vrad, vrad_unc
