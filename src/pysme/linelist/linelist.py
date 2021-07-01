@@ -10,6 +10,7 @@ import logging
 
 import numpy as np
 import pandas as pd
+from scipy import constants
 
 from flex.extensions.tabledata import JSONTableExtension
 
@@ -393,7 +394,12 @@ class LineList(IPersist):
         }
         self._lines = self._lines.append([linedata])
 
-    def trim(self, wave_min, wave_max):
+    def trim(self, wave_min, wave_max, rvel=None):
+        if rvel is not None:
+            # Speed of light in km/s
+            c_light = constants.c * 1e3
+            wave_min *= np.sqrt((1 - rvel / c_light) / (1 + rvel / c_light))
+            wave_max *= np.sqrt((1 + rvel / c_light) / (1 - rvel / c_light))
         selection = self._lines["wlcent"] > wave_min
         selection &= self._lines["wlcent"] < wave_max
         return LineList(self._lines[selection])
