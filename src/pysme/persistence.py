@@ -7,7 +7,8 @@ import tempfile
 import sys
 import subprocess
 
-from flex.flex import FlexFile
+from flex.flex import FlexExtension, FlexFile
+from numpy.lib.arraysetops import isin
 from . import __version__
 
 import numpy as np
@@ -23,6 +24,8 @@ def to_flex(sme):
         value = sme[name]
         if isinstance(value, IPersist):
             extensions[name] = value._save()
+        elif isinstance(value, FlexExtension):
+            extensions[name] = value
         elif value is not None:
             header[name] = value
 
@@ -39,7 +42,7 @@ def from_flex(ff, sme):
         if name in header.keys():
             sme[name] = header[name]
         elif name in extensions.keys():
-            if sme[name] is not None:
+            if sme[name] is not None and isinstance(sme[name], IPersist):
                 sme[name] = sme[name]._load(extensions[name])
             else:
                 sme[name] = extensions[name]

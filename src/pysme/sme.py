@@ -449,7 +449,12 @@ class SME_Structure(Parameters):
     @_cscale.setter
     def _cscale(self, value):
         if self.cscale_type == "smooth":
-            self.__cscale = value
+            if not isinstance(value, Iliffe_vector):
+                self.__cscale = (
+                    Iliffe_vector(values=value) if value is not None else None
+                )
+            else:
+                self.__cscale = value
         else:
             self.__cscale = np.atleast_2d(value) if value is not None else None
 

@@ -9,7 +9,7 @@ from .persistence import IPersist
 logger = logging.getLogger(__name__)
 
 
-class Iliffe_vector(IPersist):
+class Iliffe_vector(MultipleDataExtension):
     """
     Illiffe vectors are multidimensional (here 2D) but not necessarily rectangular
     Instead the index is a pointer to segments of a 1D array with varying sizes
@@ -18,6 +18,7 @@ class Iliffe_vector(IPersist):
     def __init__(self, nseg=None, values=None, index=None, dtype=float):
         # sizes = size of the individual parts
         # the indices are then [0, s1, s1+s2, s1+s2+s3, ...]
+        super().__init__()
         if values is not None and index is None:
             if isinstance(values, np.ndarray):
                 values = [values]
@@ -397,6 +398,41 @@ class Iliffe_vector(IPersist):
         This creates new memory arrays for the values and the index
         """
         self._values.append(other)
+
+    def _prepare(self, name: str):
+        cls = self.__class__
+
+        header_fname = f"{name}/header.json"
+        header_info, header_bio = cls._prepare_json(header_fname, self.header)
+        result = [(header_info, header_bio)]
+
+        for key, value in enumerate(self._values):
+            data_fname = f"{name}/{key}.npy"
+            data_info, data_bio = cls._prepare_npy(data_fname, value)
+            result += [(data_info, data_bio)]
+
+        return result
+
+    @classmethod
+    def _parse(cls, header: dict, members: dict):
+        data = {key[:-4]: cls._parse_npy(bio) for key, bio in members.items()}
+        data = [data[str(i)] for i in range(len(data))]
+        ext = cls(values=data)
+        return ext
+
+    def to_dict(self):
+        cls = self.__class__
+        obj = {"header": self.header}
+        for i, v in enumerate(self._values):
+            obj[str(i)] = cls._np_to_dict(v)
+        return obj
+
+    @classmethod
+    def from_dict(cls, header: dict, data: dict):
+        data = {name: cls._np_from_dict(d) for name, d in data.items()}
+        data = [data[str(i)] for i in range(len(data))]
+        obj = cls(values=data)
+        return obj
 
     def _save(self):
         data = {str(i): v for i, v in enumerate(self._values)}
