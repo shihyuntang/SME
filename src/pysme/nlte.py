@@ -848,7 +848,7 @@ class NLTE(Collection):
     }
 
     def __init__(self, **kwargs):
-        super().__init__()
+        super().__init__(**kwargs)
         self.first = False
 
         if "solar" in kwargs.keys():
