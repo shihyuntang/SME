@@ -9,12 +9,10 @@ import tempfile
 import numpy as np
 
 from pysme.sme import SME_Structure as SME_Struct
-from pysme.iliffe_vector import Iliffe_vector
 from pysme.linelist.vald import ValdFile
 from pysme.sme_synth import SME_DLL
 from pysme.nlte import nlte, DirectAccessFile
 from pysme.synthesize import Synthesizer, synthesize_spectrum
-from pysme.config import Config
 from pysme.abund import Abund
 
 from .test_largefilestorage import skipif_lfs, lfs_nlte, lfs_atmo

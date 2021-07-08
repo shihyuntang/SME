@@ -7,17 +7,13 @@ Pro: Versioning is effectively done by Git
 Con: Need to run server
 """
 
-import hashlib
 import json
 import logging
 import os
-import shutil
-import warnings
 from pathlib import Path
+from os.path import join, basename
 
-import requests
-import wget
-from tqdm import tqdm
+from astropy.utils.data import import_file_to_cache, download_file, clear_download_cache
 
 from .config import Config
 
@@ -39,9 +35,9 @@ class LargeFileStorage:
         If the datafiles can't be located anywhere
     """
 
-    def __init__(self, server, pointers, storage, cache):
+    def __init__(self, server, pointers, storage):
         #:Server: Large File Storage Server address
-        self.server = Server(server)
+        self.server = server
 
         if isinstance(pointers, str):
             path = Path(__file__).parent / pointers
@@ -51,10 +47,6 @@ class LargeFileStorage:
         self.pointers = pointers
         #:Directory: directory of the current data files
         self.current = Path(storage).expanduser().absolute()
-        #:Directory: directory for the cache
-        self.cache = Path(cache).expanduser().absolute()
-        #:dict(fname:hash): hashes of existing files, to avoid recalculation
-        self._hashes = {}
 
     @staticmethod
     def load_pointers_file(filename):
@@ -65,49 +57,6 @@ class LargeFileStorage:
             logger.error("Could not find LargeFileStorage reference file %s", filename)
             pointers = {}
         return pointers
-
-    def hash(self, filename, blocks_per_iter=256, max_blocks=1000):
-        """Hash a file, so we can compare with the server
-
-        Parameters
-        ----------
-        filename : str
-            filename
-        blocks_per_iter : int, optional
-            Number of blocks to hash per iteration, by default 256
-        max_blocks : int, optional
-            Maximum number of blocks to hash, by default 1000.
-            A smaller number will limit the execution time. The current
-            default should keep it to less than a second.
-
-        Returns
-        -------
-        hash : str
-            hexadecimal representation of the hash
-        """
-        hasher = hashlib.blake2b()
-        blocksize = blocks_per_iter * hasher.block_size
-        with open(str(filename), "rb") as f:
-            for chunk, _ in zip(
-                iter(lambda: f.read(blocksize), b""), range(max_blocks)
-            ):
-                hasher.update(chunk)
-        return hasher.hexdigest()
-
-    def symlink(self, src, dest):
-        try:
-            try:
-                os.remove(dest)
-            except:
-                pass
-            os.symlink(src, dest)
-        except OSError as ex:
-            # Might Fail on Windows, then just copy the file
-            logger.debug(ex)
-            warnings.warn(
-                "Could not create symlinks, see https://docs.python.org/3/library/os.html#os.symlink for more details",
-            )
-            shutil.copy(src, dest)
 
     def get(self, key):
         """
@@ -132,7 +81,7 @@ class LargeFileStorage:
         """
         key = str(key)
 
-        # Step 1: Check if the file is tracked and/or exists in the storage directory
+        # Check if the file is tracked and/or exists in the storage directory
         if key not in self.pointers:
             if key not in self.current:
                 if not os.path.exists(key):
@@ -140,124 +89,31 @@ class LargeFileStorage:
                         f"File {key} does not exist and is not tracked by the Large File system"
                     )
                 else:
-                    logger.warning(
-                        f"Data file {key} exists, but is not tracked by the large file storage"
-                    )
                     return str(key)
             else:
-                logger.warning(
-                    f"Data file {key} exists, but is not tracked by the large file storage"
-                )
                 return str(self.current / key)
 
-        # Step 2: Check Pointer version, i.e. newest version
+        # Otherwise get it from the cache or online if necessary
         newest = self.pointers[key]
+        url = join(self.server, newest)
+        fname = download_file(key, sources=[url,], cache=True, pkgname="pysme")
 
-        if key in self.current:
-            # Step 3: If newest version == storage version, we are all good and can use it
-            if key in self._hashes.keys():
-                current_hash = self._hashes[key]
-            else:
-                current_hash = self.hash(self.current / key)
-                self._hashes[key] = current_hash
-            if current_hash == newest:
-                return str(self.current / key)
-
-        # Step 4: Otherwise check the cache for the requested version
-        if newest in self.cache:
-            logger.debug("Using cached version of datafile")
-            self.symlink(str(self.cache / newest), str(self.current / key))
-            return str(self.current / key)
-
-        # Step 5: If not in the cache, download from the server
-        logger.info("Downloading newest version of %s from server", key)
-        try:
-            self.server.download(newest, self.cache)
-            self.symlink(str(self.cache / newest), str(self.current / key))
-        except TimeoutError:
-            logger.warning("Server connection timed out.")
-            if key in self.current:
-                logger.warning("Using obsolete, but existing version")
-            else:
-                logger.warning("No data available for use")
-                raise FileNotFoundError("No data could be found for the requested file")
-
-        return str(self.current / key)
+        return fname
 
     def clean_cache(self):
         """ Remove unused cache files (from old versions) """
-        used_files = self.pointers.values()
-        for f in self.cache.iterdir():
-            if f not in used_files:
-                os.remove(f)
+        clear_download_cache(pkgname="pysme")
 
     def delete_file(self, fname):
         """ Delete a file, including the cache file """
-        # Delete the file
-        try:
-            os.remove(str(self.current / fname))
-        except OSError:
-            pass
+        clear_download_cache(fname, pkgname="pysme")
 
-        # Delete the associated cache file
-        try:
-            p = self.pointers[fname]
-            os.remove(str(self.cache / p))
-        except (KeyError, IOError):
-            pass
-
-    def generate_pointers(self):
-        """ Generate the pointers dictionary from the existing storage directory """
-        pointers = {}
-        for path in self.current.iterdir():
-            name = path.name
-            if not path.is_dir():
-                pointers[name] = self.hash(path)
-
-        # Only update existing files, keep old references
-        self.pointers.update(pointers)
-        return self.pointers
-
-    def move_to_cache(self):
+    def move_to_cache(self, fname):
         """ Move currently used files into cache directory and use symlinks instead,
         just as if downloaded from a server """
-        for fullpath in self.current.iterdir():
-            name = fullpath.name
-            if fullpath.is_file():
-                # Copy file
-                shutil.copy(str(fullpath), str(self.cache / self.pointers[name]))
-                os.remove(str(fullpath))
-                self.symlink(
-                    str(self.cache / self.pointers[name]), str(self.current / name)
-                )
-
-    def create_pointer_file(self, filename):
-        """ Create/Update the pointer file with new hashes """
-        if self.pointers is None:
-            raise RuntimeError("Needs pointers")
-
-        with open(filename, "w") as f:
-            json.dump(self.pointers, f, indent=4)
-
-
-class Server:
-    def __init__(self, url):
-        self.url = url
-
-    def download(self, fname, location):
-        url = self.url + "/" + fname
-        loc = str(location)
-        os.makedirs(loc, exist_ok=True)
-        wget.download(url, out=loc)
-        print("\n")
-
-    def isUp(self):
-        try:
-            r = requests.head(self.url)
-            return r.status_code == 200
-        except:
-            return False
-        return False
+        key = basename(fname)
+        import_file_to_cache(key, fname, pkgname="pysme")
+        self.pointers[key] = key
 
 
 def setup_atmo(config=None):
@@ -265,9 +121,8 @@ def setup_atmo(config=None):
         config = Config()
     server = config["data.file_server"]
     storage = config["data.atmospheres"]
-    cache = config["data.cache.atmospheres"]
     pointers = config["data.pointers.atmospheres"]
-    lfs_atmo = LargeFileStorage(server, pointers, storage, cache)
+    lfs_atmo = LargeFileStorage(server, pointers, storage)
     return lfs_atmo
 
 
@@ -276,9 +131,8 @@ def setup_nlte(config=None):
         config = Config()
     server = config["data.file_server"]
     storage = config["data.nlte_grids"]
-    cache = config["data.cache.nlte_grids"]
     pointers = config["data.pointers.nlte_grids"]
-    lfs_nlte = LargeFileStorage(server, pointers, storage, cache)
+    lfs_nlte = LargeFileStorage(server, pointers, storage)
     return lfs_nlte
 
 
