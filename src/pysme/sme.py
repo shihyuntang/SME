@@ -696,7 +696,7 @@ class SME_Structure(Parameters):
 
         return self.create_citation(citation, output=output)
 
-    def save(self, filename, format="flex"):
+    def save(self, filename, format="flex", _async=False):
         """Save the whole SME structure to disk.
 
         The file format is zip file, with one info.json
@@ -711,7 +711,7 @@ class SME_Structure(Parameters):
         compressed : bool, optional
             whether to compress the output, by default False
         """
-        persistence.save(filename, self, format=format)
+        persistence.save(filename, self, format=format, _async=_async)
 
     @staticmethod
     def load(filename):

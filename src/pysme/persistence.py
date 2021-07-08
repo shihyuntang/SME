@@ -49,7 +49,7 @@ def from_flex(ff, sme):
     return sme
 
 
-def save(filename, sme, format="flex"):
+def save(filename, sme, format="flex", _async=False):
     """
     Create a folder structure inside a tarfile
     See flex-format for details
@@ -73,7 +73,10 @@ def save(filename, sme, format="flex"):
         filename = filename + file_ending
 
     if format == "flex":
-        ff.write(filename)
+        if _async:
+            ff.write_async(filename)
+        else:
+            ff.write(filename)
     elif format == "fits":
         ff.to_fits(filename, overwrite=True)
     elif format == "json":
