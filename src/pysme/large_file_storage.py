@@ -16,7 +16,12 @@ import gzip
 import shutil
 from tempfile import NamedTemporaryFile
 
-from astropy.utils.data import import_file_to_cache, download_file, clear_download_cache
+from astropy.utils.data import (
+    import_file_to_cache,
+    download_file,
+    clear_download_cache,
+    is_url_in_cache,
+)
 
 from .config import Config
 
@@ -99,21 +104,17 @@ class LargeFileStorage:
         # Otherwise get it from the cache or online if necessary
         newest = self.pointers[key]
         url = join(self.server, newest)
+        is_cached = is_url_in_cache(url, pkgname="pysme")
         fname = download_file(url, cache=True, pkgname="pysme")
 
-        try:
+        if not is_cached and url.endswith(".gz"):
             # If the file is compressed
             # Replace the cache file with the decompressed file
             with gzip.open(fname, "rb") as f_in:
-                # This should check whether this is a gzip file or not
-                f_in.peek(1)
                 with NamedTemporaryFile("wb") as f_out:
                     shutil.copyfileobj(f_in, f_out)
                     f_out.flush()
                     import_file_to_cache(url, f_out.name, pkgname="pysme")
-        except gzip.BadGzipFile:
-            # The file was already decompressed
-            pass
 
         return fname
 
