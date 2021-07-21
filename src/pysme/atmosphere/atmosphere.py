@@ -216,11 +216,40 @@ class AtmosphereGrid(np.recarray):
         self.abund_format = getattr(self, "abund_format", "sme")
         self.wlstd = getattr(self, "wlstd", 5000)
 
+    def __reduce__(self):
+        # Get the parent's __reduce__ tuple
+        pickled_state = super(AtmosphereGrid, self).__reduce__()
+        # Create our own tuple to pass to __setstate__
+        new_state = pickled_state[2] + (
+            self.interp,
+            self.depth,
+            self.source,
+            self.geom,
+            self.citation_info,
+            self.method,
+            self.abund_format,
+            self.wlstd,
+        )
+        # Return a tuple that replaces the parent's __setstate__ tuple with our own
+        return (pickled_state[0], pickled_state[1], new_state)
+
+    def __setstate__(self, state):
+        self.interp = state[-8]
+        self.depth = state[-7]
+        self.source = state[-6]
+        self.geom = state[-5]
+        self.citation_info = state[-4]
+        self.method = state[-3]
+        self.abund_format = state[-2]
+        self.wlstd = state[-1]
+        # Call the parent's __setstate__ with the other tuple elements.
+        super(AtmosphereGrid, self).__setstate__(state[0:-8])
+
     def __getitem__(self, key):
         """ Overwrite the getitem routine, so we keep additional
         properties and/or return an atmosphere object, when only
         one record is returned """
-        cls = type(self)
+        cls = self.__class__
         value = super().__getitem__(key)
         if isinstance(value, cls) and value.size == 1:
             return value[0]

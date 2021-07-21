@@ -10,7 +10,9 @@ import logging
 import platform
 import warnings
 from pathlib import Path
+from os.path import join, dirname
 
+from .libtools import get_full_libfile
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -165,17 +167,6 @@ class GlobalState(ct.Structure):
     ]
 
 
-def get_lib_name():
-    """ Get the name of the sme C library """
-    system = platform.system().lower()
-    arch = platform.machine()
-    bits = 64  # platform.architecture()[0][:-3]
-
-    return "sme_synth.so.{system}.{arch}.{bits}".format(
-        system=system, arch=arch, bits=bits
-    )
-
-
 def get_typenames(arg):
     """
     Return internal typename based on the type of the argument
@@ -232,9 +223,7 @@ def get_dtype(type):
 
 def load_library(libfile=None):
     if libfile is None:
-        localdir = Path(__file__).parent
-        libfile = get_lib_name()
-        libfile = localdir / "dll" / libfile
+        libfile = get_full_libfile()
     return ct.CDLL(str(libfile))
 
 
@@ -269,6 +258,8 @@ def idl_call_external(funcname, *args, restype="str", type=None, lib=None, state
     # Load library if that wasn't done yet
     if lib is None:
         lib = load_library()
+    elif isinstance(lib, str):
+        lib = load_library(lib)
 
     # prepare input arguments
     args = list(args)
@@ -430,10 +421,10 @@ class IDL_DLL:
             raise_error = False
             raise_warning = True
 
-        if error != b"":
-            if hasattr(error, "decode"):
-                error = error.decode()
+        if hasattr(error, "decode"):
+            error = error.decode()
 
+        if error != "":
             if raise_error:
                 raise ValueError(
                     "{name} (call external): {error}".format(name=name, error=error)
@@ -450,5 +441,18 @@ class IDL_DLL:
         except AttributeError:
             return None
 
-    def free_state(self, state):
-        return idl_call_external("FreeState", state=state)
+    def free_state(self, state, clean_pointers=0):
+        return idl_call_external(
+            "FreeState", clean_pointers, type="short", state=state, lib=self.lib
+        )
+
+    def copy_state(self, state, clean_pointers=0):
+        return idl_call_external(
+            "CopyState",
+            clean_pointers,
+            type="short",
+            restype="state",
+            state=state,
+            lib=self.lib,
+        )
+

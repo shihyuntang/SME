@@ -9,9 +9,9 @@ import warnings
 from os.path import splitext
 
 import numpy as np
+from numpy.lib.arraysetops import unique
 from scipy.constants import speed_of_light
 from scipy.optimize import OptimizeWarning, least_squares
-from scipy.optimize._numdiff import approx_derivative
 from scipy.stats import norm
 from tqdm import tqdm
 
@@ -22,9 +22,10 @@ from .atmosphere.krzfile import KrzFile
 from .atmosphere.savfile import SavFile
 from .large_file_storage import setup_lfs
 from .nlte import DirectAccessFile
-from .sme_synth import SME_DLL
 from .synthesize import Synthesizer
 from .util import print_to_log
+
+from ._numdiff import approx_derivative
 
 logger = logging.getLogger(__name__)
 
@@ -34,13 +35,9 @@ warnings.filterwarnings("ignore", category=OptimizeWarning)
 
 class SME_Solver:
     def __init__(self, filename=None, restore=False):
-        self.dll = SME_DLL()
         self.config, self.lfs_atmo, self.lfs_nlte = setup_lfs()
         self.synthesizer = Synthesizer(
-            config=self.config,
-            lfs_atmo=self.lfs_atmo,
-            lfs_nlte=self.lfs_nlte,
-            dll=self.dll,
+            config=self.config, lfs_atmo=self.lfs_atmo, lfs_nlte=self.lfs_nlte,
         )
 
         # Various parameters to keep track of during solving
@@ -130,6 +127,7 @@ class SME_Solver:
         save = not isJacobian and self.filename is not None
         reuse_wavelength_grid = isJacobian
         radial_velocity_mode = "robust" if not isJacobian else "fast"
+        method = "parallel" if isJacobian else "sequential"
 
         # change parameters
         for name, value in zip(self.parameter_names, param):
@@ -144,6 +142,7 @@ class SME_Solver:
                 passLineList=False,
                 updateLineList=self.update_linelist,
                 radial_velocity_mode=radial_velocity_mode,
+                method=method,
             )
         except AtmosphereError as ae:
             # Something went wrong (left the grid? Don't go there)
@@ -200,7 +199,7 @@ class SME_Solver:
         g = approx_derivative(
             self.__residuals,
             param,
-            method="3-point",
+            method="2-point",
             # This feels pretty bad, passing the latest synthetic spectrum
             # by reference as a parameter of the residuals function object
             f0=self._latest_residual,
@@ -257,12 +256,12 @@ class SME_Solver:
             or "monh" in self.parameter_names
         ):
             if sme.atmo.method == "grid":
-                atmo_file = sme.atmo.source
-                _, ext = splitext(atmo_file)
-                atmo_file = self.lfs_atmo.get(atmo_file)
+                atmo_source = sme.atmo.source
+                _, ext = splitext(atmo_source)
+                atmo_file = self.lfs_atmo.get(atmo_source)
 
                 if ext == ".sav":
-                    atmo_grid = SavFile(atmo_file)
+                    atmo_grid = SavFile(atmo_file, source=atmo_source)
 
                     teff = np.unique(atmo_grid.teff)
                     teff = np.min(teff), np.max(teff)
@@ -278,7 +277,7 @@ class SME_Solver:
                 elif ext == ".krz":
                     # krz atmospheres are fixed to one parameter set
                     # allow just "small" area around that
-                    atmo = KrzFile(atmo_file)
+                    atmo = KrzFile(atmo_file, source=atmo_source)
                     bounds["teff"] = atmo.teff - 500, atmo.teff + 500
                     bounds["logg"] = atmo.logg - 1, atmo.logg + 1
                     bounds["monh"] = atmo.monh - 1, atmo.monh + 1
@@ -630,7 +629,7 @@ class SME_Solver:
 
         # Divide the uncertainties by the spectrum, to improve the fit in the continuum
         # Just as in IDL SME, this increases the relative error for points inside lines
-        # uncs /= spec
+        uncs /= spec
 
         logger.info("Fitting Spectrum with Parameters: %s", ",".join(param_names))
         logger.debug("Initial values: %s", p0)
@@ -650,13 +649,14 @@ class SME_Solver:
             )
 
         # Setup LineList only once
-        self.dll.SetLibraryPath()
-        self.dll.InputLineList(sme.linelist)
+        dll = self.synthesizer.get_dll()
+        dll.SetLibraryPath()
+        dll.InputLineList(sme.linelist)
 
         # Do the heavy lifting
         if self.nparam > 0:
             self.progressbar = tqdm(desc="Iteration", total=0)
-            self.progressbar_jacobian = tqdm(desc="Jacobian", total=len(p0) * 2)
+            self.progressbar_jacobian = tqdm(desc="Jacobian", total=len(p0))
             with print_to_log():
                 res = least_squares(
                     self.__residuals,
@@ -664,7 +664,7 @@ class SME_Solver:
                     jac=self.__jacobian,
                     bounds=bounds,
                     x_scale="jac",
-                    loss="linear",
+                    loss="soft_l1",
                     method="trf",
                     verbose=2,
                     max_nfev=sme.fitresults.maxiter,

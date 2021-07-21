@@ -37,7 +37,7 @@ def interpolator(atmosphere, lfs_atmo):
 @pytest.mark.usefixtures("lfs_atmo")
 def atmosphere_grid(atmosphere_name, lfs_atmo):
     name = lfs_atmo.get(atmosphere_name)
-    atmo = SavFile(name)
+    atmo = SavFile(name, source=name)
     return atmo
 
 

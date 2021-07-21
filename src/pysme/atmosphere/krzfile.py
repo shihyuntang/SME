@@ -8,9 +8,12 @@ from .atmosphere import Atmosphere
 class KrzFile(Atmosphere):
     """ Read .krz atmosphere files """
 
-    def __init__(self, filename):
+    def __init__(self, filename, source=None):
         super().__init__()
-        self.source = filename
+        if source is None:
+            self.source = basename(filename)
+        else:
+            self.source = source
         self.method = "embedded"
         self.citation_info = r"""
             @MISC{2017ascl.soft10017K,

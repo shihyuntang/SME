@@ -10,8 +10,6 @@ import os
 import zipfile
 import wget
 import ctypes as ct
-from .cwrapper import get_lib_name
-
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +46,19 @@ def download_libsme(loc=None):
     os.remove(fname)
 
 
+def get_lib_name():
+    """ Get the name of the sme C library """
+    system = platform.system().lower()
+    arch = platform.machine()
+    bits = 64  # platform.architecture()[0][:-3]
+
+    return "sme_synth.so.{system}.{arch}.{bits}".format(
+        system=system, arch=arch, bits=bits
+    )
+
+
 def get_full_libfile():
+    """ Get the full path to the sme C library """
     localdir = dirname(__file__)
     libfile = get_lib_name()
     # TODO: Or "bin" for Windows

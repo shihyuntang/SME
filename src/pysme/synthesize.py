@@ -2,14 +2,20 @@
 Spectral Synthesis Module of SME
 """
 import logging
+from os import stat
 import warnings
+import time
 
 import numpy as np
+from numpy.lib.arraysetops import unique
 from tqdm import tqdm
 from scipy.constants import speed_of_light
 from scipy.ndimage.filters import convolve, gaussian_filter1d
 from scipy.interpolate import interp1d, UnivariateSpline
 
+import uuid
+from pathos.multiprocessing import ProcessPool
+from pathos.pools import ThreadPool
 
 from . import broadening
 from .atmosphere.interpolation import AtmosphereInterpolator
@@ -27,6 +33,9 @@ logger = logging.getLogger(__name__)
 
 clight = speed_of_light * 1e-3  # km/s
 
+__DLL_DICT__ = {}
+__DLL_IDS__ = {}
+
 
 class Synthesizer:
     def __init__(self, config=None, lfs_atmo=None, lfs_nlte=None, dll=None):
@@ -37,6 +46,7 @@ class Synthesizer:
         self.wint = {}
         # dll: the smelib object used for the radiative transfer calculation
         self.dll = dll if dll is not None else SME_DLL()
+        self.dll = self.get_dll_id()
         self.atmosphere_interpolator = None
         # This stores a reference to the currently used sme structure, so we only log it once
         self.known_sme = None
@@ -95,7 +105,8 @@ class Synthesizer:
         sme.atmo = atmo
         return sme
 
-    def get_wavelengthrange(self, wran, vrad, vsini):
+    @staticmethod
+    def get_wavelengthrange(wran, vrad, vsini):
         """
         Determine wavelengthrange that needs to be calculated
         to include all lines within velocity shift vrad + vsini
@@ -109,7 +120,8 @@ class Synthesizer:
         wend = wran[1] * (1 + vend / clight)
         return wbeg, wend
 
-    def new_wavelength_grid(self, wint):
+    @staticmethod
+    def new_wavelength_grid(wint):
         """ Generate new wavelength grid within bounds of wint"""
         # Determine step size for a new model wavelength scale, which must be uniform
         # to facilitate convolution with broadening kernels. The uniform step size
@@ -166,8 +178,9 @@ class Synthesizer:
             ]
         return segments
 
+    @staticmethod
     def apply_radial_velocity_and_continuum(
-        self, wave, spec, wmod, smod, cmod, vrad, cscale, cscale_type, segments
+        wave, spec, wmod, smod, cmod, vrad, cscale, cscale_type, segments
     ):
         smod = apply_radial_velocity_and_continuum(
             wave, wmod, smod, vrad, cscale, cscale_type, segments
@@ -177,7 +190,8 @@ class Synthesizer:
         )
         return smod, cmod
 
-    def integrate_flux(self, mu, inten, deltav, vsini, vrt, osamp=1):
+    @staticmethod
+    def integrate_flux(mu, inten, deltav, vsini, vrt, osamp=1):
         """
         Produces a flux profile by integrating intensity profiles (sampled
         at various mu angles) over the visible stellar surface.
@@ -423,6 +437,73 @@ class Synthesizer:
         flux = np.pi * np.sum(flux, axis=1) / os  # sum, normalize
         return flux
 
+    def sequential_synthesize_segments(
+        self, sme, segments, wmod, smod, cmod, reuse_wavelength_grid, dll_id=None
+    ):
+        for il in tqdm(segments, desc="Segment", leave=False):
+            wmod[il], smod[il], cmod[il] = self.synthesize_segment(
+                sme, il, reuse_wavelength_grid, il != segments[0], dll_id=dll_id
+            )
+        return wmod, smod, cmod
+
+    def get_dll_id(self, dll=None):
+        if dll is None:
+            dll = self.dll
+        if dll in __DLL_IDS__:
+            dll_id = __DLL_IDS__[dll]
+        elif dll in __DLL_DICT__:
+            dll_id = dll
+        else:
+            dll_id = uuid.uuid4()
+            __DLL_DICT__[dll_id] = dll
+            __DLL_IDS__[dll] = dll_id
+        return dll_id
+
+    def get_dll(self, dll_id=None):
+        if dll_id is None:
+            dll_id = self.dll
+        if dll_id in __DLL_DICT__:
+            return __DLL_DICT__[dll_id]
+        else:
+            return dll_id
+
+    def parallel_synthesize_segments(
+        self, sme, segments, wmod, smod, cmod, reuse_wavelength_grid, dll_id=None,
+    ):
+        # Make sure the dll is recorded in the global variables
+        dll = self.get_dll(dll_id)
+        dll_id = self.get_dll_id(dll)
+
+        # We calculate the first segment sequentially
+        wmod[0], smod[0], cmod[0] = self.synthesize_segment(
+            sme, 0, reuse_wavelength_grid, False, dll_id=dll_id
+        )
+        # and then all others in parrallel
+        # since we can keep the line opacities from the calculation of the first segment
+        # TODO: do the line opacities also in parallel?
+
+        # For multiple Processes we need to pickle all the components
+        # BUT we can not pickle the smelib, since it has pointers (in the state)
+        # Therefore we cheat by putting the library in a global variable
+        # but only with a unqiue id, that should be unique to this library
+
+        def parallel(il):
+            return self.synthesize_segment(
+                sme, il, reuse_wavelength_grid, True, method="parallel", dll_id=dll_id,
+            )
+
+        data = [parallel(il) for il in segments[1:]]
+
+        # with ThreadPool() as pool:
+        #     data = pool.map(parallel, segments[1:])
+
+        for i, seg in enumerate(segments[1:]):
+            wmod[seg] = data[i][0]
+            smod[seg] = data[i][1]
+            cmod[seg] = data[i][2]
+
+        return wmod, smod, cmod
+
     def synthesize_spectrum(
         self,
         sme,
@@ -434,6 +515,8 @@ class Synthesizer:
         updateLineList=False,
         reuse_wavelength_grid=False,
         radial_velocity_mode="robust",
+        method="sequential",
+        dll_id=None,
     ):
         """
         Calculate the synthetic spectrum based on the parameters passed in the SME structure
@@ -481,14 +564,14 @@ class Synthesizer:
             if "mask" not in sme:
                 sme.mask = np.full(sme.spec.size, sme.mask_values["line"])
             for i in range(sme.nseg):
-                sme.mask[i, ~np.isfinite(sme.spec[i])] = 0
+                sme.mask[i, ~np.isfinite(sme.spec[i])] = sme.mask_values["bad"]
 
         if radial_velocity_mode != "robust" and (
             "cscale" not in sme or "vrad" not in sme
         ):
             radial_velocity_mode = "robust"
 
-        segments = Synthesizer.check_segments(sme, segments)
+        segments = self.check_segments(sme, segments)
 
         # Prepare arrays
         vrad, _, cscale, _ = null_result(sme.nseg, sme.cscale_degree, sme.cscale_type)
@@ -502,24 +585,34 @@ class Synthesizer:
         if "wave" in sme:
             wave = [w for w in sme.wave]
 
+        if method == "parallel" and not self.get_dll(dll_id).parallel:
+            logger.warning(
+                "Parallel mode was requested, but the library in use is a sequential version. Running in sequential mode instead"
+            )
+            method = "sequential"
+
+        if method == "parallel":
+            dll = self.get_dll(dll_id).copy(clean_pointers=True)
+            dll_id = self.get_dll_id(dll)
+        else:
+            dll = self.get_dll(dll_id)
+
         # Input Model data to C library
-        self.dll.SetLibraryPath()
+        dll.SetLibraryPath()
         if passLineList:
-            self.dll.InputLineList(sme.linelist)
+            dll.InputLineList(sme.linelist)
         if updateLineList:
             # TODO Currently Updates the whole linelist, could be improved to only change affected lines
-            self.dll.UpdateLineList(
-                sme.atomic, sme.species, np.arange(len(sme.linelist))
-            )
+            dll.UpdateLineList(sme.atomic, sme.species, np.arange(len(sme.linelist)))
         if passAtmosphere:
             sme = self.get_atmosphere(sme)
-            self.dll.InputModel(sme.teff, sme.logg, sme.vmic, sme.atmo)
-            self.dll.InputAbund(sme.abund)
-            self.dll.Ionization(0)
-            self.dll.SetVWscale(sme.gam6)
-            self.dll.SetH2broad(sme.h2broad)
+            dll.InputModel(sme.teff, sme.logg, sme.vmic, sme.atmo)
+            dll.InputAbund(sme.abund)
+            dll.Ionization(0)
+            dll.SetVWscale(sme.gam6)
+            dll.SetH2broad(sme.h2broad)
         if passNLTE:
-            sme.nlte.update_coefficients(sme, self.dll, self.lfs_nlte)
+            sme.nlte.update_coefficients(sme, dll, self.lfs_nlte)
 
         # Loop over segments
         #   Input Wavelength range and Opacity
@@ -530,11 +623,16 @@ class Synthesizer:
         # TODO Parallelization
         # This requires changes in the C code however, since SME uses global parameters
         # for the wavelength range (and opacities) which change within each segment
-        for il in tqdm(segments, desc="Segment", leave=False):
-            wmod[il], smod[il], cmod[il] = self.synthesize_segment(
-                sme, il, reuse_wavelength_grid, il != segments[0]
+        if dll.parallel:
+            self.parallel_synthesize_segments(
+                sme, segments, wmod, smod, cmod, reuse_wavelength_grid, dll_id=dll
+            )
+        else:
+            self.sequential_synthesize_segments(
+                sme, segments, wmod, smod, cmod, reuse_wavelength_grid, dll_id=dll
             )
 
+        for il in segments:
             if "wave" not in sme or len(sme.wave[il]) == 0:
                 # trim padding
                 wbeg, wend = sme.wran[il]
@@ -543,6 +641,8 @@ class Synthesizer:
                 wave[il] = np.concatenate(([wbeg], wmod[il][itrim], [wend]))
 
         if sme.specific_intensities_only:
+            if method == "parallel":
+                dll.FreeState()
             return wmod, smod, cmod
 
         # Fit continuum and radial velocity
@@ -588,16 +688,27 @@ class Synthesizer:
 
             sme.vrad = np.asarray(vrad)
             sme.vrad_unc = np.asarray(vrad_unc)
-            sme.nlte.flags = self.dll.GetNLTEflags()
-            return sme
+            sme.nlte.flags = dll.GetNLTEflags()
+            result = sme
         else:
             wave = Iliffe_vector(values=wave)
             smod = Iliffe_vector(values=smod)
             cmod = Iliffe_vector(values=cmod)
-            return wave, smod, cmod
+            result = wave, smod, cmod
+
+        # Cleanup
+        if method == "parallel":
+            dll.FreeState(clean_pointers=True)
+        return result
 
     def synthesize_segment(
-        self, sme, segment, reuse_wavelength_grid=False, keep_line_opacity=False
+        self,
+        sme,
+        segment,
+        reuse_wavelength_grid=False,
+        keep_line_opacity=False,
+        method="sequential",
+        dll_id=None,
     ):
         """Create the synthetic spectrum of a single segment
 
@@ -624,13 +735,17 @@ class Synthesizer:
             The continuum Flux of the synthesized spectrum
         """
         logger.debug("Segment %i out of %i", segment, sme.nseg)
+        if method == "parallel":
+            dll = self.get_dll(dll_id).copy()
+        else:
+            dll = self.get_dll(dll_id)
 
         # Input Wavelength range and Opacity
         vrad_seg = sme.vrad[segment] if sme.vrad[segment] is not None else 0
         wbeg, wend = self.get_wavelengthrange(sme.wran[segment], vrad_seg, sme.vsini)
 
-        self.dll.InputWaveRange(wbeg, wend)
-        self.dll.Opacity()
+        dll.InputWaveRange(wbeg, wend)
+        dll.Opacity()
 
         # Reuse adaptive wavelength grid in the jacobians
         if reuse_wavelength_grid and segment in self.wint.keys():
@@ -640,7 +755,7 @@ class Synthesizer:
 
         # Only calculate line opacities in the first segment
         #   Calculate spectral synthesis for each
-        _, wint, sint, cint = self.dll.Transf(
+        _, wint, sint, cint = dll.Transf(
             sme.mu,
             sme.accrt,  # threshold line opacity / cont opacity
             sme.accwi,
@@ -684,6 +799,9 @@ class Synthesizer:
         # Divide calculated spectrum by continuum
         if sme.normalize_by_continuum:
             sint /= cint
+
+        if method == "parallel":
+            dll.FreeState()
 
         return wint, sint, cint
 

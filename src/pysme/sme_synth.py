@@ -5,7 +5,7 @@ import logging
 
 import numpy as np
 
-from .cwrapper import get_lib_name, IDL_DLL
+from .cwrapper import IDL_DLL
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 class SME_DLL:
     """ Object Oriented interface for the SME C library """
 
-    def __init__(self, libfile=None, datadir=None):
+    def __init__(self, libfile=None, datadir=None, state=None):
         #:LineList: Linelist passed to the library
         self.linelist = None
         #:int: Number of mu points passed to the library
@@ -37,15 +37,17 @@ class SME_DLL:
         #:Atmo: Atmosphere structure in the model
         self.atmo = None
         #:dict: NLTE subgrids for nlte coefficient interpolation
-        self._nlte_grids = {}
+        self.nlte_grids = {}
         self.ion = None
 
         self.lib = IDL_DLL(libfile)
         self.parallel = False
-        self.state = self.NewState()
+        if state is None:
+            self.state = self.NewState()
+        else:
+            self.state = state
 
         self.SetLibraryPath(datadir)
-
         self.check_data_files_exist()
 
     def __del__(self):
@@ -111,10 +113,44 @@ class SME_DLL:
 
         return self.state
 
-    def FreeState(self):
+    def FreeState(self, clean_pointers=False):
         if self.state is not None:
-            self.lib.free_state(self.state)
+            clean_pointers = 1 if clean_pointers else 0
+            self.lib.free_state(self.state, clean_pointers=clean_pointers)
             self.state = None
+
+    def CopyState(self, clean_pointers=False):
+        if self.state is None:
+            return None
+
+        # The opacities are just pointers, which we usually copy
+        # but this leads to a segfault, if we free their memory in a copy
+        clean_pointers = 1 if clean_pointers else 0
+        state = self.lib.copy_state(self.state, clean_pointers=clean_pointers)
+        return state
+
+    def copy(self, clean_pointers=False):
+        return self.__copy__(clean_pointers=clean_pointers)
+
+    def __copy__(self, clean_pointers=False):
+        cls = self.__class__
+        state = self.CopyState(clean_pointers=clean_pointers)
+        obj = cls(libfile=self.lib.libfile, datadir=self.datadir, state=state)
+        obj.parallel = self.parallel
+        obj.linelist = self.linelist
+        obj.nmu = self.nmu
+        obj.abund = self.abund
+        obj.wfirst = self.wfirst
+        obj.wlast = self.wlast
+        obj.vw_scale = self.vw_scale
+        obj.h2broad = self.h2broad
+        obj.teff = self.teff
+        obj.grav = self.grav
+        obj.vturb = self.vturb
+        obj.atmo = self.atmo
+        obj.nlte_grids = self.nlte_grids
+        obj.ion = self.ion
+        return obj
 
     def SMELibraryVersion(self):
         """
