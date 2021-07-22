@@ -3,7 +3,7 @@ import numpy as np
 from . import large_file_storage as lfs
 
 
-def load_solar_spectrum():
+def load_solar_spectrum(ravel=True):
     """
     Load the solar spectrum
 
@@ -47,7 +47,8 @@ def load_solar_spectrum():
     flux = flux / 30_000
 
     # Unravel the spectra
-    wave = wave.ravel()
-    flux = flux.ravel()
+    if ravel:
+        wave = wave.ravel()
+        flux = flux.ravel()
 
     return wave, flux
