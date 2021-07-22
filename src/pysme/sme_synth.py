@@ -672,7 +672,8 @@ class SME_DLL:
             type=type,
             state=self.state,
         )
-        nw = nw[0]
+        # nw = nw[0]
+        nw = np.count_nonzero(wint_seg)
 
         wint_seg = wint_seg[:nw]
         sint_seg = sint_seg[:nw, :].T

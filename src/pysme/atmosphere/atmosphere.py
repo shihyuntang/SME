@@ -42,7 +42,7 @@ class Atmosphere(Collection):
         ("abund", Abund.solar(), this, this, "Abund: elemental abundances"),
         ("vturb", 0, absolute, this, "float: turbulence velocity in km/s"),
         ("lonh", 0, asfloat, this, "float: ?"),
-        ("source", None, this, this, "str: datafile name of this data, or atmosphere grid/file"),
+        ("source", "marcs2014.sav", this, this, "str: datafile name of this data, or atmosphere grid/file"),
         ("method", "grid", lowercase(oneof("grid", "embedded")), this, 
             "str: whether the data source is a grid or a fixed atmosphere"),
         ("geom", "PP", uppercase(oneof("PP", "SPH", None)), this,

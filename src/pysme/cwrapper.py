@@ -392,6 +392,15 @@ class IDL_DLL:
         self.libfile = libfile
         self.lib = load_library(libfile)
 
+        # Pick best interface
+        self.interfaces = self.get_interfaces()
+        if "Parallel" in self.interfaces:
+            self.interface = "Parallel"
+        elif "IDL" in self.interfaces:
+            self.interface = "IDL"
+        else:
+            self.interface = self.interfaces[0]
+
     def __getattr__(self, name):
         return lambda *args, **kwargs: self.call(name, *args, **kwargs)
 
@@ -415,16 +424,18 @@ class IDL_DLL:
         """
         error = ""
         try:
-            error = idl_call_external(name, *args, lib=self.lib, **kwargs)
+            error = idl_call_external(
+                self.get_name(name), *args, lib=self.lib, **kwargs
+            )
         except AttributeError as ex:
             error = "Using obsolete SME Library; {ex}".format(ex=ex)
             raise_error = False
             raise_warning = True
 
-        if hasattr(error, "decode"):
-            error = error.decode()
+        if error != b"":
+            if hasattr(error, "decode"):
+                error = error.decode()
 
-        if error != "":
             if raise_error:
                 raise ValueError(
                     "{name} (call external): {error}".format(name=name, error=error)
@@ -435,24 +446,85 @@ class IDL_DLL:
                 )
         return error
 
+    def get_name(self, funname):
+        if self.interface == "Parallel":
+            return f"Parallel_{funname}"
+        elif self.interface == "IDL":
+            return funname
+        elif self.interface == "Cython":
+            return f"Cython_{funname}"
+        else:
+            raise ValueError
+
     def new_state(self):
-        try:
-            return idl_call_external("NewState", lib=self.lib, restype="state")
-        except AttributeError:
-            return None
+        # try:
+        #     return idl_call_external(
+        #         self.get_name("NewState"), lib=self.lib, restype="state"
+        #     )
+        # except AttributeError:
+        #     return None
+        state = GlobalState()
+        return ct.pointer(state)
 
     def free_state(self, state, clean_pointers=0):
-        return idl_call_external(
-            "FreeState", clean_pointers, type="short", state=state, lib=self.lib
-        )
+        # return idl_call_external(
+        #     self.get_name("FreeState"),
+        #     clean_pointers,
+        #     type="short",
+        #     state=state,
+        #     lib=self.lib,
+        # )
+        if clean_pointers and state.contents.lineOPACITIES:
+            try:
+                for i in range(state.contents.NRHOX):
+                    del state.contents.LINEOP[i]
+                    del state.contents.AVOIGT[i]
+                    del state.contents.VVOIGT[i]
+            except TypeError:
+                pass
+            try:
+                del state.contents.FRACT
+                del state.contents.PARTITION_FUNCTIONS
+                del state.contents.POTION
+                del state.contents.MOLWEIGHT
+            except TypeError:
+                pass
+
+        del state
 
     def copy_state(self, state, clean_pointers=0):
-        return idl_call_external(
-            "CopyState",
-            clean_pointers,
-            type="short",
-            restype="state",
-            state=state,
-            lib=self.lib,
-        )
+        # return idl_call_external(
+        #     self.get_name("CopyState"),
+        #     clean_pointers,
+        #     type="short",
+        #     restype="state",
+        #     state=state,
+        #     lib=self.lib,
+        # )
+        new = GlobalState()
+        for fname, ftype in new._fields_:
+            setattr(new, fname, getattr(state.contents, fname))
 
+        if clean_pointers:
+            new.lineOPACITIES = 0
+            for i in range(new.NRHOX):
+                new.LINEOP[i] = None
+                new.AVOIGT[i] = None
+                new.VVOIGT[i] = None
+            new.FRACT = None
+            new.PARTITION_FUNCTIONS = None
+            new.POTION = None
+            new.MOLWEIGHT = None
+            new.SPLIST = None
+
+        return ct.pointer(new)
+
+    def get_interfaces(self):
+        try:
+            interfaces = idl_call_external("GetInterfaces")
+            interfaces = interfaces.decode()
+            interfaces = interfaces.split(";")
+        except AttributeError:
+            # Old Library without that function
+            interfaces = ["IDL"]
+        return interfaces
