@@ -1,6 +1,7 @@
 """
 Spectral Synthesis Module of SME
 """
+from concurrent import futures
 import logging
 from os import stat
 import warnings
@@ -16,6 +17,8 @@ from scipy.interpolate import interp1d, UnivariateSpline
 import uuid
 from pathos.multiprocessing import ProcessPool
 from pathos.pools import ThreadPool
+
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from . import broadening
 from .atmosphere.interpolation import AtmosphereInterpolator
@@ -440,7 +443,7 @@ class Synthesizer:
     def sequential_synthesize_segments(
         self, sme, segments, wmod, smod, cmod, reuse_wavelength_grid, dll_id=None
     ):
-        for il in tqdm(segments, desc="Segment", leave=False):
+        for il in segments:
             wmod[il], smod[il], cmod[il] = self.synthesize_segment(
                 sme, il, reuse_wavelength_grid, il != segments[0], dll_id=dll_id
             )
@@ -490,13 +493,28 @@ class Synthesizer:
 
         def parallel(il):
             return self.synthesize_segment(
-                sme, il, reuse_wavelength_grid, True, method="parallel", dll_id=dll_id,
+                sme,
+                il,
+                reuse_wavelength_grid,
+                True,
+                method="sequential",
+                dll_id=dll_id,
             )
 
+        # Sequential version for debugging
         data = [parallel(il) for il in segments[1:]]
 
+        # Pathos version crashes for some reason
         # with ThreadPool() as pool:
         #     data = pool.map(parallel, segments[1:])
+
+        # Use "default" ThreadPool instead
+        # data = [None for _ in segments[1:]]
+        # with ThreadPoolExecutor() as executor:
+        #     futures = {executor.submit(parallel, il): il for il in segments[1:]}
+        #     for future in as_completed(futures):
+        #         il = futures[future] - 1
+        #         data[il] = future.result()
 
         for i, seg in enumerate(segments[1:]):
             wmod[seg] = data[i][0]
@@ -587,9 +605,15 @@ class Synthesizer:
             wave = [w for w in sme.wave]
 
         if method == "parallel" and not self.get_dll(dll_id).parallel:
-            logger.warning(
-                "Parallel mode was requested, but the library in use is a sequential version. Running in sequential mode instead"
-            )
+            # display only once
+            if (
+                not hasattr(self, "_warning_parallel_mode")
+                or not self._warning_parallel_mode
+            ):
+                self._warning_parallel_mode = True
+                logger.warning(
+                    "Parallel mode was requested, but the library in use is a sequential version. Running in sequential mode instead"
+                )
             method = "sequential"
 
         if method == "parallel":
@@ -738,6 +762,7 @@ class Synthesizer:
         logger.debug("Segment %i out of %i", segment, sme.nseg)
         if method == "parallel":
             dll = self.get_dll(dll_id).copy()
+            dll_id = self.get_dll_id(dll)
         else:
             dll = self.get_dll(dll_id)
 

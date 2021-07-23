@@ -39,13 +39,17 @@ def apply_radial_velocity(wave, wmod, smod, vrad, segments):
     return smod
 
 
-def apply_continuum(wave, smod, cscale, cscale_type, segments):
+def apply_continuum(wave, smod, cwave, cscale, cscale_type, segments):
     if cscale is None:
         return smod
     for il in segments:
         if cscale[il] is not None and not np.all(cscale[il] == 0):
             if cscale_type in ["spline"]:
-                smod[il] *= cscale[il]
+                if len(cscale[il]) != len(smod[il]):
+                    cs = np.interp(wave[il], cwave[il], cscale[il])
+                else:
+                    cs = cscale[il]
+                smod[il] *= cs
             else:
                 x = wave[il] - wave[il][0]
                 smod[il] *= np.polyval(cscale[il], x)
@@ -82,7 +86,8 @@ def apply_radial_velocity_and_continuum(
         the corrected synthetic spectrum
     """
     smod = apply_radial_velocity(wave, wmod, smod, vrad, segments)
-    smod = apply_continuum(wave, smod, cscale, cscale_type, segments)
+    # The radial velocity shift also interpolates onto the wavelength grid
+    smod = apply_continuum(wave, smod, wave, cscale, cscale_type, segments)
     return smod
 
 
@@ -295,12 +300,17 @@ def determine_radial_velocity(
         if sme.vrad_flag == "each":
             # apply continuum
             y_syn = apply_continuum(
-                {segment: x_syn}, {segment: y_syn}, cscale, sme.cscale_type, [segment]
+                {segment: x_syn},
+                {segment: y_syn},
+                sme.wave,
+                cscale,
+                sme.cscale_type,
+                [segment],
             )[segment]
         elif sme.vrad_flag == "whole":
             # All segments
             y_syn = apply_continuum(
-                x_syn, y_syn, cscale, sme.cscale_type, range(len(y_obs))
+                x_syn, y_syn, sme.wave, cscale, sme.cscale_type, range(len(y_obs))
             )
 
             x_obs = x_obs.ravel()
@@ -752,7 +762,7 @@ def cont_fit(sme, segment, x_syn, y_syn, rvel=0, only_mask=False):
 
 def get_continuum_broadening(sme, segment, x_syn, y_syn, rvel=0, only_mask=False):
     if sme.cscale_flag in ["none"]:
-        return [1]
+        return np.ones(len(sme.spec[segment]))
     elif sme.cscale_flag in ["fix"]:
         return sme.cscale[segment]
 
@@ -881,21 +891,27 @@ def match_rv_continuum(sme, segments, x_syn, y_syn):
                 sme, s, cscale[s], [x_syn[s] for s in s], [y_syn[s] for s in s]
             )
     elif sme.cscale_type in ["spline"]:
-        for s in segments:
-            # We only use the continuum mask for the continuum fit,
-            # we need the lines for the radial velocity
-            vrad[s] = determine_radial_velocity(
-                sme, s, cscale[s], x_syn[s], y_syn[s], only_mask=False
-            )
-            cscale[s] = get_continuum_broadening(
-                sme, s, x_syn[s], y_syn[s], rvel=vrad[s], only_mask=False
-            )
-
-        if sme.vrad_flag == "whole":
+        if sme.vrad_flag == "each":
+            for s in segments:
+                # We only use the continuum mask for the continuum fit,
+                # we need the lines for the radial velocity
+                vrad[s] = determine_radial_velocity(
+                    sme, s, cscale[s], x_syn[s], y_syn[s], only_mask=False
+                )
+                cscale[s] = get_continuum_broadening(
+                    sme, s, x_syn[s], y_syn[s], rvel=vrad[s], only_mask=False
+                )
+        elif sme.vrad_flag == "whole":
             s = segments
             vrad[s] = determine_radial_velocity(
                 sme, s, cscale[s], [x_syn[s] for s in s], [y_syn[s] for s in s]
             )
+            for s in segments:
+                cscale[s] = get_continuum_broadening(
+                    sme, s, x_syn[s], y_syn[s], rvel=vrad[s], only_mask=False
+                )
+        else:
+            raise ValueError
     else:
         raise ValueError(
             f"Did not understand cscale_type, expected one of ('whole', 'mask'), but got {sme.cscale_type}."

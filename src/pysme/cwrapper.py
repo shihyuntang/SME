@@ -5,15 +5,17 @@ Wrapper for IDL style C libary code
 with argv = number of parameters
 and argc = list of pointers to those parameters
 """
-import ctypes as ct
 import logging
+import ctypes as ct
+from os import stat
 import platform
-import warnings
+import sys
 from pathlib import Path
-from os.path import join, dirname
+import warnings
 
-from .libtools import get_full_libfile
 import numpy as np
+
+from .libtools import load_library
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +36,7 @@ MOSIZE = 288
 MUSIZE = 77
 MAX_PATHLEN = 512
 MAX_OUT_LEN = 511
+SP_LEN = 8
 
 
 class GlobalState(ct.Structure):
@@ -166,6 +169,57 @@ class GlobalState(ct.Structure):
         ("result", ct.c_char * (MAX_OUT_LEN + 1)),
     ]
 
+    def free_linelist(self):
+        if self.flagLINELIST:
+            self.spname = None
+            self.SPINDEX = None
+            self.ION = None
+            self.MARK = None
+            self.AUTOION = None
+            self.WLCENT = None
+            self.EXCIT = None
+            self.GF = None
+            self.GAMRAD = None
+            self.GAMQST = None
+            self.GAMVW = None
+            self.ANSTEE = None
+            self.IDLHEL = None
+            self.ALMAX = None
+            self.Wlim_left = None
+            self.Wlim_right = None
+            self.flagLINELIST = 0
+
+    def free_ionization(self):
+        if self.flagIONIZ:
+            self.SPLIST = None
+            for i in range(self.NRHOX_allocated):
+                self.FRACT[i] = None
+                self.PARTITION_FUNCTIONS[i] = None
+            self.FRACT = None
+            self.PARTITION_FUNCTIONS = None
+            self.POTION = None
+            self.MOLWEIGHT = None
+            self.flagIONIZ = 0
+
+    def free_opacities(self):
+        if self.lineOPACITIES:
+            for i in range(self.NRHOX):
+                self.LINEOP[i] = None
+                self.AVOIGT[i] = None
+                self.VVOIGT[i] = None
+            self.lineOPACITIES = 0
+
+
+def get_lib_name():
+    """ Get the name of the sme C library """
+    system = platform.system().lower()
+    arch = platform.machine()
+    bits = 64  # platform.architecture()[0][:-3]
+
+    return "sme_synth.so.{system}.{arch}.{bits}".format(
+        system=system, arch=arch, bits=bits
+    )
+
 
 def get_typenames(arg):
     """
@@ -221,10 +275,35 @@ def get_dtype(type):
         raise ValueError("Data type {type} not understood".format(type=type))
 
 
-def load_library(libfile=None):
-    if libfile is None:
-        libfile = get_full_libfile()
-    return ct.CDLL(str(libfile))
+def is_nullptr(ptr):
+    try:
+        # If we can access it without an exception its not a null ptr
+        tmp = ptr[0]
+        return False
+    except ValueError:
+        return True
+
+
+def get_c_dtype(ptr):
+    if isinstance(ptr, bytes):
+        return ct.c_char
+    while hasattr(ptr, "contents"):
+        ptr = ptr._type_
+    return ptr
+
+
+def get_c_shape(field, ptr, state):
+    if isinstance(ptr, bytes):
+        return (len(ptr),)
+    if isinstance(ptr, ct._Pointer):
+        if isinstance(ptr[0], ct._Pointer):
+            size1 = state.contents.NRHOX
+            size2 = state.contents.N_SPLIST
+            return (size1, size2)
+        else:
+            size = state.contents.NLINES
+            return (size,)
+    return None
 
 
 def idl_call_external(funcname, *args, restype="str", type=None, lib=None, state=None):
@@ -258,8 +337,6 @@ def idl_call_external(funcname, *args, restype="str", type=None, lib=None, state
     # Load library if that wasn't done yet
     if lib is None:
         lib = load_library()
-    elif isinstance(lib, str):
-        lib = load_library(lib)
 
     # prepare input arguments
     args = list(args)
@@ -378,33 +455,6 @@ def idl_call_external(funcname, *args, restype="str", type=None, lib=None, state
     return res
 
 
-def is_nullptr(ptr):
-    try:
-        # If we can access it without an exception its not a null ptr
-        tmp = ptr[0]
-        return False
-    except ValueError:
-        return True
-
-
-def get_c_dtype(ptr):
-    while hasattr(ptr, "contents"):
-        ptr = ptr._type_
-    return ptr
-
-
-def get_c_shape(field, ptr, state):
-    if isinstance(ptr, ct._Pointer):
-        if isinstance(ptr[0], ct._Pointer):
-            size1 = state.contents.NRHOX
-            size2 = state.contents.N_SPLIST
-            return (size1, size2)
-        else:
-            size = state.contents.NLINES
-            return (size,)
-    return None
-
-
 class IDL_DLL:
     _instance = None
 
@@ -493,26 +543,205 @@ class IDL_DLL:
 
     def copy_state(self, state):
         new = GlobalState()
-        for fname, ftype in new._fields_:
-            value = getattr(state.contents, fname)
-            # If its a pointer we create new memory and copy the contents
-            if isinstance(value, ct._Pointer) and not is_nullptr(value):
-                dtype = get_c_dtype(value)
-                shape = get_c_shape(fname, value, state)
-                if isinstance(value[0], ct._Pointer) and not is_nullptr(value[0]):
-                    # Double pointer
-                    copy = (ct.POINTER(dtype) * shape[0])()
-                    for i in range(shape[0]):
-                        copy[i] = (dtype * shape[1])()
-                        ct.memmove(copy[i], value[i], shape[1])
-                    setattr(new, fname, copy)
-                else:
-                    # All the pointers are the same size as the linelist
-                    copy = (dtype * shape[0])()
-                    ct.memmove(copy, value, shape[0])
-                    setattr(new, fname, copy)
-            else:
-                setattr(new, fname, value)
+        new.NRHOX = state.contents.NRHOX
+        new.NRHOX_allocated = state.contents.NRHOX_allocated
+        new.MOTYPE = state.contents.MOTYPE
+        new.TEFF = state.contents.TEFF
+        new.GRAV = state.contents.GRAV
+        new.WLSTD = state.contents.WLSTD
+        new.RADIUS = state.contents.RADIUS
+        new.NumberSpectralSegments = state.contents.NumberSpectralSegments
+        new.NLINES = state.contents.NLINES
+        new.NWAVE_C = state.contents.NWAVE_C
+        new.WFIRST = state.contents.WFIRST
+        new.WLAST = state.contents.WLAST
+        new.VW_SCALE = state.contents.VW_SCALE
+        new.N_SPLIST = state.contents.N_SPLIST
+        new.IXH1 = state.contents.IXH1
+        new.IXH2 = state.contents.IXH2
+        new.IXH2mol = state.contents.IXH2mol
+        new.IXH2pl = state.contents.IXH2pl
+        new.IXHMIN = state.contents.IXHMIN
+        new.IXHE1 = state.contents.IXHE1
+        new.IXHE2 = state.contents.IXHE2
+        new.IXHE3 = state.contents.IXHE3
+        new.IXC1 = state.contents.IXC1
+        new.IXAL1 = state.contents.IXAL1
+        new.IXSI1 = state.contents.IXSI1
+        new.IXSI2 = state.contents.IXSI2
+        new.IXCA1 = state.contents.IXCA1
+        new.IXMG1 = state.contents.IXMG1
+        new.IXMG2 = state.contents.IXMG2
+        new.IXCA2 = state.contents.IXCA2
+        new.IXN1 = state.contents.IXN1
+        new.IXFE1 = state.contents.IXFE1
+        new.IXO1 = state.contents.IXO1
+        new.IXCH = state.contents.IXCH
+        new.IXNH = state.contents.IXNH
+        new.IXOH = state.contents.IXOH
+        new.PATHLEN = state.contents.PATHLEN
+        new.change_byte_order = state.contents.change_byte_order
+        new.allocated_NLTE_lines = state.contents.allocated_NLTE_lines
+        new.flagMODEL = state.contents.flagMODEL
+        new.flagWLRANGE = state.contents.flagWLRANGE
+        new.flagABUND = state.contents.flagABUND
+        new.flagLINELIST = state.contents.flagLINELIST
+        new.flagIONIZ = state.contents.flagIONIZ
+        new.flagCONTIN = state.contents.flagCONTIN
+        new.lineOPACITIES = state.contents.lineOPACITIES
+        new.flagH2broad = state.contents.flagH2broad
+        new.initNLTE = state.contents.initNLTE
+        new.FREQ = state.contents.FREQ
+        new.FREQLG = state.contents.FREQLG
+        new.debug_print = state.contents.debug_print
+
+        ct.memmove(new.IFOP, state.contents.IFOP, ct.sizeof(new.IFOP))
+        ct.memmove(new.ABUND, state.contents.ABUND, ct.sizeof(new.ABUND))
+        ct.memmove(new.RHOX, state.contents.RHOX, ct.sizeof(new.RHOX))
+        ct.memmove(new.T, state.contents.T, ct.sizeof(new.T))
+        ct.memmove(new.XNE, state.contents.XNE, ct.sizeof(new.XNE))
+        ct.memmove(new.XNA, state.contents.XNA, ct.sizeof(new.XNA))
+        ct.memmove(new.RHO, state.contents.RHO, ct.sizeof(new.RHO))
+        ct.memmove(new.VTURB, state.contents.VTURB, ct.sizeof(new.VTURB))
+        ct.memmove(new.RAD_ATMO, state.contents.RAD_ATMO, ct.sizeof(new.RAD_ATMO))
+        ct.memmove(new.XNA_eos, state.contents.XNA_eos, ct.sizeof(new.XNA_eos))
+        ct.memmove(new.XNE_eos, state.contents.XNE_eos, ct.sizeof(new.XNE_eos))
+        ct.memmove(new.RHO_eos, state.contents.RHO_eos, ct.sizeof(new.RHO_eos))
+        ct.memmove(new.AHYD, state.contents.AHYD, ct.sizeof(new.AHYD))
+        ct.memmove(new.AH2P, state.contents.AH2P, ct.sizeof(new.AH2P))
+        ct.memmove(new.AHMIN, state.contents.AHMIN, ct.sizeof(new.AHMIN))
+        ct.memmove(new.SIGH, state.contents.SIGH, ct.sizeof(new.SIGH))
+        ct.memmove(new.AHE1, state.contents.AHE1, ct.sizeof(new.AHE1))
+        ct.memmove(new.AHE2, state.contents.AHE2, ct.sizeof(new.AHE2))
+        ct.memmove(new.AHEMIN, state.contents.AHEMIN, ct.sizeof(new.AHEMIN))
+        ct.memmove(new.SIGHE, state.contents.SIGHE, ct.sizeof(new.SIGHE))
+        ct.memmove(new.ACOOL, state.contents.ACOOL, ct.sizeof(new.ACOOL))
+        ct.memmove(new.ALUKE, state.contents.ALUKE, ct.sizeof(new.ALUKE))
+        ct.memmove(new.AHOT, state.contents.AHOT, ct.sizeof(new.AHOT))
+        ct.memmove(new.SIGEL, state.contents.SIGEL, ct.sizeof(new.SIGEL))
+        ct.memmove(new.SIGH2, state.contents.SIGH2, ct.sizeof(new.SIGH2))
+        ct.memmove(new.TKEV, state.contents.TKEV, ct.sizeof(new.TKEV))
+        ct.memmove(new.TK, state.contents.TK, ct.sizeof(new.TK))
+        ct.memmove(new.HKT, state.contents.HKT, ct.sizeof(new.HKT))
+        ct.memmove(new.TLOG, state.contents.TLOG, ct.sizeof(new.TLOG))
+        ct.memmove(new.EHVKT, state.contents.EHVKT, ct.sizeof(new.EHVKT))
+        ct.memmove(new.STIM, state.contents.STIM, ct.sizeof(new.STIM))
+        ct.memmove(new.BNU, state.contents.BNU, ct.sizeof(new.BNU))
+        ct.memmove(new.H1FRACT, state.contents.H1FRACT, ct.sizeof(new.H1FRACT))
+        ct.memmove(new.HE1FRACT, state.contents.HE1FRACT, ct.sizeof(new.HE1FRACT))
+        ct.memmove(new.H2molFRACT, state.contents.H2molFRACT, ct.sizeof(new.H2molFRACT))
+        ct.memmove(new.COPBLU, state.contents.COPBLU, ct.sizeof(new.COPBLU))
+        ct.memmove(new.COPRED, state.contents.COPRED, ct.sizeof(new.COPRED))
+        ct.memmove(new.COPSTD, state.contents.COPSTD, ct.sizeof(new.COPSTD))
+        ct.memmove(new.LTE_b, state.contents.LTE_b, ct.sizeof(new.LTE_b))
+
+        nrhox = state.contents.NRHOX
+        nsplist = state.contents.N_SPLIST
+        nlines = state.contents.NLINES
+
+        def ct_copy(new, state, field, shape, dtype=None):
+            value = getattr(state.contents, field)
+            dtype = get_c_dtype(value) if dtype is None else dtype
+            if is_nullptr(value):
+                return None
+            if len(shape) == 1:
+                copy = (dtype * shape[0])()
+                ct.memmove(copy, value, shape[0] * ct.sizeof(dtype))
+            if len(shape) == 2:
+                copy = (ct.POINTER(dtype) * shape[0])()
+                for i in range(shape[0]):
+                    copy[i] = (dtype * shape[1])()
+                    ct.memmove(copy[i], value[i], shape[1] * ct.sizeof(dtype))
+            return copy
+
+        for i in range(nrhox):
+            new.LINEOP[i] = (ct.c_double * nlines)()
+            ct.memmove(
+                new.LINEOP[i], state.contents.LINEOP[i], nlines * ct.sizeof(ct.c_double)
+            )
+            new.AVOIGT[i] = (ct.c_double * nlines)()
+            ct.memmove(
+                new.AVOIGT[i], state.contents.AVOIGT[i], nlines * ct.sizeof(ct.c_double)
+            )
+            new.VVOIGT[i] = (ct.c_double * nlines)()
+            ct.memmove(
+                new.VVOIGT[i], state.contents.VVOIGT[i], nlines * ct.sizeof(ct.c_double)
+            )
+
+        new.ATOTAL = ct_copy(new, state, "ATOTAL", (nrhox, nsplist), ct.c_double)
+        new.INDX_C = ct_copy(new, state, "INDX_C", (nlines,), ct.c_int)
+        new.YABUND = ct_copy(new, state, "YABUND", (nlines,), ct.c_double)
+        new.XMASS = ct_copy(new, state, "XMASS", (nlines,), ct.c_double)
+        new.EXCUP = ct_copy(new, state, "EXCUP", (nlines,), ct.c_double)
+        new.ENU4 = ct_copy(new, state, "ENU4", (nlines,), ct.c_double)
+        new.ENL4 = ct_copy(new, state, "ENL4", (nlines,), ct.c_double)
+        new.BNLTE_low = ct_copy(new, state, "BNLTE_low", (nlines, nrhox), ct.c_double)
+        new.BNLTE_upp = ct_copy(new, state, "BNLTE_upp", (nlines, nrhox), ct.c_double)
+        new.FRACT = ct_copy(new, state, "FRACT", (nrhox, nsplist), ct.c_float)
+        new.PARTITION_FUNCTIONS = ct_copy(
+            new, state, "PARTITION_FUNCTIONS", (nrhox, nsplist), ct.c_float
+        )
+        new.POTION = ct_copy(new, state, "POTION", (nsplist,), ct.c_float)
+        new.MOLWEIGHT = ct_copy(new, state, "MOLWEIGHT", (nsplist,), ct.c_float)
+        new.MARK = ct_copy(new, state, "MARK", (nlines,), ct.c_short)
+        new.AUTOION = ct_copy(new, state, "AUTOION", (nlines,), ct.c_short)
+        new.IDLHEL = ct_copy(new, state, "IDLHEL", (nlines,), ct.c_short)
+        new.ION = ct_copy(new, state, "ION", (nlines,), ct.c_int)
+        new.ANSTEE = ct_copy(new, state, "ANSTEE", (nlines,), ct.c_int)
+        new.WLCENT = ct_copy(new, state, "WLCENT", (nlines,), ct.c_double)
+        new.EXCIT = ct_copy(new, state, "EXCIT", (nlines,), ct.c_double)
+        new.GF = ct_copy(new, state, "GF", (nlines,), ct.c_double)
+        new.GAMRAD = ct_copy(new, state, "GAMRAD", (nlines,), ct.c_double)
+        new.GAMQST = ct_copy(new, state, "GAMQST", (nlines,), ct.c_double)
+        new.GAMVW = ct_copy(new, state, "GAMVW", (nlines,), ct.c_double)
+        new.ALMAX = ct_copy(new, state, "ALMAX", (nlines,), ct.c_double)
+        new.Wlim_left = ct_copy(new, state, "Wlim_left", (nlines,), ct.c_double)
+        new.Wlim_right = ct_copy(new, state, "Wlim_right", (nlines,), ct.c_double)
+        new.SPINDEX = ct_copy(new, state, "SPINDEX", (nlines,), ct.c_int)
+        new.flagNLTE = ct_copy(new, state, "flagNLTE", (nlines,), ct.c_short)
+        new.SPLIST = state.contents.SPLIST
+        new.spname = state.contents.spname
+        new.PATH = state.contents.PATH
+        new.result = state.contents.result
+
+        # for fname, ftype in new._fields_:
+        #     value = getattr(state.contents, fname)
+        #     # If its a pointer we create new memory and copy the contents
+        #     # bytes is just char *
+        #     if isinstance(value, ct._Pointer) and not is_nullptr(value):
+        #         dtype = get_c_dtype(value)
+        #         shape = get_c_shape(fname, value, state)
+        #         if isinstance(value[0], ct._Pointer) and not is_nullptr(value[0]):
+        #             # Double pointer
+        #             copy = (ct.POINTER(dtype) * shape[0])()
+        #             for i in range(shape[0]):
+        #                 copy[i] = (dtype * shape[1])()
+        #                 ct.memmove(copy[i], value[i], shape[1] * ct.sizeof(dtype))
+        #             setattr(new, fname, copy)
+        #         else:
+        #             # All the pointers are the same size as the linelist
+        #             copy = (dtype * shape[0])()
+        #             ct.memmove(copy, value, shape[0] * ct.sizeof(dtype))
+        #             setattr(new, fname, copy)
+        #     elif isinstance(value, bytes):
+        #         copy = b" " * len(value)
+        #         ct.memmove(copy, value, len(value) * ct.sizeof(ct.c_char))
+        #         setattr(new, fname, copy)
+        #     elif isinstance(value, ct.Array):
+        #         if not isinstance(value[0], ct._Pointer):
+        #             ct.memmove(getattr(new, fname), value, ct.sizeof(value))
+        #         elif not is_nullptr(value[0]):
+        #             size = state.contents.NRHOX
+        #             size2 = state.contents.NLINES
+        #             dtype = get_c_dtype(value[0])
+        #             for i in range(size):
+        #                 copy = (dtype * size2)()
+        #                 ct.memmove(copy, value[i], size2 * ct.sizeof(dtype))
+        #                 getattr(new, fname)[i] = copy
+        #         else:
+        #             pass
+        #     else:
+        #         setattr(new, fname, value)
 
         return ct.pointer(new)
 

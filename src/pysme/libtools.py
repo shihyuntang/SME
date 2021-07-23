@@ -7,6 +7,7 @@ import logging
 from os.path import dirname, join, exists
 import platform
 import os
+from posixpath import realpath
 import zipfile
 import wget
 import ctypes as ct
@@ -70,7 +71,9 @@ def get_full_libfile():
     return libfile
 
 
-def load_library(libfile):
+def load_library(libfile=None):
+    if libfile is None:
+        libfile = get_full_libfile()
     try:
         os.add_dll_directory(dirname(libfile))
     except AttributeError:
@@ -80,3 +83,8 @@ def load_library(libfile):
         os.environ["PATH"] = newpath
     return ct.CDLL(str(libfile))
 
+
+def get_full_datadir():
+    localdir = realpath(dirname(__file__))
+    datadir = join(localdir, "share/libsme/")
+    return datadir

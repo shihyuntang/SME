@@ -49,8 +49,8 @@ class SME_Solver:
         self.restore = restore
 
         # For displaying the progressbars
-        self.progressbar = None
-        self.progressbar_jacobian = None
+        # self.progressbar = None
+        # self.progressbar_jacobian = None
 
     @property
     def nparam(self):
@@ -127,7 +127,8 @@ class SME_Solver:
         save = not isJacobian and self.filename is not None
         reuse_wavelength_grid = isJacobian
         radial_velocity_mode = "robust" if not isJacobian else "fast"
-        method = "parallel" if isJacobian else "sequential"
+        # method = "parallel" if isJacobian else "sequential"
+        method = "sequential"
 
         # change parameters
         for name, value in zip(self.parameter_names, param):
@@ -139,7 +140,7 @@ class SME_Solver:
                 updateStructure=update,
                 reuse_wavelength_grid=reuse_wavelength_grid,
                 segments=segments,
-                passLineList=False,
+                passLineList=method == "parallel",
                 updateLineList=self.update_linelist,
                 radial_velocity_mode=radial_velocity_mode,
                 method=method,
@@ -170,11 +171,11 @@ class SME_Solver:
         resid = np.nan_to_num(resid, copy=False)
 
         # Update progress bars
-        if isJacobian:
-            self.progressbar_jacobian.update(1)
-        else:
-            self.progressbar.total += 1
-            self.progressbar.update(1)
+        # if isJacobian:
+        #     self.progressbar_jacobian.update(1)
+        # else:
+        #     self.progressbar.total += 1
+        #     self.progressbar.update(1)
 
         if not isJacobian:
             # Save result for jacobian
@@ -195,7 +196,10 @@ class SME_Solver:
         The calculation is the same as "3-point"
         but we can tell residuals that we are within a jacobian
         """
-        self.progressbar_jacobian.reset()
+        # self.progressbar_jacobian.reset()
+
+        # Here we replace the scipy version of approx_derivative with our own
+        # The only difference being that we use Multiprocessing for the jacobian
         g = approx_derivative(
             self.__residuals,
             param,
@@ -655,8 +659,8 @@ class SME_Solver:
 
         # Do the heavy lifting
         if self.nparam > 0:
-            self.progressbar = tqdm(desc="Iteration", total=0)
-            self.progressbar_jacobian = tqdm(desc="Jacobian", total=len(p0))
+            # self.progressbar = tqdm(desc="Iteration", total=0)
+            # self.progressbar_jacobian = tqdm(desc="Jacobian", total=len(p0))
             with print_to_log():
                 res = least_squares(
                     self.__residuals,
@@ -671,8 +675,8 @@ class SME_Solver:
                     args=(sme, spec, uncs, mask),
                     kwargs={"bounds": bounds, "segments": segments},
                 )
-            self.progressbar.close()
-            self.progressbar_jacobian.close()
+            # self.progressbar.close()
+            # self.progressbar_jacobian.close()
             # The returned jacobian is "scaled for robust loss function"
             res.jac = self._last_jac
             for i, name in enumerate(self.parameter_names):

@@ -1,3 +1,4 @@
+from concurrent import futures
 import numpy as np
 from scipy.optimize._numdiff import (
     _prepare_bounds,
@@ -11,6 +12,7 @@ from scipy.optimize._numdiff import (
     _sparse_difference,
 )
 from pathos.multiprocessing import ProcessPool
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 
 def approx_derivative(
@@ -331,10 +333,21 @@ def _dense_difference(fun, x0, f0, h, use_one_sided, method):
     func = _dense_func(method, fun, x0, f0, h_vecs, use_one_sided)
 
     iparam = np.arange(h.size)
-    # data = [func(i) for i in iparam]
 
-    with ProcessPool() as pool:
-        data = pool.map(func, iparam)
+    # Sequential version for debugging
+    data = [func(i) for i in iparam]
+
+    # Use Pathos ProcessPool so we can pickle the local function sme.synthesize_spectrum
+    # with ProcessPool() as pool:
+    #     data = pool.map(func, iparam)
+
+    # For comparison this is what the default would be if it worked
+    # data = [None for _ in iparam]
+    # with ProcessPoolExecutor() as executor:
+    #     futures = {executor.submit(func, i): i for i in iparam}
+    #     for future in as_completed(futures):
+    #         i = futures[future]
+    #         data[i] = future.result()
 
     for i in iparam:
         dx, df = data[i]
