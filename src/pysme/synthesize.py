@@ -475,8 +475,9 @@ class Synthesizer:
         dll_id = self.get_dll_id(dll)
 
         # We calculate the first segment sequentially
-        wmod[0], smod[0], cmod[0] = self.synthesize_segment(
-            sme, 0, reuse_wavelength_grid, False, dll_id=dll_id
+        il = segments[0]
+        wmod[il], smod[il], cmod[il] = self.synthesize_segment(
+            sme, il, reuse_wavelength_grid, False, dll_id=dll_id
         )
         # and then all others in parrallel
         # since we can keep the line opacities from the calculation of the first segment
