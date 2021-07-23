@@ -593,7 +593,7 @@ class Synthesizer:
             method = "sequential"
 
         if method == "parallel":
-            dll = self.get_dll(dll_id).copy(clean_pointers=True)
+            dll = self.get_dll(dll_id).copy()
             dll_id = self.get_dll_id(dll)
         else:
             dll = self.get_dll(dll_id)
@@ -699,7 +699,7 @@ class Synthesizer:
 
         # Cleanup
         if method == "parallel":
-            dll.FreeState(clean_pointers=True)
+            dll.FreeState()
         return result
 
     def synthesize_segment(
