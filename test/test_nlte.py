@@ -138,7 +138,7 @@ def test_dll(lfs_atmo, lfs_nlte):
         libsme.InputNLTE(None, 0)
 
     with pytest.raises(TypeError):
-        libsme.InputNLTE(bmat[:, [0, 1]], 0.1)
+        libsme.InputNLTE(bmat[:, [0, 1]].T, 0.1)
 
     with pytest.raises(ValueError):
         libsme.InputNLTE([0, 1], 10)
