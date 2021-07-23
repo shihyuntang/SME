@@ -493,16 +493,41 @@ class Synthesizer:
 
         def parallel(il):
             return self.synthesize_segment(
+                sme, il, reuse_wavelength_grid, True, method="parallel", dll_id=dll_id,
+            )
+
+        # Sequential version for debugging
+        data = [None for _ in segments[1:]]
+        for seg in segments[1:]:
+            i = seg - 1
+            data[i] = self.synthesize_segment(
                 sme,
-                il,
+                seg,
                 reuse_wavelength_grid,
                 True,
                 method="sequential",
                 dll_id=dll_id,
             )
 
-        # Sequential version for debugging
-        data = [parallel(il) for il in segments[1:]]
+        # data_seq = [None for _ in segments[1:]]
+        # What is sticking around in the library that is not part of the state?
+        # for seg in segments[1:]:
+        #     i = seg-1
+        #     data_seq[i] = self.synthesize_segment(
+        #         sme,
+        #         seg,
+        #         reuse_wavelength_grid,
+        #         True,
+        #         method="sequential",
+        #         dll_id=dll_id,
+        #     )
+
+        #     if not np.all(data[i][0] == data_seq[i][0]):
+        #         print("What")
+        #     if not np.all(data[i][1] == data_seq[i][1]):
+        #         print("The")
+        #     if not np.all(data[i][2] == data_seq[i][2]):
+        #         print("Hell")
 
         # Pathos version crashes for some reason
         # with ThreadPool() as pool:
@@ -666,8 +691,6 @@ class Synthesizer:
                 wave[il] = np.concatenate(([wbeg], wmod[il][itrim], [wend]))
 
         if sme.specific_intensities_only:
-            if method == "parallel":
-                dll.FreeState()
             return wmod, smod, cmod
 
         # Fit continuum and radial velocity
@@ -722,8 +745,6 @@ class Synthesizer:
             result = wave, smod, cmod
 
         # Cleanup
-        if method == "parallel":
-            dll.FreeState()
         return result
 
     def synthesize_segment(
@@ -825,9 +846,6 @@ class Synthesizer:
         # Divide calculated spectrum by continuum
         if sme.normalize_by_continuum:
             sint /= cint
-
-        if method == "parallel":
-            dll.FreeState()
 
         return wint, sint, cint
 

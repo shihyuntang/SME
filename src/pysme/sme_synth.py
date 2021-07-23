@@ -58,7 +58,8 @@ class SME_DLL:
 
     def __del__(self):
         # Free the memory from the state when this is closed
-        self.FreeState()
+        # self.FreeState()
+        pass
 
     @property
     def libfile(self):
@@ -120,15 +121,16 @@ class SME_DLL:
                 )
 
     def NewState(self, delete_old=True):
-        if delete_old and hasattr(self, "state") and self.state is not None:
-            self.FreeState()
+        # if delete_old and hasattr(self, "state") and self.state is not None:
+        #     self.FreeState()
         self.state = self.lib.new_state()
         return self.state
 
     def FreeState(self):
-        if self.state is not None:
-            self.lib.free_state(self.state)
-            self.state = None
+        pass
+        # if self.state is not None:
+        #     self.lib.free_state(self.state)
+        #     self.state = None
 
     def CopyState(self):
         if self.state is None:

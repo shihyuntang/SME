@@ -704,45 +704,6 @@ class IDL_DLL:
         new.PATH = state.contents.PATH
         new.result = state.contents.result
 
-        # for fname, ftype in new._fields_:
-        #     value = getattr(state.contents, fname)
-        #     # If its a pointer we create new memory and copy the contents
-        #     # bytes is just char *
-        #     if isinstance(value, ct._Pointer) and not is_nullptr(value):
-        #         dtype = get_c_dtype(value)
-        #         shape = get_c_shape(fname, value, state)
-        #         if isinstance(value[0], ct._Pointer) and not is_nullptr(value[0]):
-        #             # Double pointer
-        #             copy = (ct.POINTER(dtype) * shape[0])()
-        #             for i in range(shape[0]):
-        #                 copy[i] = (dtype * shape[1])()
-        #                 ct.memmove(copy[i], value[i], shape[1] * ct.sizeof(dtype))
-        #             setattr(new, fname, copy)
-        #         else:
-        #             # All the pointers are the same size as the linelist
-        #             copy = (dtype * shape[0])()
-        #             ct.memmove(copy, value, shape[0] * ct.sizeof(dtype))
-        #             setattr(new, fname, copy)
-        #     elif isinstance(value, bytes):
-        #         copy = b" " * len(value)
-        #         ct.memmove(copy, value, len(value) * ct.sizeof(ct.c_char))
-        #         setattr(new, fname, copy)
-        #     elif isinstance(value, ct.Array):
-        #         if not isinstance(value[0], ct._Pointer):
-        #             ct.memmove(getattr(new, fname), value, ct.sizeof(value))
-        #         elif not is_nullptr(value[0]):
-        #             size = state.contents.NRHOX
-        #             size2 = state.contents.NLINES
-        #             dtype = get_c_dtype(value[0])
-        #             for i in range(size):
-        #                 copy = (dtype * size2)()
-        #                 ct.memmove(copy, value[i], size2 * ct.sizeof(dtype))
-        #                 getattr(new, fname)[i] = copy
-        #         else:
-        #             pass
-        #     else:
-        #         setattr(new, fname, value)
-
         return ct.pointer(new)
 
     def get_interfaces(self):

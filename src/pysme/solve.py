@@ -140,7 +140,7 @@ class SME_Solver:
                 updateStructure=update,
                 reuse_wavelength_grid=reuse_wavelength_grid,
                 segments=segments,
-                passLineList=method == "parallel",
+                passLineList=False,
                 updateLineList=self.update_linelist,
                 radial_velocity_mode=radial_velocity_mode,
                 method=method,
