@@ -117,7 +117,7 @@ def test_dll(lfs_atmo, lfs_nlte):
     for lr, li in zip(linerefs, lineindices):
         if lr[0] != -1 and lr[1] != -1:
             counter += 1
-            libsme.InputNLTE(bmat[:, lr], li)
+            libsme.InputNLTE(bmat[:, lr].T, li)
 
     flags = libsme.GetNLTEflags()
     assert np.any(flags)
