@@ -144,7 +144,7 @@ def test_dll(lfs_atmo, lfs_nlte):
         libsme.InputNLTE([0, 1], 10)
 
     with pytest.raises(ValueError):
-        libsme.InputNLTE(bmat[:, [0, 1]], -10)
+        libsme.InputNLTE(bmat[:, [0, 1]].T, -10)
 
 
 @pytest.fixture
