@@ -308,6 +308,10 @@ def save_as_binary(arr):
         if arr.dtype.name[:3] == "str" or arr.dtype.name == "object":
             arr = arr.astype(bytes)
             shape = (arr.dtype.itemsize, len(arr))
+        elif np.issubdtype(arr.dtype, np.floating):
+            # SME expects double precision, so we assure that here
+            arr = arr.astype("float64")
+            shape = arr.shape[::-1]
         else:
             shape = arr.shape[::-1]
 
@@ -364,6 +368,9 @@ def write_as_idl(sme):
         fitvars += ["GRAV"]
     if "monh" in sme.fitparameters:
         fitvars += ["FEH"]
+
+    if sme.mask is None:
+        sme.mask = 1
 
     idl_fields = {
         "version": 5.1,
