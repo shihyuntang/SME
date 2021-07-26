@@ -912,7 +912,7 @@ def match_rv_continuum(sme, segments, x_syn, y_syn):
                 )
         else:
             raise ValueError
-     elif sme.cscale_type in ["spline+mask"]:
+    elif sme.cscale_type in ["spline+mask"]:
         if sme.vrad_flag == "each":
             for s in segments:
                 # We only use the continuum mask for the continuum fit,
@@ -926,7 +926,12 @@ def match_rv_continuum(sme, segments, x_syn, y_syn):
         elif sme.vrad_flag == "whole":
             s = segments
             vrad[s] = determine_radial_velocity(
-                sme, s, cscale[s], [x_syn[s] for s in s], [y_syn[s] for s in s], only_mask=False
+                sme,
+                s,
+                cscale[s],
+                [x_syn[s] for s in s],
+                [y_syn[s] for s in s],
+                only_mask=False,
             )
             for s in segments:
                 cscale[s] = get_continuum_broadening(
