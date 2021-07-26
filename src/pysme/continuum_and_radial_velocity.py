@@ -44,7 +44,7 @@ def apply_continuum(wave, smod, cwave, cscale, cscale_type, segments):
         return smod
     for il in segments:
         if cscale[il] is not None and not np.all(cscale[il] == 0):
-            if cscale_type in ["spline"]:
+            if cscale_type in ["spline", "spline+mask"]:
                 if len(cscale[il]) != len(smod[il]):
                     cs = np.interp(wave[il], cwave[il], cscale[il])
                 else:
@@ -380,7 +380,7 @@ def determine_radial_velocity(
 
 def null_result(nseg, ndeg=0, ctype=None):
     vrad, vrad_unc = np.zeros(nseg), np.zeros((nseg, 2))
-    if ctype in ["spline"]:
+    if ctype in ["spline", "spline+mask"]:
         cscale = [np.ones(ndeg[i]) for i in range(nseg)]
         cscale = Iliffe_vector(values=cscale)
         cscale_unc = [np.zeros(ndeg[i]) for i in range(nseg)]
