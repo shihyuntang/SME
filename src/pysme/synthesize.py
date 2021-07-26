@@ -478,35 +478,43 @@ class Synthesizer:
         dll_id = self.get_dll_id(dll)
 
         # We calculate the first segment sequentially
-        il = segments[0]
-        wmod[il], smod[il], cmod[il] = self.synthesize_segment(
-            sme, il, reuse_wavelength_grid, False, dll_id=dll_id
-        )
-        # and then all others in parrallel
-        # since we can keep the line opacities from the calculation of the first segment
-        # TODO: do the line opacities also in parallel?
-
-        # For multiple Processes we need to pickle all the components
-        # BUT we can not pickle the smelib, since it has pointers (in the state)
-        # Therefore we cheat by putting the library in a global variable
-        # but only with a unqiue id, that should be unique to this library
-
-        def parallel(il):
-            return self.synthesize_segment(
-                sme, il, reuse_wavelength_grid, True, method="parallel", dll_id=dll_id,
+        with tqdm(desc="Segments", total=len(segments), leave=False) as progress:
+            il = segments[0]
+            wmod[il], smod[il], cmod[il] = self.synthesize_segment(
+                sme, il, reuse_wavelength_grid, False, dll_id=dll_id
             )
+            progress.update(1)
+            # and then all others in parrallel
+            # since we can keep the line opacities from the calculation of the first segment
+            # TODO: do the line opacities also in parallel?
 
-        # Sequential version for debugging
-        data = [None for _ in segments[1:]]
-        for i, seg in enumerate(segments[1:]):
-            data[i] = self.synthesize_segment(
-                sme,
-                seg,
-                reuse_wavelength_grid,
-                True,
-                method="sequential",
-                dll_id=dll_id,
-            )
+            # For multiple Processes we need to pickle all the components
+            # BUT we can not pickle the smelib, since it has pointers (in the state)
+            # Therefore we cheat by putting the library in a global variable
+            # but only with a unqiue id, that should be unique to this library
+
+            def parallel(il):
+                return self.synthesize_segment(
+                    sme,
+                    il,
+                    reuse_wavelength_grid,
+                    True,
+                    method="parallel",
+                    dll_id=dll_id,
+                )
+
+            # Sequential version for debugging
+            data = [None for _ in segments[1:]]
+            for i, seg in enumerate(segments[1:]):
+                data[i] = self.synthesize_segment(
+                    sme,
+                    seg,
+                    reuse_wavelength_grid,
+                    True,
+                    method="sequential",
+                    dll_id=dll_id,
+                )
+                progress.update(1)
 
         # data_seq = [None for _ in segments[1:]]
         # What is sticking around in the library that is not part of the state?
