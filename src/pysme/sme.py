@@ -558,7 +558,7 @@ class SME_Structure(Parameters):
     @property
     def cscale_degree(self):
         """int: Polynomial degree of the continuum as determined by cscale_flag """
-        if self.cscale_type in ["spline"]:
+        if self.cscale_type in ["spline", "spline+mask"]:
             return [np.count_nonzero(mg) for mg in self.mask_good]
         else:
             if self.cscale_flag == "constant":
