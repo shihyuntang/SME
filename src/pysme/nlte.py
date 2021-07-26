@@ -531,6 +531,8 @@ class Grid:
         low = self.linelist["term_lower"][lineindices]
         upp = self.linelist["term_upper"][lineindices]
         # Remove quotation marks (if any are there)
+        low = low.astype(str)
+        upp = upp.astype(str)
         low = np.char.replace(low, "'", "")
         upp = np.char.replace(upp, "'", "")
         # Get only the relevant part
@@ -848,7 +850,7 @@ class NLTE(Collection):
     }
 
     def __init__(self, **kwargs):
-        super().__init__()
+        super().__init__(**kwargs)
         self.first = False
 
         if "solar" in kwargs.keys():
@@ -984,7 +986,7 @@ class NLTE(Collection):
                     # loop through the list of relevant _lines_, substitute both their levels into the main b matrix
                     # Make sure both levels have corrections available
                     if lr[0] != -1 and lr[1] != -1:
-                        dll.InputNLTE(bmat[:, lr], li)
+                        dll.InputNLTE(bmat[:, lr].T, li)
 
         # flags = sme_synth.GetNLTEflags(sme.linelist)
 

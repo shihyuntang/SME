@@ -1,11 +1,12 @@
 """ Wrapper for sme_synth.so C library """
 import os
-from os.path import dirname, join
 import logging
+from pathlib import Path
 
 import numpy as np
 
 from .cwrapper import get_lib_name, IDL_DLL
+from .libtools import get_full_datadir
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +14,7 @@ logger = logging.getLogger(__name__)
 class SME_DLL:
     """ Object Oriented interface for the SME C library """
 
-    def __init__(self, libfile=None, datadir=None):
+    def __init__(self, libfile=None, datadir=None, state=None):
         #:LineList: Linelist passed to the library
         self.linelist = None
         #:int: Number of mu points passed to the library
@@ -37,18 +38,37 @@ class SME_DLL:
         #:Atmo: Atmosphere structure in the model
         self.atmo = None
         #:dict: NLTE subgrids for nlte coefficient interpolation
-        self._nlte_grids = {}
+        self.nlte_grids = {}
         self.ion = None
 
         self.lib = IDL_DLL(libfile)
-        self.SetLibraryPath(datadir)
 
+        if self.interface == "Parallel":
+            self.parallel = True
+            if state is None:
+                self.state = self.NewState()
+            else:
+                self.state = state
+        else:
+            self.parallel = False
+            self.state = None
+
+        self.SetLibraryPath(datadir)
         self.check_data_files_exist()
+
+    def __del__(self):
+        # Free the memory from the state when this is closed
+        # self.FreeState()
+        pass
 
     @property
     def libfile(self):
         """str: Location of the library file"""
         return self.lib.libfile
+
+    @property
+    def interface(self):
+        return self.lib.interface
 
     @property
     def file(self):
@@ -64,15 +84,20 @@ class SME_DLL:
     @property
     def ndepth(self):
         """int: Number of depth layers in the atmosphere model"""
-        assert self.atmo is not None, f"No model atmosphere has been set"
+        assert self.atmo is not None, "No model atmosphere has been set"
         motype = self.atmo.depth
         return len(self.atmo[motype])
 
     @property
     def nlines(self):
         """int: number of lines in the linelist"""
-        assert self.linelist is not None, f"No line list has been set"
+        assert self.linelist is not None, "No line list has been set"
         return len(self.linelist)
+
+    @property
+    def file(self):
+        """str: (Expected) Location of the library file"""
+        return get_lib_name()
 
     def check_data_files_exist(self):
         """
@@ -90,8 +115,51 @@ class SME_DLL:
             n = os.path.join(directory, name)
             if not os.path.exists(n):
                 raise FileNotFoundError(
-                    f"Could not find required data file {name} in library directory {directory}"
+                    "Could not find required data file {name} in library directory {directory}".format(
+                        name=name, directory=directory
+                    )
                 )
+
+    def NewState(self, delete_old=True):
+        # if delete_old and hasattr(self, "state") and self.state is not None:
+        #     self.FreeState()
+        self.state = self.lib.new_state()
+        return self.state
+
+    def FreeState(self):
+        pass
+        # if self.state is not None:
+        #     self.lib.free_state(self.state)
+        #     self.state = None
+
+    def CopyState(self):
+        if self.state is None:
+            return None
+        state = self.lib.copy_state(self.state)
+        return state
+
+    def copy(self):
+        return self.__copy__()
+
+    def __copy__(self):
+        cls = self.__class__
+        state = self.CopyState()
+        obj = cls(libfile=self.lib.libfile, datadir=self.datadir, state=state)
+        obj.parallel = self.parallel
+        obj.linelist = self.linelist
+        obj.nmu = self.nmu
+        obj.abund = self.abund
+        obj.wfirst = self.wfirst
+        obj.wlast = self.wlast
+        obj.vw_scale = self.vw_scale
+        obj.h2broad = self.h2broad
+        obj.teff = self.teff
+        obj.grav = self.grav
+        obj.vturb = self.vturb
+        obj.atmo = self.atmo
+        obj.nlte_grids = self.nlte_grids
+        obj.ion = self.ion
+        return obj
 
     def SMELibraryVersion(self):
         """
@@ -102,33 +170,25 @@ class SME_DLL:
         version : str
             SME library version
         """
-        version = self.lib.call("SMELibraryVersion", raise_error=False)
+        version = self.lib.call(
+            "SMELibraryVersion", raise_error=False, state=self.state
+        )
         return version
-
-    def SetLibraryPath(self, datadir=None):
-        """ Set the path to the library """
-        if datadir is None:
-            datadir = join(dirname(__file__), "share", "libsme")
-        datadir = str(datadir)
-        # Against all conventions, SME lib expects a "/" at the end of the path
-        if not datadir.endswith(os.sep):
-            datadir = datadir + os.sep
-        self.lib.SetLibraryPath(datadir, type="string")
 
     def GetLibraryPath(self):
         """ Get the data file directory """
-        return self.lib.GetLibraryPath(raise_error=False)
+        return self.lib.GetLibraryPath(raise_error=False, state=self.state)
 
     def GetDataFiles(self):
         """ Get the required data files """
-        files = self.lib.GetDataFiles(raise_error=False)
-        if files != "Using obsolete SME Library":
-            return files.split(";")
-        else:
-            logging.warning(
-                "Using obsolete SME Library. Cannot determine necessay data files"
-            )
-            return []
+        files = self.lib.GetDataFiles(raise_error=False, state=self.state)
+        return files.split(";")
+
+    def SetLibraryPath(self, libpath=None):
+        """ Set the path to the library """
+        if libpath is None:
+            libpath = get_full_datadir()
+        self.lib.SetLibraryPath(libpath, type="string", state=self.state)
 
     def InputWaveRange(self, wfirst, wlast):
         """
@@ -146,7 +206,7 @@ class SME_DLL:
         assert (
             wfirst < wlast
         ), "Input Wavelength range is wrong, first wavelength is larger than last"
-        self.lib.InputWaveRange(wfirst, wlast, type="double")
+        self.lib.InputWaveRange(wfirst, wlast, type="double", state=self.state)
 
         self.wfirst = wfirst
         self.wlast = wlast
@@ -160,23 +220,20 @@ class SME_DLL:
         gamma6 : float
             van der Waals scaling factor
         """
-        logger.debug("Setting Van der Waals scale in smelib")
-        self.lib.SetVWscale(gamma6, type="double")
+        self.lib.SetVWscale(gamma6, type="double", state=self.state)
         self.vw_scale = gamma6
 
     def SetH2broad(self, h2_flag=True):
         """ Set flag for H2 molecule """
-        logger.debug("Setting H2 broadening in smelib")
-
         if h2_flag:
-            self.lib.SetH2broad()
+            self.lib.SetH2broad(state=self.state)
             self.h2broad = True
         else:
             self.ClearH2broad()
 
     def ClearH2broad(self):
         """ Clear flag for H2 molecule """
-        self.lib.ClearH2broad()
+        self.lib.ClearH2broad(state=self.state)
         self.h2broad = False
 
     def InputLineList(self, linelist):
@@ -192,24 +249,31 @@ class SME_DLL:
             names of the elements (with Ionization level)
         """
         try:
-            atomic = linelist.atomic.T
-            species = linelist.species
+            atomic = linelist["atomic"].T
+            species = linelist["species"]
         except AttributeError:
             raise TypeError("linelist has to be a LineList type")
 
-        nlines = len(linelist)
+        nlines = len(species)
         species = np.asarray(species, "U8")
 
         assert (
             atomic.shape[1] == nlines
-        ), f"Got wrong Linelist shape, expected ({nlines}, 8) but got {atomic.shape}"
+        ), "Got wrong Linelist shape, expected ({nlines}, 8) but got {atomic}".format(
+            nlines=nlines, atomic=atomic.shape
+        )
         assert (
             atomic.shape[0] == 8
-        ), f"Got wrong Linelist shape, expected ({nlines}, 8) but got {atomic.shape}"
+        ), "Got wrong Linelist shape, expected ({nlines}, 8) but got {atomic}".format(
+            nlines=nlines, atomic=atomic.shape
+        )
 
-        logger.debug("Passing linelist to smelib")
+        if self.state is not None:
+            self.state.contents.free_linelist()
+            self.state.contents.free_opacities()
+
         self.lib.InputLineList(
-            nlines, species, atomic, type=("int", "string", "double")
+            nlines, species, atomic, type=("int", "string", "double"), state=self.state
         )
 
         self.linelist = linelist
@@ -226,7 +290,9 @@ class SME_DLL:
         """
         nlines = self.nlines
         atomic = np.zeros((nlines, 6))
-        self.lib.OutputLineList(nlines, atomic, type=("int", "double"))
+        self.lib.OutputLineList(
+            nlines, atomic, type=("int", "double"), state=self.state
+        )
         return atomic
 
     def UpdateLineList(self, atomic, species, index):
@@ -246,7 +312,9 @@ class SME_DLL:
         nlines = atomic.shape[0]
         assert (
             atomic.shape[1] == 8
-        ), f"Got wrong Linelist shape, expected ({nlines}, 8) but got {atomic.shape}"
+        ), "Got wrong Linelist shape, expected ({nlines}, 8) but got {atomic}".format(
+            nlines=nlines, atomic=atomic.shape
+        )
 
         assert (
             len(index) == nlines
@@ -257,9 +325,13 @@ class SME_DLL:
 
         atomic = atomic.T
 
-        logger.debug("Updating linelist in smelib")
         self.lib.UpdateLineList(
-            nlines, species, atomic, index, type=("int", "str", "double", "short")
+            nlines,
+            species,
+            atomic,
+            index,
+            type=("int", "str", "double", "short"),
+            state=self.state,
         )
 
     def InputModel(self, teff, grav, vturb, atmo):
@@ -283,29 +355,16 @@ class SME_DLL:
             raise ValueError("Turbulence velocity must be positive or zero")
 
         try:
-
-            #   MOTYPE==0   means depth scale is "Tau", plane-parralel
-            #   MOTYPE==1   means depth scale is "Rhox", plane-parralel
-            #   MOTYPE==3   means depth scale is "RhoX", spherical
-            #   MOTYPE==-1  fake value used with the call to OPMTRX get just
-            #               just the line opacities
-
-            if atmo.geom == "SPH":
-                # Spherical only supports RHOX
-                depth = atmo["RHOX"]
-                motype = "SPH"
-            else:
-                motype = atmo.depth
-                depth = atmo[motype]
-
+            motype = atmo["depth"]
+            depth = atmo[motype]
             ndepth = len(depth)
-            t = atmo.temp
-            xne = atmo.xne
-            xna = atmo.xna
-            rho = atmo.rho
+            t = atmo["temp"]
+            xne = atmo["xne"]
+            xna = atmo["xna"]
+            rho = atmo["rho"]
             vt = np.full(ndepth, vturb) if np.size(vturb) == 1 else vturb
-            wlstd = atmo.wlstd
-            opflag = atmo.opflag
+            wlstd = atmo["wlstd"]
+            opflag = atmo["opflag"]
             args = [
                 ndepth,
                 teff,
@@ -322,17 +381,19 @@ class SME_DLL:
             ]
             type = "sdddusdddddd"  # s : short, d: double, u: unicode (string)
 
-            if atmo.geom == "SPH":
-                radius = atmo.radius
-                height = atmo.height
+            if atmo["geom"] == "SPH":
+                radius = atmo["radius"]
+                height = atmo["height"]
                 motype = "SPH"
-                args = args[:4] + [motype, radius] + args[5:] + [height]
-                type = type[:4] + "ud" + type[5:] + "d"
+                args = args[:5] + [radius] + args[5:] + [height]
+                type = type[:5] + "d" + type[5:] + "d"
         except AttributeError as ae:
-            raise TypeError(f"atmo has to be an Atmo type, {ae}")
+            raise TypeError("atmo has to be an Atmo type, {ae}".format(ae=ae))
 
-        logger.debug("Inputing atmosphere model to smelib")
-        self.lib.InputModel(*args, type=type)
+        if self.state is not None:
+            self.state.contents.free_opacities()
+
+        self.lib.InputModel(*args, type=type, state=self.state)
 
         self.teff = teff
         self.grav = grav
@@ -357,10 +418,7 @@ class SME_DLL:
         # metallicity is included in the abundance class, ignored in function call
         abund = abund("sme", raw=True)
         assert isinstance(abund, np.ndarray)
-        abund[np.isnan(abund)] = -99
-
-        logger.debug("Inputing abundances to smelib")
-        self.lib.InputAbund(abund, type="double")
+        self.lib.InputAbund(abund, type="double", state=self.state)
 
         self.abund = abund
 
@@ -377,31 +435,28 @@ class SME_DLL:
 
         Returns
         -------
-        copblu : array of size (nrhox,)
+        copblu : array of size (nmu,)
             only if getData is True
-        copred : array of size (nrhox,)
+        copred : array of size (nmu,)
             only if getData is True
-        copstd : array of size (nrhox,)
+        copstd : array of size (nmu,)
             only if getData is True and motype is 0
         """
         args = []
         type = ""
         if getData:
-            assert (
-                self.atmo is not None
-            ), "Need to set the atmosphere model before retrievieng Opacities"
-            nrhox = len(self.atmo.rhox)
-            copblu = np.zeros(nrhox)
-            copred = np.zeros(nrhox)
-            args = [nrhox, copblu, copred]
+            nmu = self.nmu
+            copblu = np.zeros(nmu)
+            copred = np.zeros(nmu)
+            args = [nmu, copblu, copred]
             type = ["s", "d", "d"]
 
             if motype == 0:
-                copstd = np.zeros(nrhox)
+                copstd = np.zeros(nmu)
                 args += [copstd]
                 type += ["d"]
 
-        self.lib.Opacity(*args, type=type)
+        self.lib.Opacity(*args, type=type, state=self.state)
 
         return args[1:]
 
@@ -450,7 +505,7 @@ class SME_DLL:
                 args += [species]
                 type += ["u"]
 
-        self.lib.GetOpacity(*args, type=type)
+        self.lib.GetOpacity(*args, type=type, state=self.state)
         return result
 
     def Ionization(self, ion=0):
@@ -472,8 +527,12 @@ class SME_DLL:
         ion : int
             flag that determines the behaviour of the C function
         """
-        logger.debug("Calculating ionization in smelib")
-        self.lib.Ionization(ion, type="short", raise_error=False, raise_warning=True)
+        if self.state is not None:
+            self.state.contents.free_ionization()
+
+        self.lib.Ionization(
+            ion, type="short", raise_error=False, raise_warning=True, state=self.state
+        )
         self.ion = ion
 
     def GetDensity(self):
@@ -487,7 +546,7 @@ class SME_DLL:
         """
         length = self.ndepth
         array = np.zeros(length, dtype=float)
-        self.lib.GetDensity(length, array, type="sd")
+        self.lib.GetDensity(length, array, type="sd", state=self.state)
         return array
 
     def GetNatom(self):
@@ -501,7 +560,7 @@ class SME_DLL:
         """
         length = self.ndepth
         array = np.zeros(length, dtype=float)
-        self.lib.GetNatom(length, array, type="sd")
+        self.lib.GetNatom(length, array, type="sd", state=self.state)
         return array
 
     def GetNelec(self):
@@ -515,7 +574,7 @@ class SME_DLL:
         """
         length = self.ndepth
         array = np.zeros(length, dtype=float)
-        self.lib.GetNelec(length, array, type="sd")
+        self.lib.GetNelec(length, array, type="sd", state=self.state)
         return array
 
     def Transf(
@@ -581,11 +640,9 @@ class SME_DLL:
         sint_seg = np.zeros((nwmax, nmu))  # line+continuum intensities
         cint_seg = np.zeros((nwmax, nmu))  # all continuum intensities
         cintr_seg = np.zeros((nmu))  # red continuum intensity
-        nw = np.array([nw])
 
         type = "sdddiiddddss"  # s: short, d:double, i:int, u:unicode (string)
 
-        logger.debug("Starting radiative Transfer calculations in smelib")
         self.lib.Transf(
             nmu,
             mu,
@@ -600,8 +657,11 @@ class SME_DLL:
             keep_lineop,
             long_continuum,
             type=type,
+            state=self.state,
         )
-        nw = nw[0]
+
+        if nw == 0:
+            nw = np.count_nonzero(wint_seg)
 
         wint_seg = wint_seg[:nw]
         sint_seg = sint_seg[:nw, :].T
@@ -637,7 +697,9 @@ class SME_DLL:
         nwsize = self.nlines
         table = np.zeros(nwsize)
 
-        self.lib.CentralDepth(nmu, mu, nwsize, table, accrt, type="idifd")
+        self.lib.CentralDepth(
+            nmu, mu, nwsize, table, accrt, type="idifd", state=self.state
+        )
         self.nmu = nmu
 
         return table
@@ -664,17 +726,16 @@ class SME_DLL:
         csf : array
             Continuum source function
         """
-        assert (
-            self.atmo is not None
-        ), "Need to set the atmosphere model before retrievieng Opacities"
-        nrhox = len(self.atmo.rhox)
-        lop = np.zeros(nrhox)
-        cop = np.zeros(nrhox)
-        scr = np.zeros(nrhox)
-        tsf = np.zeros(nrhox)
-        csf = np.zeros(nrhox)
+        nmu = self.ndepth
+        lop = np.zeros(nmu)
+        cop = np.zeros(nmu)
+        scr = np.zeros(nmu)
+        tsf = np.zeros(nmu)
+        csf = np.zeros(nmu)
         type = "dsddddd"
-        self.lib.GetLineOpacity(wave, nrhox, lop, cop, scr, tsf, csf, type=type)
+        self.lib.GetLineOpacity(
+            wave, nmu, lop, cop, scr, tsf, csf, type=type, state=self.state
+        )
         return lop, cop, scr, tsf, csf
 
     def GetLineRange(self):
@@ -694,7 +755,9 @@ class SME_DLL:
         nlines = self.nlines
         linerange = np.zeros((nlines, 2))
 
-        self.lib.GetLineRange(linerange, nlines, type=("double", "int"))
+        self.lib.GetLineRange(
+            linerange, nlines, type=("double", "int"), state=self.state
+        )
 
         return linerange
 
@@ -716,13 +779,17 @@ class SME_DLL:
             raise TypeError("Departure coefficient matrix is not an array")
 
         bmat = np.atleast_2d(bmat)
-        if bmat.shape[1] != 2:
+        if bmat.shape[0] != 2:
             raise ValueError(
-                f"Departure coefficient matrix has the wrong shape, expected ({ndepth}, 2) but got {bmat.shape} instead"
+                "Departure coefficient matrix has the wrong shape, expected (2, {ndepth}) but got {bmat} instead".format(
+                    ndepth=ndepth, bmat=bmat.shape
+                )
             )
-        if bmat.shape[0] != ndepth:
+        if bmat.shape[1] != ndepth:
             raise ValueError(
-                f"Departure coefficient matrix has the wrong shape, expected ({ndepth}, 2) but got {bmat.shape} instead"
+                "Departure coefficient matrix has the wrong shape, expected (2, {ndepth}) but got {bmat} instead".format(
+                    ndepth=ndepth, bmat=bmat.shape
+                )
             )
 
         if not isinstance(lineindex, (int, np.integer)):
@@ -730,10 +797,14 @@ class SME_DLL:
 
         if not 0 <= lineindex < nlines:
             raise ValueError(
-                f"Lineindex out of range, expected value between 0 and {nlines}, but got {lineindex} instead"
+                "Lineindex out of range, expected value between 0 and {nlines}, but got {lineindex} instead".format(
+                    nlines=nlines, lineindex=lineindex
+                )
             )
 
-        self.lib.InputDepartureCoefficients(bmat, lineindex, type=("double", "int"))
+        self.lib.InputDepartureCoefficients(
+            bmat, lineindex, type=("double", "int"), state=self.state
+        )
 
     def GetNLTE(self, line):
         """ Get the NLTE departure coefficients as stored in the C library
@@ -752,13 +823,13 @@ class SME_DLL:
 
         bmat = np.full((2, nrhox), -1.0, dtype=float)
         self.lib.GetDepartureCoefficients(
-            bmat, nrhox, line, type=("double", "int", "int")
+            bmat, nrhox, line, type=("double", "int", "int"), state=self.state
         )
         return bmat
 
     def ResetNLTE(self):
         """ Reset departure coefficients from any previous call, to ensure LTE as default """
-        self.lib.ResetDepartureCoefficients()
+        self.lib.ResetDepartureCoefficients(state=self.state)
 
     def GetNLTEflags(self):
         """Get an array that tells us which lines have been used with NLTE correction
@@ -776,6 +847,8 @@ class SME_DLL:
         nlines = self.nlines
         nlte_flags = np.zeros(nlines, dtype=np.int16)
 
-        self.lib.GetNLTEflags(nlte_flags, nlines, type=("short", "int"))
+        self.lib.GetNLTEflags(
+            nlte_flags, nlines, type=("short", "int"), state=self.state
+        )
 
         return nlte_flags.astype(bool)

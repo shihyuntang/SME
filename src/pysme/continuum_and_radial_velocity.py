@@ -15,6 +15,8 @@ from scipy.ndimage.filters import median_filter, gaussian_filter1d
 from scipy.optimize import least_squares, minimize_scalar, curve_fit
 from scipy.signal import correlate, find_peaks
 from scipy.interpolate import UnivariateSpline
+from scipy.interpolate import splrep, splev
+
 from tqdm import tqdm
 
 from . import util
@@ -37,13 +39,17 @@ def apply_radial_velocity(wave, wmod, smod, vrad, segments):
     return smod
 
 
-def apply_continuum(wave, smod, cscale, cscale_type, segments):
+def apply_continuum(wave, smod, cwave, cscale, cscale_type, segments):
     if cscale is None:
         return smod
     for il in segments:
         if cscale[il] is not None and not np.all(cscale[il] == 0):
-            if cscale_type in ["smooth"]:
-                smod[il] += cscale[il]
+            if cscale_type in ["spline"]:
+                if len(cscale[il]) != len(smod[il]):
+                    cs = np.interp(wave[il], cwave[il], cscale[il])
+                else:
+                    cs = cscale[il]
+                smod[il] *= cs
             else:
                 x = wave[il] - wave[il][0]
                 smod[il] *= np.polyval(cscale[il], x)
@@ -80,7 +86,8 @@ def apply_radial_velocity_and_continuum(
         the corrected synthetic spectrum
     """
     smod = apply_radial_velocity(wave, wmod, smod, vrad, segments)
-    smod = apply_continuum(wave, smod, cscale, cscale_type, segments)
+    # The radial velocity shift also interpolates onto the wavelength grid
+    smod = apply_continuum(wave, smod, wave, cscale, cscale_type, segments)
     return smod
 
 
@@ -293,12 +300,17 @@ def determine_radial_velocity(
         if sme.vrad_flag == "each":
             # apply continuum
             y_syn = apply_continuum(
-                {segment: x_syn}, {segment: y_syn}, cscale, sme.cscale_type, [segment]
+                {segment: x_syn},
+                {segment: y_syn},
+                sme.wave,
+                cscale,
+                sme.cscale_type,
+                [segment],
             )[segment]
         elif sme.vrad_flag == "whole":
             # All segments
             y_syn = apply_continuum(
-                x_syn, y_syn, cscale, sme.cscale_type, range(len(y_obs))
+                x_syn, y_syn, sme.wave, cscale, sme.cscale_type, range(len(y_obs))
             )
 
             x_obs = x_obs.ravel()
@@ -368,8 +380,8 @@ def determine_radial_velocity(
 
 def null_result(nseg, ndeg=0, ctype=None):
     vrad, vrad_unc = np.zeros(nseg), np.zeros((nseg, 2))
-    if ctype in ["smooth"]:
-        cscale = [np.zeros(ndeg[i]) for i in range(nseg)]
+    if ctype in ["spline"]:
+        cscale = [np.ones(ndeg[i]) for i in range(nseg)]
         cscale = Iliffe_vector(values=cscale)
         cscale_unc = [np.zeros(ndeg[i]) for i in range(nseg)]
         cscale_unc = Iliffe_vector(values=cscale_unc)
@@ -750,31 +762,45 @@ def cont_fit(sme, segment, x_syn, y_syn, rvel=0, only_mask=False):
 
 def get_continuum_broadening(sme, segment, x_syn, y_syn, rvel=0, only_mask=False):
     if sme.cscale_flag in ["none"]:
-        return [1]
+        return np.ones(len(sme.spec[segment]))
     elif sme.cscale_flag in ["fix"]:
         return sme.cscale[segment]
 
     w = sme.wave[segment]
     s = sme.spec[segment]
+    u = sme.uncs[segment]
 
+    # Apply RV correction to the synthetic spectrum
     rv_factor = np.sqrt((1 - rvel / c_light) / (1 + rvel / c_light))
     wp = w * rv_factor
     y = np.interp(wp, x_syn, y_syn)
-
+    # and don't forget the telluric spectrum if available
     if sme.telluric is not None:
         tell = sme.telluric[segment]
         y *= tell
 
+    # Apply the bpm to all arrays
     if only_mask:
         m = sme.mask_cont[segment]
     else:
         m = sme.mask_good[segment]
 
-    wm, sm, ym = w[m], s[m], y[m]
+    wm, sm, ym, um = w[m], s[m], y[m], u[m]
 
-    sf = UnivariateSpline(wm, sm, w=1 / np.sqrt(sm))(w)
-    yf = UnivariateSpline(wm, ym, w=1 / np.sqrt(ym))(w)
-    coef = -yf + sf
+    # Fit the spline like in the polynomial
+    # so that synth * spline = obs
+    func = lambda p: ym * splev(wm, (p[:l1], p[l1:], 3)) - sm
+    # We use splrep to find the intial guess for the number of knots and their
+    # positions
+    t, c, k = splrep(wm, sm, k=3, w=1 / um, s=len(wm))
+    l1, l2 = len(t), len(c)
+    res = least_squares(func, x0=[*t, *c])
+    t, c = res.x[:l1], res.x[l1:]
+    coef = splev(w, (t, c, k))
+
+    # sf = UnivariateSpline(wm, sm, w=1 / np.sqrt(sm))(w)
+    # yf = UnivariateSpline(wm, ym, w=1 / np.sqrt(ym))(w)
+    # coef = -yf + sf
 
     return coef
 
@@ -864,22 +890,55 @@ def match_rv_continuum(sme, segments, x_syn, y_syn):
             vrad[s] = determine_radial_velocity(
                 sme, s, cscale[s], [x_syn[s] for s in s], [y_syn[s] for s in s]
             )
-    elif sme.cscale_type in ["smooth"]:
-        for s in segments:
-            # We only use the continuum mask for the continuum fit,
-            # we need the lines for the radial velocity
-            vrad[s] = determine_radial_velocity(
-                sme, s, cscale[s], x_syn[s], y_syn[s], only_mask=False
-            )
-            cscale[s] = get_continuum_broadening(
-                sme, s, x_syn[s], y_syn[s], rvel=vrad[s], only_mask=False
-            )
-
-        if sme.vrad_flag == "whole":
+    elif sme.cscale_type in ["spline"]:
+        if sme.vrad_flag == "each":
+            for s in segments:
+                # We only use the continuum mask for the continuum fit,
+                # we need the lines for the radial velocity
+                vrad[s] = determine_radial_velocity(
+                    sme, s, cscale[s], x_syn[s], y_syn[s], only_mask=False
+                )
+                cscale[s] = get_continuum_broadening(
+                    sme, s, x_syn[s], y_syn[s], rvel=vrad[s], only_mask=False
+                )
+        elif sme.vrad_flag == "whole":
             s = segments
             vrad[s] = determine_radial_velocity(
                 sme, s, cscale[s], [x_syn[s] for s in s], [y_syn[s] for s in s]
             )
+            for s in segments:
+                cscale[s] = get_continuum_broadening(
+                    sme, s, x_syn[s], y_syn[s], rvel=vrad[s], only_mask=False
+                )
+        else:
+            raise ValueError
+    elif sme.cscale_type in ["spline+mask"]:
+        if sme.vrad_flag == "each":
+            for s in segments:
+                # We only use the continuum mask for the continuum fit,
+                # we need the lines for the radial velocity
+                vrad[s] = determine_radial_velocity(
+                    sme, s, cscale[s], x_syn[s], y_syn[s], only_mask=False
+                )
+                cscale[s] = get_continuum_broadening(
+                    sme, s, x_syn[s], y_syn[s], rvel=vrad[s], only_mask=True
+                )
+        elif sme.vrad_flag == "whole":
+            s = segments
+            vrad[s] = determine_radial_velocity(
+                sme,
+                s,
+                cscale[s],
+                [x_syn[s] for s in s],
+                [y_syn[s] for s in s],
+                only_mask=False,
+            )
+            for s in segments:
+                cscale[s] = get_continuum_broadening(
+                    sme, s, x_syn[s], y_syn[s], rvel=vrad[s], only_mask=True
+                )
+        else:
+            raise ValueError
     else:
         raise ValueError(
             f"Did not understand cscale_type, expected one of ('whole', 'mask'), but got {sme.cscale_type}."
@@ -891,7 +950,7 @@ def match_rv_continuum(sme, segments, x_syn, y_syn):
     for seg in segments:
         mask &= select != seg
     vrad[mask] = sme.vrad[mask]
-    if sme.cscale_type == "smooth":
+    if sme.cscale_type in ["spline"]:
         for i in range(len(mask)):
             if mask[i] and len(cscale[i]) == len(sme.cscale[i]):
                 cscale[i] = sme.cscale[i]

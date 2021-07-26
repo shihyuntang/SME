@@ -153,7 +153,7 @@ if __name__ == "__main__":
         plt.hlines([0.16, 0.84], r[0], r[1], linestyles=["dashdot"])
         plt.vlines(interval, -0.1, 1.1, linestyles=["dashdot"])
 
-        plt.xlabel(param)
+        plt.xlabel(f"$\Delta${param}")
         plt.ylabel("cumulative probability")
         plt.title(f"Cumulative Probability: {param}")
         plt.xlim(r[0], r[1])
@@ -180,7 +180,7 @@ if __name__ == "__main__":
         plt.vlines(b[:-1][where][0], 0, h[where][0], linestyles="dashdot")
         plt.vlines(b[:-1][where][-1], 0, h[where][-1], linestyles="dashdot")
 
-        plt.xlabel(param)
+        plt.xlabel(f"$\Delta${param}")
         plt.ylabel("probability")
         plt.xlim(r)
         plt.title(f"Probability Density: {param}")

@@ -7,7 +7,8 @@ import tempfile
 import sys
 import subprocess
 
-from flex.flex import FlexFile
+from flex.flex import FlexExtension, FlexFile
+from numpy.lib.arraysetops import isin
 from . import __version__
 
 import numpy as np
@@ -23,6 +24,8 @@ def to_flex(sme):
         value = sme[name]
         if isinstance(value, IPersist):
             extensions[name] = value._save()
+        elif isinstance(value, FlexExtension):
+            extensions[name] = value
         elif value is not None:
             header[name] = value
 
@@ -39,14 +42,14 @@ def from_flex(ff, sme):
         if name in header.keys():
             sme[name] = header[name]
         elif name in extensions.keys():
-            if sme[name] is not None:
+            if sme[name] is not None and isinstance(sme[name], IPersist):
                 sme[name] = sme[name]._load(extensions[name])
             else:
                 sme[name] = extensions[name]
     return sme
 
 
-def save(filename, sme, format="flex"):
+def save(filename, sme, format="flex", _async=False):
     """
     Create a folder structure inside a tarfile
     See flex-format for details
@@ -70,7 +73,10 @@ def save(filename, sme, format="flex"):
         filename = filename + file_ending
 
     if format == "flex":
-        ff.write(filename)
+        if _async:
+            ff.write_async(filename)
+        else:
+            ff.write(filename)
     elif format == "fits":
         ff.to_fits(filename, overwrite=True)
     elif format == "json":
@@ -302,6 +308,10 @@ def save_as_binary(arr):
         if arr.dtype.name[:3] == "str" or arr.dtype.name == "object":
             arr = arr.astype(bytes)
             shape = (arr.dtype.itemsize, len(arr))
+        elif np.issubdtype(arr.dtype, np.floating):
+            # SME expects double precision, so we assure that here
+            arr = arr.astype("float64")
+            shape = arr.shape[::-1]
         else:
             shape = arr.shape[::-1]
 
@@ -358,6 +368,9 @@ def write_as_idl(sme):
         fitvars += ["GRAV"]
     if "monh" in sme.fitparameters:
         fitvars += ["FEH"]
+
+    if sme.mask is None:
+        sme.mask = 1
 
     idl_fields = {
         "version": 5.1,

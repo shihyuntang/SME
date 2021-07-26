@@ -66,7 +66,7 @@ class AtmosphereInterpolator:
             if self.atmo_grid is None or self.source != atmo_grid:
                 atmo_file = self.lfs_atmo.get(atmo_grid)
                 self.source = atmo_grid
-                self.atmo_grid = SavFile(atmo_file)
+                self.atmo_grid = SavFile(atmo_file, source=self.source)
         else:
             self.atmo_grid = atmo_grid
             self.source = atmo_grid.source

@@ -35,7 +35,7 @@ def print_to_log():
         # The debugger freaks out if we dont give it what it wants
         if file is not None:
             original_print(*args, **kwargs, file=file)
-        else:
+        elif len(args) != 0:
             logger.info(*args, **kwargs)
 
     builtins.print = logprint

@@ -3,16 +3,17 @@
 import os
 import os.path
 import re
-from os.path import dirname, join, realpath
+from os.path import dirname, join, realpath, exists, basename
 import datetime
+from concurrent.futures import (
+    ProcessPoolExecutor,
+    as_completed,
+)
 
 import matplotlib.pyplot as plt
 import numpy as np
 from astropy import constants as const
-from astropy import coordinates as coord
 from astropy.io import fits
-from astropy.time import Time
-from astropy import units as u
 from data_sources.StellarDB import StellarDB
 from pysme import sme as SME
 from pysme import util
@@ -24,11 +25,10 @@ from pysme.persistence import save_as_idl
 from pysme.solve import solve
 from pysme.synthesize import synthesize_spectrum
 from pysme.continuum_and_radial_velocity import determine_radial_velocity
-from scipy.linalg import lstsq, solve_banded
+from flex.flex import FlexFile
 from scipy.ndimage.filters import gaussian_filter1d, median_filter
 from scipy.optimize import least_squares
 from scipy.interpolate import interp1d
-from scipy.optimize.minpack import curve_fit
 from tqdm import tqdm
 
 
@@ -67,17 +67,23 @@ def hl_envelopes_idx(s, dmin=1, dmax=1, split=False):
     return lmin, lmax
 
 
-if __name__ == "__main__":
-    # Define the location of all your files
-    # this will put everything into the example dir
-    target = "HD_22049"
-    sdb = StellarDB()
-    # star = sdb.auto_fill(target)
+def load_star(target, update=True):
+    sdb = StellarDB(sources=["simbad", "exoplanets_nasa"])
+    if update:
+        star = sdb.auto_fill(target)
     star = sdb.load(target)
-    alias = [re.sub(r"[-_ ]", "", s).lower() for s in star["id"]]
+    return star
 
-    examples_dir = dirname(realpath(__file__))
-    data_dir = join(examples_dir, "data")
+
+def get_value(star, name, unit, alt=None):
+    if name in star:
+        return star[name].to_value(unit)
+    else:
+        return alt
+
+
+def load_fname(star, data_dir):
+    alias = [re.sub(r"[-_ *]", "", s).lower() for s in star["id"]]
 
     # Find the correct data file for this target
     files = [fname for fname in os.listdir(data_dir) if fname.endswith(".fits")]
@@ -86,82 +92,19 @@ if __name__ == "__main__":
         hdu = fits.open(join(data_dir, fname))
         header = hdu[0].header
         obj = header["OBJECT"]
-        obj = re.sub(r"[-_ ]", "", obj).lower()
+        obj = re.sub(r"[-_ *]", "", obj).lower()
         hdu.close()
         if obj in alias:
             isFound = True
             break
-
     if not isFound:
         raise ValueError("No data file found")
+    return join(data_dir, fname)
 
-    in_file = os.path.join(data_dir, fname)
-    # in_file = os.path.join(examples_dir, f"results/{target}_mask_new.sme")
 
-    vald_file = os.path.join(examples_dir, f"data/harps.lin")
-
-    out_file_1 = os.path.join(examples_dir, f"results/{target}_mask_v2_1.sme")
-    out_file_2 = os.path.join(examples_dir, f"results/{target}_mask_v2_2.sme")
-
-    plot_file_1 = os.path.join(examples_dir, f"results/{target}_mask_v2_1.html")
-    plot_file_2 = os.path.join(examples_dir, f"results/{target}_mask_v2_2.html")
-
-    date_string = datetime.datetime.now().isoformat().replace(":", ".")
-    log_file = os.path.join(examples_dir, f"results/{target}_{date_string}.log")
-
-    # Start the logging to the file
-    util.start_logging(log_file)
-
-    # Load data from fits file
-    hdu = fits.open(in_file)
-    wave = hdu[1].data["WAVE"][0]
-    flux = hdu[1].data["FLUX"][0]
-
-    # Normalize using the maximum
-    # This is important for the residuals later
-    flux /= np.nanpercentile(flux, 95)
-
-    # Get first guess from upper envelope
-    _, high_idx = hl_envelopes_idx(flux, dmin=400, dmax=500)
-    high_idx = np.array([0, *high_idx])
-    cont = interp1d(
-        wave[high_idx], flux[high_idx], kind="linear", fill_value="extrapolate"
-    )(wave)
-
-    # from scipy.interpolate import BSpline
-    # from scipy.optimize import curve_fit
-
-    # wave_high = []
-    # flux_high = []
-    # step = 500
-    # for i in range(len(flux) // step + 1):
-    #     w = wave[i * step : i * step + step]
-    #     f = flux[i * step : i * step + step]
-    #     mask = f > np.nanpercentile(f, 95)
-    #     wave_high += [w[mask]]
-    #     flux_high += [f[mask]]
-    # wave_high = np.concatenate(wave_high)
-    # flux_high = np.concatenate(flux_high)
-
-    # wmin, wmax = wave[0], wave[-1]
-    # n = 20
-    # k = 3
-    # t = np.linspace(wmin, wmax, n + k + 1)
-    # xd = wave_high
-    # func = lambda x, *c: BSpline(t, c, k, extrapolate=True)(x)
-    # popt, pcov = curve_fit(
-    #     func, xd, flux_high, p0=np.ones(n), loss="soft_l1", method="trf"
-    # )
-    # cont = BSpline(t, popt, k, extrapolate=True)(wave)
-
-    # plt.plot(wave, flux)
-    # plt.plot(wave, cont)
-    # plt.plot(wave[high_idx], flux[high_idx], "+")
-    # plt.show()
-
-    flux /= cont
-
+def load_tellurics():
     # Get tellurics from Tapas
+    examples_dir = dirname(realpath(__file__))
     ftapas = join(examples_dir, "data/tapas.ipac")
     dtapas = np.genfromtxt(ftapas, comments="\\", skip_header=36)
     wtapas, ftapas = dtapas[:, 0], dtapas[:, 1]
@@ -172,57 +115,57 @@ if __name__ == "__main__":
     ftapas /= ftapas.max()
     wtapas = wtapas[::-1]
     ftapas = ftapas[::-1]
+    return wtapas, ftapas
 
+
+def normalize(wave, flux, dmin=400, dmax=500):
+    flux /= np.nanpercentile(flux, 95)
     # Get first guess from upper envelope
-    _, high_idx = hl_envelopes_idx(ftapas, dmin=100, dmax=100)
+    mflux = median_filter(flux, 3)
+    _, high_idx = hl_envelopes_idx(mflux, dmin=dmin, dmax=dmax)
     high_idx = np.array([0, *high_idx])
-    # Then fit the envelope, by limiting the residuals
-    ctapas = interp1d(
-        wtapas[high_idx], ftapas[high_idx], kind="cubic", fill_value="extrapolate"
-    )(wtapas)
+    cont = interp1d(
+        wave[high_idx], flux[high_idx], kind="linear", fill_value="extrapolate"
+    )(wave)
+    flux /= cont
+    return flux
 
-    # plt.plot(wtapas, ftapas)
-    # plt.plot(wtapas, ctapas)
-    # plt.plot(wtapas[high_idx], ftapas[high_idx], "+")
-    # plt.show()
-    ftapas /= ctapas
 
-    # Transform to earth restframe
-    # TODO: make this robust, so it works automatically
-    # sme = SME.SME_Structure(wave=[wave], sob=[flux])
-    # sme.vrad_flag = "each"
-    # sme.cscale_flag = "none"
-    # rv = determine_radial_velocity(sme, 0, [1], wtapas, ftapas, rv_bounds=(-200, 200))
-    rv = -103
+def vel_shift(rv, wave):
     c_light = const.c.to_value("km/s")
     rv_factor = np.sqrt((1 - rv / c_light) / (1 + rv / c_light))
     wave = rv_factor * wave
+    return wave
 
+
+def get_rv_tell(wave, flux, wtell, ftell):
     sme = SME.SME_Structure(wave=[wave], sob=[flux])
     sme.mask = np.where(sme.wave > 6866, 1, 0)
     sme.vrad_flag = "each"
     sme.cscale_flag = "none"
-    rv = determine_radial_velocity(sme, 0, [1], wtapas, ftapas)
-
-    rv_factor = np.sqrt((1 - rv / c_light) / (1 + rv / c_light))
-    wave = rv_factor * wave
-    ftapas = np.interp(wave, wtapas, ftapas)
-    wtapas = wave
-
-    # This wavelength region consists of just telluric lines, and nothing else
-    # This wavelength is in the earth reference frame
-    mtapas = wtapas > 6866
-    func = lambda x: gaussian_filter1d(ftapas[mtapas], x[0]) - flux[mtapas]
-    res = least_squares(func, x0=[1], loss="soft_l1", method="trf")
-    ftapas = gaussian_filter1d(ftapas, res.x[0])
-
-    # plt.plot(wave, flux)
-    # plt.plot(wtapas, ftapas)
+    rv_tell = determine_radial_velocity(
+        sme, 0, [[1]], wtell, ftell, rv_bounds=(-200, 200)
+    )
+    # plt.plot(vel_shift(rv, wave[sme.mask[0] == 1]), flux[sme.mask[0] == 1])
+    # plt.plot(wtapas[wtapas > 6866], ftapas[wtapas > 6866])
     # plt.show()
+    return rv_tell
 
-    # Split the spectrum into arbitrary chunks
-    # (This makes the progress bar more useful)
-    # TODO: is this the same for all stars?
+
+def match_tell_with_obs(wave, flux, wtell, ftell):
+    ftell = np.interp(wave, wtell, ftell)
+    wtell = wave
+    mtell = wtell > 6866
+    func = lambda x: gaussian_filter1d(ftell[mtell], x[0]) - flux[mtell]
+    res = least_squares(func, x0=[1], loss="soft_l1", method="trf")
+    ftell = gaussian_filter1d(ftell, res.x[0])
+    # plt.plot(wave, flux)
+    # plt.plot(wtell, ftell)
+    # plt.show()
+    return wtell, ftell
+
+
+def split_into_segments(wave, flux, ftell):
     nsteps = 10000
     wave = [
         wave[nsteps * i : nsteps * (i + 1)]
@@ -232,50 +175,82 @@ if __name__ == "__main__":
         flux[nsteps * i : nsteps * (i + 1)]
         for i in range(int(np.ceil(len(flux) / nsteps)))
     ]
-    ftapas = [
-        ftapas[nsteps * i : nsteps * (i + 1)]
-        for i in range(int(np.ceil(len(ftapas) / nsteps)))
+    ftell = [
+        ftell[nsteps * i : nsteps * (i + 1)]
+        for i in range(int(np.ceil(len(ftell) / nsteps)))
     ]
+    return wave, flux, ftell
 
-    # err = hdu[1].data["ERR"]
+
+def run(target, mask=None, linelist="harps.lin", segments="all"):
+    examples_dir = dirname(realpath(__file__))
+    data_dir = join(examples_dir, "data")
+    # /home/ansgar/Documents/Python/sme/examples/paper/data/ADP.2019-11-16T01 15 37.789.fits
+    # Define the location of all your files
+    # this will put everything into the example dir
+    # Get stellar data from online sources
+    star = load_star(target, update=False)
+    # Find the correct data file for this target
+    in_file = load_fname(star, data_dir)
+    vald_file = join(examples_dir, f"data/{linelist}")
+    mid_file = join(examples_dir, f"results/{target}_inp.sme")
+    plot_file = join(examples_dir, f"results/{target}.html")
+
+    # Load data from fits file
+    hdu = fits.open(in_file)
+    wave = hdu[1].data["WAVE"][0]
+    flux = hdu[1].data["FLUX"][0]
+    if mask is not None:
+        for m in mask:
+            flux[m[0] : m[1]] = 0
+    flux = normalize(wave, flux)
+
+    # Get tellurics from Tapas
+    wtapas, ftapas = load_tellurics()
+    ftapas = normalize(wtapas, ftapas, dmin=100, dmax=100)
+
+    # Transform to earth restframe
+    rv_tell = get_rv_tell(wave, flux, wtapas, ftapas)
+    wave = vel_shift(rv_tell, wave)
+
+    # Match the broadening of the observation
+    wtapas, ftapas = match_tell_with_obs(wave, flux, wtapas, ftapas)
+
+    # Split the spectrum into arbitrary chunks
+    # (This makes the progress bar more useful)
+    # TODO: is this the same for all stars?
+    wave, flux, ftapas = split_into_segments(wave, flux, ftapas)
+
+    # Create the SME structure
     sme = SME.SME_Structure(wave=wave, sob=flux)
+    sme.meta["object"] = target
     sme.mu = np.geomspace(0.1, 1, num=7)
+    # Use simple shot noise assumption for uncertainties
     sme.uncs = [1 / np.sqrt(spec) ** 2 for spec in sme.spec]
-    # sme.mask = get_mask_from_neural_network(sme)
-    sme.mask = sme.mask_values["line"]
-    for i in range(sme.nseg):
-        smoothed = gaussian_filter1d(sme.spec[i], 10)
-        dsmoothed = np.gradient(smoothed)
-        ddsmoothed = np.gradient(dsmoothed)
-        # idx = np.abs(ddsmoothed) < np.nanpercentile(np.abs(ddsmoothed), 10)
-        idx = np.abs(dsmoothed) < np.nanpercentile(np.abs(dsmoothed), 10)
-        idx &= ddsmoothed < 0
-        idx &= smoothed > np.median(smoothed)
-        sme.mask[i][idx] = sme.mask_values["continuum"]
-        sme.mask[i][sme.spec[i] == 0] = sme.mask_values["bad"]
-        sme.mask[i][ftapas[i] < 0.995] = sme.mask_values["bad"]
-
-        # idx = sme.mask[i] == sme.mask_values["continuum"]
-        # plt.plot(sme.wave[i], sme.spec[i])
-        # plt.plot(sme.wave[i], smoothed)
-        # plt.plot(sme.wave[i][idx], sme.spec[i][idx], "+")
-        # plt.show()
-
     # Add telluric data (without rayleigh scattering)
     sme.telluric = Iliffe_vector(values=ftapas)
+    # Create first mask by removing the telluric offset
+    sme.mask = sme.mask_values["line"]
+    for i in range(sme.nseg):
+        sme.mask[i][sme.telluric[i] < 0.995] = sme.mask_values["bad"]
+        sme.mask[i][sme.spec[i] == 0] = sme.mask_values["bad"]
 
     # Get first guess from literature values
-    sme.teff = star.get("t_eff", 5065 * u.K).to_value("K")
-    sme.logg = star.get("logg", 4.61 * u.one).to_value(1)
-    monh = star.get("metallicity", -0.05 * u.one).to_value(1)
+    sme.teff = get_value(star, "t_eff", "K")
+    sme.logg = get_value(star, "logg", 1)
+    monh = get_value(star, "metallicity", 1, 0)
     sme.abund = Abund(monh, "asplund2009")
-    sme.vmic = star.get("velocity_turbulence", 1 * u.km / u.s).to_value("km/s")
-    # Test this
+    # There is no reference for these
+    sme.vmic = 1  # get_value(star, "velocity_turbulence", "km/s", 1)
     sme.vmac = 2
-    sme.vsini = 2.4
+    sme.vsini = get_value(star, "velocity_rotation", "km/s", 2)
 
-    # load the linelist
+    # Load the linelist
+    # and restrict the linelist to relevant lines
     sme.linelist = ValdFile(vald_file)
+    wmin = sme.wran[segments[0]][0]
+    wmax = sme.wran[segments[-1]][-1]
+    sme.linelist = sme.linelist.trim(wmin, wmax, rvel=100)
 
     # Set the atmosphere grid
     sme.atmo.source = "marcs2014.sav"
@@ -299,90 +274,291 @@ if __name__ == "__main__":
     sme.nlte.set_nlte("Si", "nlte_Si_ama51_pysme.grd")
     sme.nlte.set_nlte("Fe", "marcs2012_Fe2016.grd")
 
-    # Barycentric correction
-    # obstime = Time(hdu[0].header["DATE-OBS"])
-    # obs_long = hdu[0].header["HIERARCH ESO TEL GEOLON"]
-    # obs_lat = hdu[0].header["HIERARCH ESO TEL GEOLAT"]
-    # obs_alt = hdu[0].header["HIERARCH ESO TEL GEOELEV"]
-    # observatory = coord.EarthLocation.from_geodetic(obs_long, obs_lat, height=obs_alt)
-    # sky_location = star["coordinates"]
-    # sky_location.obstime = obstime
-    # sky_location.location = observatory
-    # correction = sky_location.radial_velocity_correction().to_value("km/s")
-
     # Set radial velocity and continuum settings
     # Set RV and Continuum flags
     sme.vrad_flag = "each"
-    sme.cscale_flag = 2
-    sme.cscale_type = "match+mask"
-    sme.vrad = -66 + 103
+    sme.cscale_flag = "quadratic"
+    sme.cscale_type = "spline"
+    sme.vrad = 0
 
-    sme = synthesize_spectrum(sme, segments="all")
-    sme.save(out_file_1)
+    # Determine the radial velocity offsets
+    # sme = synthesize_spectrum(sme, segments=segments)
 
-    # for i in range(sme.nseg):
-    #     smoothed = gaussian_filter1d(sme.spec[i], 10)
-    #     dsmoothed = np.gradient(smoothed)
-    #     dsynth = np.gradient(sme.synth[i])
-    #     resid = np.abs(dsmoothed - dsynth)
-    #     mask = resid > np.nanpercentile(resid, 90)
-    #     sme.mask[i][mask] = sme.mask_values["bad"]
-
+    # Save and Plot
+    sme.save(mid_file)
     fig = plot_plotly.FinalPlot(sme)
-    fig.save(filename=plot_file_1)
+    fig.save(filename=plot_file)
 
-    # sme.vrad = (
-    #     star["radial_velocity"].to_value("km/s") if "radial_velocity" in star else 0
-    # )
-    # sme.vrad -= correction
-    # checked manually
+    return sme
 
+
+def run_again(target, segments="all"):
+    examples_dir = dirname(realpath(__file__))
+    mid_mask_file = join(examples_dir, f"results/{target}_inp_mask.sme")
+    mid_file = join(examples_dir, f"results/{target}_inp.sme")
+
+    plot_file = join(examples_dir, f"results/{target}.html")
+    mask_file = join(
+        examples_dir, "results/HD_22049_mask_new_out_monh_teff_logg_vmic_vmac_vsini.sme"
+    )
+
+    try:
+        ff = FlexFile.read(mid_mask_file)
+        ff.header["cscale_type"] = "spline"
+        ff.write(mid_mask_file)
+        sme = SME.SME_Structure.load(mid_mask_file)
+        mid_file = mid_mask_file
+    except FileNotFoundError:
+        ff = FlexFile.read(mid_file)
+        ff.header["cscale_type"] = "spline"
+        ff.write(mid_file)
+        sme = SME.SME_Structure.load(mid_file)
+
+    # We fix broken save files
+    if isinstance(sme.cscale._values, Iliffe_vector):
+        sme.cscale = [sme.cscale._values.data[str(i)] for i in range(sme.nseg)]
+        sme.save(mid_file)
+        sme = SME.SME_Structure.load(mid_file)
+    sme.save(mid_file)
+    sme = SME.SME_Structure.load(mid_file)
+
+    # Import manual mask
+    # we needed to run sme once to get the correct radial velocities
+    sme_mask = SME.SME_Structure.load(mask_file)
+    sme = sme.import_mask(sme_mask, keep_bpm=True)
+
+    # sme = synthesize_spectrum(sme, segments=segments)
+    # Save and Plot
+    sme.save(mid_file)
+    # fig = plot_plotly.FinalPlot(sme)
+    # fig.save(filename=plot_file)
+    return sme
+
+
+def fit(sme, segments="all"):
+    examples_dir = dirname(realpath(__file__))
     # Define any fitparameters you want
     # For abundances use: 'abund {El}', where El is the element (e.g. 'abund Fe')
     # For linelist use: 'linelist {Nr} {p}', where Nr is the number in the
     # linelist and p is the line parameter (e.g. 'linelist 17 gflog')
-    # fitparameters = [
-    #     ["monh"],
-    #     ["teff"],
-    #     ["logg", "vmic", "vmac", "vsini"],
-    #     ["monh", "teff", "logg", "vmic", "vmac", "vsini"],
-    # ]
+    fitparameters = [
+        # ["monh"],
+        ["monh", "teff", "logg", "vmic", "vmac", "vsini"],
+    ]
 
-    # # Restrict the linelist to relevant lines
-    # # for this segment
-    # rvel = 100
-    # wmin, wmax = sme.wran[6][0], sme.wran[30][1]
-    # wmin *= 1 - rvel / 3e5
-    # wmax *= 1 + rvel / 3e5
-    # sme.linelist = sme.linelist.trim(wmin, wmax)
+    for fp in fitparameters:
+        tmp = os.path.join(examples_dir, f"results/{target}.json")
+        sme = solve(sme, fp, segments=segments, filename=tmp)
+        fname = f"{target}_{'_'.join(fp)}"
+        out_file = os.path.join(examples_dir, "results", fname + ".sme")
+        sme.save(out_file)
 
-    # # Start SME solver
-    # # sme = synthesize_spectrum(sme, segments=np.arange(6, 31))
-    # # sme.cscale_flag = "fix"
-    # # sme.wave = sme.wave[6:31]
-    # # sme.spec = sme.spec[6:31]
-    # # sme.synth = sme.synth[6:31]
-    # # sme.mask = sme.mask[6:31]
-    # # sme.telluric = sme.telluric[6:31]
-    # # save_as_idl(sme, "epseri.inp")
+        plot_file = os.path.join(examples_dir, "results", fname + ".html")
+        fig = plot_plotly.FinalPlot(sme)
+        fig.save(filename=plot_file)
 
-    # # sme.save(out_file)
-    # for fp in fitparameters:
-    #     sme = solve(sme, fp, segments=np.arange(6, 31))
-    #     fname = f"{target}_mask_v2_{'_'.join(fp)}"
-    #     out_file = os.path.join(examples_dir, "results", fname + ".sme")
-    #     sme.save(out_file)
-
-    #     plot_file = os.path.join(examples_dir, "results", fname + ".html")
-    #     fig = plot_plotly.FinalPlot(sme)
-    #     fig.save(filename=plot_file)
-
-    # # print(sme.citation())
-
-    # # Save results
-    # sme.save(out_file_2)
+    # Save results
+    out_file = join(examples_dir, f"results/{target}_out.sme")
+    sme.save(out_file)
+    print(sme.citation())
 
     # Plot results
-    # fig = plot_plotly.FinalPlot(sme)
-    # fig.save(filename=plot_file_2)
+    fig = plot_plotly.FinalPlot(sme)
+    fig.save(filename=plot_file)
     print(f"Finished: {target}")
+    return sme
+
+
+if __name__ == "__main__":
+    targets = [
+        "AU_Mic",
+        "Eps_Eri",
+        "HN_Peg",
+        "HD_102195",
+        "HD_130322",
+        "HD_179949",
+        "HD_189733",
+        "55_Cnc",
+        "WASP-18",
+    ]
+    rv = {
+        "AU_Mic": {"star": -30, "tell": -56},
+        "Eps_Eri": {"star": 66, "tell": -103},
+        "HN_Peg": {"star": 0, "tell": -101},
+        "HD_102195": {"star": 0, "tell": -100},
+        "HD_130322": {"star": 0, "tell": -55},
+        "HD_179949": {"star": 0, "tell": -103},
+        "HD_189733": {"star": 0, "tell": -96},
+        "55_Cnc": {"star": 0, "tell": -82},
+        "WASP-18": {"star": 0, "tell": -98},
+    }
+    masked = {
+        "AU_Mic": [
+            (4982, 5527),
+            (10561, 10962),
+            (15063, 15287),
+            (18559, 18925),
+            (31888, 32002),
+            (55757, 55892),
+            (107806, 107983),
+            (277889, 278216),
+        ],
+        "HN_Peg": [
+            (128657, 128688),
+            (191706, 191797),
+            (216217, 216274),
+            (230970, 231002),
+            (284504, 284525),
+        ],
+        "HD_102195": [
+            (172920, 172934),
+            (204149, 204179),
+            (217108, 217127),
+            (246136, 246158),
+            (270349, 270375),
+            (275453, 275473),
+            (284042, 284073),
+            (300087, 300117),
+        ],
+        "HD_130322": [
+            (99454, 99483),
+            (155753, 155766),
+            (167969, 167977),
+            (174306, 174326),
+            (186611, 186627),
+            (195202, 195213),
+            (201398, 201412),
+            (227032, 227048),
+            (244238, 244249),
+            (244248, 244254),
+            (250164, 250186),
+            (250810, 250831),
+            (282881, 282894),
+            (283855, 283867),
+            (293643, 293654),
+            (295342, 295352),
+        ],
+        "HD_179949": [
+            (67173, 67193),
+            (87649, 87658),
+            (186042, 186058),
+            (223959, 223967),
+            (228333, 228345),
+            (272063, 272132),
+            (276278, 276392),
+        ],
+        "HD_189733": [
+            (103750, 103758),
+            (107170, 107178),
+            (110191, 110206),
+            (111987, 112007),
+            (186224, 186238),
+            (206396, 206449),
+            (234368, 234381),
+            (236937, 236972),
+            (249979, 249993),
+            (256079, 256085),
+            (263106, 263168),
+        ],
+        "55_Cnc": [(198466, 198469), (272134, 272144), (297364, 297371)],
+        "WASP-18": [
+            (21199, 21219),
+            (57432, 57450),
+            (138968, 138980),
+            (151274, 151288),
+            (156029, 156041),
+            (168338, 168355),
+            (196785, 196813),
+            (200006, 200040),
+            (205810, 205832),
+            (208697, 208751),
+            (219797, 219822),
+            (225037, 225045),
+            (225173, 225203),
+            (226631, 226828),
+            (244240, 244251),
+            (247508, 247532),
+            (272924, 272942),
+            (274365, 274384),
+        ],
+    }
+    linelist = {
+        "AU_Mic": "au_mic.lin",
+        "HN_Peg": "hn_peg.lin",
+        "Eps_Eri": "eps_eri.lin",
+        "HD_102195": "hd_102195.lin",
+        "HD_130322": "hd_130322.lin",
+        "HD_179949": "hd_179949.lin",
+        "HD_189733": "hd_189733.lin",
+        "55_Cnc": "55_cnc.lin",
+        "WASP-18": "wasp_18.lin",
+    }
+
+    def parallel(target):
+        print(f"Starting {target}")
+        segments = range(6, 31)
+
+        # Start the logging to the file
+        examples_dir = dirname(realpath(__file__))
+        date_string = datetime.datetime.now().isoformat().replace(":", ".")
+        log_file = os.path.join(examples_dir, f"logs/{target}_{date_string}.log")
+        util.start_logging(log_file)
+        # Create the first synthethic spectrum to use for manual masking
+        mask = masked.get(target)
+        ll = linelist.get(target, "harps.lin")
+        sme = run(target, mask=mask, linelist=ll, segments=segments)
+        # Run it again, but this time with a mask
+        sme = run_again(target, segments=segments)
+        # Finally fit it to the data
+        # mid_mask_file = join(examples_dir, f"results/{target}_inp_mask.sme")
+        # mid_file = join(examples_dir, f"results/{target}_inp.sme")
+        # if exists(mid_mask_file):
+        #     mid_file = mid_mask_file
+        # sme = SME.SME_Structure.load(mid_file)
+        sme.meta["object"] = target
+        sme = fit(sme, segments=segments)
+        return sme
+
+    # examples_dir = dirname(realpath(__file__))
+    # data_dir = join(examples_dir, "data")
+    # for target in targets:
+    #     star = load_star(target, update=False)
+    #     in_file = load_fname(star, data_dir)
+    #     hdu = fits.open(in_file)
+    #     program_id = hdu[0].header["ESO OBS PROG ID"]
+    #     archive_id = basename(in_file).rsplit(".", 1)[0]
+    #     archive_id = archive_id.replace(" ", ":").replace("_", ":")
+    #     hdu.close()
+    #     print(f"{target} & {program_id} & {archive_id} \\\\")
+    #     pass
+    for target in ["55_Cnc"]:
+        segments = range(6, 31)
+        mask = masked.get(target)
+        ll = linelist.get(target, "harps.lin")
+        sme = run(target, mask=mask, linelist=ll, segments=segments)
+        examples_dir = dirname(realpath(__file__))
+        mask_file = join(
+            examples_dir,
+            "results/HD_22049_mask_new_out_monh_teff_logg_vmic_vmac_vsini.sme",
+        )
+        sme_mask = SME.SME_Structure.load(mask_file)
+        sme = sme.import_mask(sme_mask, keep_bpm=True)
+
+        save_as_idl(sme, "cnc55.inp")
+        # parallel(target)
+
+    # with ProcessPoolExecutor() as executor:
+    #     futures = {}
+    #     for target in targets[1:]:
+    #         print(f"Starting {target}")
+    #         futures[executor.submit(parallel, target)] = target
+
+    #     for future in tqdm(as_completed(futures), total=len(targets)):
+    #         target = futures[future]
+    #         try:
+    #             sme = future.result()
+    #             print(f"Completed {target}")
+    #         except Exception as ex:
+    #             print(f"Encountered error in {target}: {str(ex)}")
+
+    pass

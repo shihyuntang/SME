@@ -152,7 +152,7 @@ class SME_Structure(Parameters):
                 * "linear": First order polynomial, i.e. approximate continuum by a straight line
                 * "quadratic": Second order polynomial, i.e. approximate continuum by a quadratic polynomial
             """),
-        ("cscale_type", "match+mask", lowercase(oneof("mcmc", "mask", "match", "match+mask", "smooth")), this,
+        ("cscale_type", "match+mask", lowercase(oneof("mcmc", "mask", "match", "match+mask", "spline", "spline+mask")), this,
             """str: Flag that determines the algorithm to determine the continuum
 
             This is used in combination with cscale_flag, which determines the degree of the fit, if any.
@@ -409,7 +409,7 @@ class SME_Structure(Parameters):
         The x coordinates of each polynomial are chosen so that x = 0, at the first wavelength point,
         i.e. x is shifted by wave[segment][0]
         """
-        if self.cscale_type == "smooth":
+        if self.cscale_type == "spline":
             return self.__cscale
 
         nseg = self.nseg if self.nseg is not None else 1
@@ -448,8 +448,13 @@ class SME_Structure(Parameters):
 
     @_cscale.setter
     def _cscale(self, value):
-        if self.cscale_type == "smooth":
-            self.__cscale = value
+        if self.cscale_type in ["spline"]:
+            if not isinstance(value, Iliffe_vector):
+                self.__cscale = (
+                    Iliffe_vector(values=value) if value is not None else None
+                )
+            else:
+                self.__cscale = value
         else:
             self.__cscale = np.atleast_2d(value) if value is not None else None
 
@@ -553,7 +558,7 @@ class SME_Structure(Parameters):
     @property
     def cscale_degree(self):
         """int: Polynomial degree of the continuum as determined by cscale_flag """
-        if self.cscale_type in ["smooth"]:
+        if self.cscale_type in ["spline"]:
             return [np.count_nonzero(mg) for mg in self.mask_good]
         else:
             if self.cscale_flag == "constant":
@@ -618,7 +623,7 @@ class SME_Structure(Parameters):
         elif self.cscale_flag == "constant":
             self.cscale = np.sqrt(1 / self.cscale)
 
-    def import_mask(self, other):
+    def import_mask(self, other, keep_bpm=False):
         """
         Import the mask of another sme structure and apply it to this one
         Conversion is based on the wavelength
@@ -655,6 +660,10 @@ class SME_Structure(Parameters):
             w = self.wave[seg] * rv_factor
             cm = np.interp(w, wave, cont_mask) > 0.5
             lm = np.interp(w, wave, line_mask) > 0.5
+            if keep_bpm:
+                bpm = self.mask_bad[seg]
+                cm[bpm] = False
+                lm[bpm] = False
             self.mask[seg][cm] = self.mask_values["continuum"]
             self.mask[seg][lm] = self.mask_values["line"]
             self.mask[seg][~(cm | lm)] = self.mask_values["bad"]
@@ -687,7 +696,7 @@ class SME_Structure(Parameters):
 
         return self.create_citation(citation, output=output)
 
-    def save(self, filename, format="flex"):
+    def save(self, filename, format="flex", _async=False):
         """Save the whole SME structure to disk.
 
         The file format is zip file, with one info.json
@@ -702,7 +711,7 @@ class SME_Structure(Parameters):
         compressed : bool, optional
             whether to compress the output, by default False
         """
-        persistence.save(filename, self, format=format)
+        persistence.save(filename, self, format=format, _async=_async)
 
     @staticmethod
     def load(filename):

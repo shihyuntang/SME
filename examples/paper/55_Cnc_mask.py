@@ -716,7 +716,7 @@ if __name__ == "__main__":
     # Set radial velocity and continuum settings
     # Set RV and Continuum flags
     sme.vrad_flag = "each"
-    sme.cscale_flag = 3
+    sme.cscale_flag = 2
     sme.cscale_type = "match+mask"
 
     # sme.vrad = (
@@ -724,7 +724,7 @@ if __name__ == "__main__":
     # )
     # sme.vrad -= correction
     # checked manually
-    sme.vrad = 26.3
+    # sme.vrad = 26.3
 
     # Define any fitparameters you want
     # For abundances use: 'abund {El}', where El is the element (e.g. 'abund Fe')
@@ -732,8 +732,6 @@ if __name__ == "__main__":
     # linelist and p is the line parameter (e.g. 'linelist 17 gflog')
     fitparameters = [
         ["monh"],
-        ["teff"],
-        ["logg", "vmic", "vmac", "vsini"],
         ["monh", "teff", "logg", "vmic", "vmac", "vsini"],
     ]
     # Restrict the linelist to relevant lines
@@ -745,7 +743,22 @@ if __name__ == "__main__":
     sme.linelist = sme.linelist.trim(wmin, wmax)
 
     # Start SME solver
-    # sme = synthesize_spectrum(sme)
+    sme.cscale = [0, 0, 1]
+    # sme = synthesize_spectrum(sme, segments=np.arange(6, 31))
+
+    mask_file = os.path.join(
+        examples_dir, f"results/HD_22049_mask_2_out_monh_teff_logg_vmic_vmac_vsini.sme",
+    )
+    sme_mask = SME.SME_Structure.load(mask_file)
+    sme = sme.import_mask(sme_mask)
+    # wave = sme_mask.wave.ravel()
+    # telluric = sme_mask.telluric.ravel()
+    # sme.telluric = [np.interp(sme.wave[i], wave, telluric) for i in range(sme.nseg)]
+    # for i in range(sme.nseg):
+    #     sme.mask[i][sme.telluric[i] < 0.995] = sme.mask_values["bad"]
+
+    sme.save(out_file)
+
     # sme.cscale_flag = "fix"
     # sme.wave = sme.wave[6:31]
     # sme.spec = sme.spec[6:31]
@@ -754,7 +767,6 @@ if __name__ == "__main__":
     # sme.telluric = sme.telluric[6:31]
     # save_as_idl(sme, "cnc55.inp")
 
-    # sme.save(out_file)
     for fp in fitparameters:
         sme = solve(sme, fp, segments=np.arange(6, 31))
         fname = f"{target}_mask_new_out_{'_'.join(fp)}"
@@ -764,13 +776,12 @@ if __name__ == "__main__":
         plot_file = os.path.join(examples_dir, "results", fname + ".html")
         fig = plot_plotly.FinalPlot(sme)
         fig.save(filename=plot_file)
-    print(sme.citation())
+    # print(sme.citation())
 
     # Save results
     sme.save(out_file)
 
     # Plot results
-    sme.synth *= sme.telluric
     fig = plot_plotly.FinalPlot(sme)
     fig.save(filename=plot_file)
     print(f"Finished: {target}")

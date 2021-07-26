@@ -180,6 +180,9 @@ class FinalPlot:
         else:
             write_image(self.fig, filename)
 
+    def show(self):
+        self.fig.show()
+
     def shift_mask(self, x, mask):
         """ shift the edges of the mask to the bottom of the plot,
         so that the mask creates a shape with straight edges """

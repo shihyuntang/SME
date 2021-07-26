@@ -37,8 +37,12 @@ console.setFormatter(
 )
 logger.addHandler(console)
 
-del logging
-del colorlog
+# Download library if it does not exist
+import os.path
+from . import libtools
+
+if not os.path.exists(libtools.get_full_libfile()):
+    libtools.download_libsme()
 
 # Provide submodules to the outside
 __all__ = [
@@ -59,3 +63,4 @@ __all__ = [
     "uncertainties",
     "vald",
 ]
+

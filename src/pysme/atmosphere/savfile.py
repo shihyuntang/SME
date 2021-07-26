@@ -9,15 +9,19 @@ from .atmosphere import AtmosphereGrid
 class SavFile(AtmosphereGrid):
     """ IDL savefile atmosphere grid """
 
-    def __new__(cls, filename):
+    def __new__(cls, filename, source=None):
         data = readsav(filename)
 
         npoints = data["atmo_grid_maxdep"]
         ngrids = data["atmo_grid_natmo"]
         self = super(SavFile, cls).__new__(cls, ngrids, npoints)
 
-        filename = basename(filename)
-        self.source = filename
+        if source is None:
+            filename = basename(filename)
+            self.source = filename
+        else:
+            self.source = source
+            filename = source
 
         # TODO cover all cases
         if "marcs" in filename:

@@ -3,35 +3,29 @@ Calculates the spectrum, based on a set of stellar parameters
 And also determines the best fit parameters
 """
 
+import json
 import logging
 import warnings
 from os.path import splitext
-import contextlib
-import sys
-import builtins
 
 import numpy as np
-from tqdm import tqdm
+from numpy.lib.arraysetops import unique
 from scipy.constants import speed_of_light
-from scipy.optimize import OptimizeWarning, least_squares, curve_fit
-from scipy.optimize._numdiff import approx_derivative
-from scipy.special import erf
-from scipy.stats import gennorm, norm
+from scipy.optimize import OptimizeWarning, least_squares
+from scipy.stats import norm
+from tqdm import tqdm
 
-from . import __file_ending__, broadening
+from . import __file_ending__
 from .abund import Abund
 from .atmosphere.atmosphere import AtmosphereError
-from .atmosphere.savfile import SavFile
 from .atmosphere.krzfile import KrzFile
-from .config import Config
-from .continuum_and_radial_velocity import match_rv_continuum
+from .atmosphere.savfile import SavFile
 from .large_file_storage import setup_lfs
-from .iliffe_vector import Iliffe_vector
-from .sme_synth import SME_DLL
-from .uncertainties import uncertainties
-from .util import print_to_log
-from .synthesize import Synthesizer
 from .nlte import DirectAccessFile
+from .synthesize import Synthesizer
+from .util import print_to_log
+
+from ._numdiff import approx_derivative
 
 logger = logging.getLogger(__name__)
 
@@ -40,14 +34,10 @@ warnings.filterwarnings("ignore", category=OptimizeWarning)
 
 
 class SME_Solver:
-    def __init__(self, filename=None):
-        self.dll = SME_DLL()
+    def __init__(self, filename=None, restore=False):
         self.config, self.lfs_atmo, self.lfs_nlte = setup_lfs()
         self.synthesizer = Synthesizer(
-            config=self.config,
-            lfs_atmo=self.lfs_atmo,
-            lfs_nlte=self.lfs_nlte,
-            dll=self.dll,
+            config=self.config, lfs_atmo=self.lfs_atmo, lfs_nlte=self.lfs_nlte,
         )
 
         # Various parameters to keep track of during solving
@@ -56,15 +46,45 @@ class SME_Solver:
         self.parameter_names = []
         self.update_linelist = False
         self._latest_residual = None
+        self.restore = restore
 
         # For displaying the progressbars
-        self.fig = None
-        self.progressbar = None
-        self.progressbar_jacobian = None
+        # self.progressbar = None
+        # self.progressbar_jacobian = None
 
     @property
     def nparam(self):
         return len(self.parameter_names)
+
+    def restore_func(self, sme):
+        fname = self.filename.rsplit(".", 1)[0]
+        fname = f"{fname}_iter.json"
+        try:
+            with open(fname) as f:
+                data = json.load(f)
+            # The keys are string, but we want the max in int, so we need to convert back and forth
+            iteration = str(max([int(i) for i in data.keys()]))
+            for fp in self.parameter_names:
+                sme[fp] = data[iteration].get(fp, sme[fp])
+            logger.warning(f"Restoring existing backup data from {fname}")
+        except:
+            pass
+        return sme
+
+    def backup(self, sme):
+        fname = self.filename.rsplit(".", 1)[0]
+        fname = f"{fname}_iter.json"
+        try:
+            with open(fname) as f:
+                data = json.load(f)
+        except:
+            data = {}
+        data[self.iteration] = {fp: sme[fp] for fp in self.parameter_names}
+        try:
+            with open(fname, "w") as f:
+                json.dump(data, f)
+        except:
+            pass
 
     def __residuals(
         self, param, sme, spec, uncs, mask, segments="all", isJacobian=False, **_
@@ -104,9 +124,11 @@ class SME_Solver:
             residuals of the synthetic spectrum
         """
         update = not isJacobian
-        save = not isJacobian
+        save = not isJacobian and self.filename is not None
         reuse_wavelength_grid = isJacobian
         radial_velocity_mode = "robust" if not isJacobian else "fast"
+        # method = "parallel" if isJacobian else "sequential"
+        method = "sequential"
 
         # change parameters
         for name, value in zip(self.parameter_names, param):
@@ -121,21 +143,13 @@ class SME_Solver:
                 passLineList=False,
                 updateLineList=self.update_linelist,
                 radial_velocity_mode=radial_velocity_mode,
+                method=method,
             )
         except AtmosphereError as ae:
             # Something went wrong (left the grid? Don't go there)
             # If returned value is not finite, the fit algorithm will not go there
             logger.debug(ae)
             return np.inf
-
-        # Also save intermediary results, because we can
-        if save and self.filename is not None:
-            if self.filename.endswith(__file_ending__):
-                fname = self.filename[:-4]
-            else:
-                fname = self.filename
-            fname = f"{fname}_tmp{__file_ending__}"
-            sme.save(fname)
 
         segments = Synthesizer.check_segments(sme, segments)
 
@@ -157,26 +171,22 @@ class SME_Solver:
         resid = np.nan_to_num(resid, copy=False)
 
         # Update progress bars
-        if isJacobian:
-            self.progressbar_jacobian.update(1)
-        else:
-            self.progressbar.total += 1
-            self.progressbar.update(1)
+        # if isJacobian:
+        #     self.progressbar_jacobian.update(1)
+        # else:
+        #     self.progressbar.total += 1
+        #     self.progressbar.update(1)
 
         if not isJacobian:
             # Save result for jacobian
             self._latest_residual = resid
             self.iteration += 1
             logger.debug("%s", {n: v for n, v in zip(self.parameter_names, param)})
-            # Plot
-            # if fig is not None:
-            #     wave = sme2.wave
-            #     try:
-            #         fig.add(wave, synth, f"Iteration {self.iteration}")
-            #     except AttributeError:
-            #         warnings.warn(f"Figure {repr(fig)} doesn't have a 'add' method")
-            #     except Exception as e:
-            #         warnings.warn(f"Error during Plotting: {e.message}")
+            # Store progress (async)
+
+        # Also save intermediary results, because we can
+        if save:
+            self.backup(sme)
 
         return resid
 
@@ -186,11 +196,14 @@ class SME_Solver:
         The calculation is the same as "3-point"
         but we can tell residuals that we are within a jacobian
         """
-        self.progressbar_jacobian.reset()
+        # self.progressbar_jacobian.reset()
+
+        # Here we replace the scipy version of approx_derivative with our own
+        # The only difference being that we use Multiprocessing for the jacobian
         g = approx_derivative(
             self.__residuals,
             param,
-            method="3-point",
+            method="2-point",
             # This feels pretty bad, passing the latest synthetic spectrum
             # by reference as a parameter of the residuals function object
             f0=self._latest_residual,
@@ -247,12 +260,12 @@ class SME_Solver:
             or "monh" in self.parameter_names
         ):
             if sme.atmo.method == "grid":
-                atmo_file = sme.atmo.source
-                _, ext = splitext(atmo_file)
-                atmo_file = self.lfs_atmo.get(atmo_file)
+                atmo_source = sme.atmo.source
+                _, ext = splitext(atmo_source)
+                atmo_file = self.lfs_atmo.get(atmo_source)
 
                 if ext == ".sav":
-                    atmo_grid = SavFile(atmo_file)
+                    atmo_grid = SavFile(atmo_file, source=atmo_source)
 
                     teff = np.unique(atmo_grid.teff)
                     teff = np.min(teff), np.max(teff)
@@ -268,7 +281,7 @@ class SME_Solver:
                 elif ext == ".krz":
                     # krz atmospheres are fixed to one parameter set
                     # allow just "small" area around that
-                    atmo = KrzFile(atmo_file)
+                    atmo = KrzFile(atmo_file, source=atmo_source)
                     bounds["teff"] = atmo.teff - 500, atmo.teff + 500
                     bounds["logg"] = atmo.logg - 1, atmo.logg + 1
                     bounds["monh"] = atmo.monh - 1, atmo.monh + 1
@@ -561,6 +574,18 @@ class SME_Solver:
         assert "wave" in sme, "SME Structure has no wavelength"
         assert "spec" in sme, "SME Structure has no observation"
 
+        if self.restore and self.filename is not None:
+            fname = self.filename.rsplit(".", 1)[0]
+            fname = f"{fname}_iter.json"
+            try:
+                with open(fname) as f:
+                    data = json.load(f)
+                for fp in param_names:
+                    sme[fp] = data[fp]
+                logger.warning(f"Restoring existing backup data from {fname}")
+            except:
+                pass
+
         if "uncs" not in sme:
             sme.uncs = np.ones(sme.spec.size)
             logger.warning("SME Structure has no uncertainties, using all ones instead")
@@ -596,6 +621,9 @@ class SME_Solver:
                 "Initial values are incompatible with the bounds, clipping initial values"
             )
             p0 = np.clip(p0, bounds[0], bounds[1])
+        # Restore backup
+        if self.restore:
+            sme = self.restore_func(sme)
 
         # Get constant data from sme structure
         sme.mask[segments][sme.uncs[segments] == 0] = sme.mask_values["bad"]
@@ -605,7 +633,7 @@ class SME_Solver:
 
         # Divide the uncertainties by the spectrum, to improve the fit in the continuum
         # Just as in IDL SME, this increases the relative error for points inside lines
-        # uncs /= spec
+        uncs /= spec
 
         logger.info("Fitting Spectrum with Parameters: %s", ",".join(param_names))
         logger.debug("Initial values: %s", p0)
@@ -625,13 +653,14 @@ class SME_Solver:
             )
 
         # Setup LineList only once
-        self.dll.SetLibraryPath()
-        self.dll.InputLineList(sme.linelist)
+        dll = self.synthesizer.get_dll()
+        dll.SetLibraryPath()
+        dll.InputLineList(sme.linelist)
 
         # Do the heavy lifting
         if self.nparam > 0:
-            self.progressbar = tqdm(desc="Iteration", total=0)
-            self.progressbar_jacobian = tqdm(desc="Jacobian", total=len(p0) * 2)
+            # self.progressbar = tqdm(desc="Iteration", total=0)
+            # self.progressbar_jacobian = tqdm(desc="Jacobian", total=len(p0))
             with print_to_log():
                 res = least_squares(
                     self.__residuals,
@@ -639,15 +668,15 @@ class SME_Solver:
                     jac=self.__jacobian,
                     bounds=bounds,
                     x_scale="jac",
-                    loss="linear",
+                    loss="soft_l1",
                     method="trf",
                     verbose=2,
                     max_nfev=sme.fitresults.maxiter,
                     args=(sme, spec, uncs, mask),
                     kwargs={"bounds": bounds, "segments": segments},
                 )
-            self.progressbar.close()
-            self.progressbar_jacobian.close()
+            # self.progressbar.close()
+            # self.progressbar_jacobian.close()
             # The returned jacobian is "scaled for robust loss function"
             res.jac = self._last_jac
             for i, name in enumerate(self.parameter_names):
@@ -674,6 +703,8 @@ class SME_Solver:
         return sme
 
 
-def solve(sme, param_names=None, segments="all", filename=None, **kwargs):
-    solver = SME_Solver(filename=filename)
+def solve(
+    sme, param_names=None, segments="all", filename=None, restore=False, **kwargs
+):
+    solver = SME_Solver(filename=filename, restore=restore)
     return solver.solve(sme, param_names, segments, **kwargs)
