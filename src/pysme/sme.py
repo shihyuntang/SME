@@ -409,7 +409,7 @@ class SME_Structure(Parameters):
         The x coordinates of each polynomial are chosen so that x = 0, at the first wavelength point,
         i.e. x is shifted by wave[segment][0]
         """
-        if self.cscale_type == "spline":
+        if self.cscale_type in ["spline", "spline+mask"]:
             return self.__cscale
 
         nseg = self.nseg if self.nseg is not None else 1
@@ -448,7 +448,7 @@ class SME_Structure(Parameters):
 
     @_cscale.setter
     def _cscale(self, value):
-        if self.cscale_type in ["spline"]:
+        if self.cscale_type in ["spline", "spline+mask"]:
             if not isinstance(value, Iliffe_vector):
                 self.__cscale = (
                     Iliffe_vector(values=value) if value is not None else None

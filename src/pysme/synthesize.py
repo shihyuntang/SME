@@ -735,7 +735,7 @@ class Synthesizer:
                 sme.synth[s] = smod[s]
                 sme.cont[s] = cmod[s]
 
-            if sme.cscale_type == "spline":
+            if sme.cscale_type in ["spline", "spline+mask"]:
                 sme.cscale = cscale
                 sme.cscale_unc = cscale_unc
             elif sme.cscale_flag not in ["fix", "none"]:

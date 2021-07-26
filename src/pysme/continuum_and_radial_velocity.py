@@ -950,7 +950,7 @@ def match_rv_continuum(sme, segments, x_syn, y_syn):
     for seg in segments:
         mask &= select != seg
     vrad[mask] = sme.vrad[mask]
-    if sme.cscale_type in ["spline"]:
+    if sme.cscale_type in ["spline", "spline+mask"]:
         for i in range(len(mask)):
             if mask[i] and len(cscale[i]) == len(sme.cscale[i]):
                 cscale[i] = sme.cscale[i]
