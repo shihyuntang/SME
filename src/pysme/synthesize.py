@@ -498,8 +498,7 @@ class Synthesizer:
 
         # Sequential version for debugging
         data = [None for _ in segments[1:]]
-        for seg in segments[1:]:
-            i = seg - 1
+        for i, seg in enumerate(segments[1:]):
             data[i] = self.synthesize_segment(
                 sme,
                 seg,
@@ -608,7 +607,9 @@ class Synthesizer:
             if "mask" not in sme:
                 sme.mask = np.full(sme.spec.size, sme.mask_values["line"])
             for i in range(sme.nseg):
-                sme.mask[i, ~np.isfinite(sme.spec[i])] = sme.mask_values["bad"]
+                mask = ~np.isfinite(sme.spec[i])
+                mask |= sme.uncs[i] == 0
+                sme.mask[i, ~mask] = sme.mask_values["bad"]
 
         if radial_velocity_mode != "robust" and (
             "cscale" not in sme or "vrad" not in sme
