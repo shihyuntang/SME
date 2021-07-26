@@ -609,7 +609,7 @@ class Synthesizer:
             for i in range(sme.nseg):
                 mask = ~np.isfinite(sme.spec[i])
                 mask |= sme.uncs[i] == 0
-                sme.mask[i, ~mask] = sme.mask_values["bad"]
+                sme.mask[i, mask] = sme.mask_values["bad"]
 
         if radial_velocity_mode != "robust" and (
             "cscale" not in sme or "vrad" not in sme
