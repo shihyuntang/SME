@@ -912,6 +912,28 @@ def match_rv_continuum(sme, segments, x_syn, y_syn):
                 )
         else:
             raise ValueError
+     elif sme.cscale_type in ["spline+mask"]:
+        if sme.vrad_flag == "each":
+            for s in segments:
+                # We only use the continuum mask for the continuum fit,
+                # we need the lines for the radial velocity
+                vrad[s] = determine_radial_velocity(
+                    sme, s, cscale[s], x_syn[s], y_syn[s], only_mask=False
+                )
+                cscale[s] = get_continuum_broadening(
+                    sme, s, x_syn[s], y_syn[s], rvel=vrad[s], only_mask=True
+                )
+        elif sme.vrad_flag == "whole":
+            s = segments
+            vrad[s] = determine_radial_velocity(
+                sme, s, cscale[s], [x_syn[s] for s in s], [y_syn[s] for s in s], only_mask=False
+            )
+            for s in segments:
+                cscale[s] = get_continuum_broadening(
+                    sme, s, x_syn[s], y_syn[s], rvel=vrad[s], only_mask=True
+                )
+        else:
+            raise ValueError
     else:
         raise ValueError(
             f"Did not understand cscale_type, expected one of ('whole', 'mask'), but got {sme.cscale_type}."
