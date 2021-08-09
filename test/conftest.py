@@ -33,8 +33,8 @@ def testcase1():
     sme.wave = [sme.wave[0], sme.wave[0]]
     sme.synth = [sme.synth[0], sme.synth[0]]
     sme.mask = [sme.mask[0], sme.mask[0]]
-
-    sme.wran = [sme.wran[0], sme.wran[0]]
+    sme.uncs = [sme.uncs[0], sme.uncs[0]]
+    # sme.wran = [sme.wran[0], sme.wran[0]]
 
     rv = 10
     x_syn = sme.wave[0] * (1 - rv / c_light)
