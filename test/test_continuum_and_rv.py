@@ -104,12 +104,13 @@ def test_match_both(testcase1):
             pass
 
 
-def test_nomask(testcase1):
-    sme, x_syn, y_syn, rv = testcase1
-    sme.cscale_flag = "constant"
-    sme.vrad_flag = "each"
+# def test_nomask(testcase1):
+#     sme, x_syn, y_syn, rv = testcase1
+#     sme.cscale_flag = "constant"
+#     sme.vrad_flag = "each"
+#     sme.cscale_type = "mask"
 
-    sme.mask = 0
-    with pytest.warns(UserWarning):
-        rvel, vunc, cscale, cunc = match_rv_continuum(sme, 0, x_syn[0], y_syn[0])
+#     sme.mask = 0
+#     with pytest.warns(UserWarning):
+#         rvel, vunc, cscale, cunc = match_rv_continuum(sme, 0, x_syn, y_syn)
 
