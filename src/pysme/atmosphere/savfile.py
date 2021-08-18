@@ -42,7 +42,8 @@ class SavFile(AtmosphereGrid):
                     eprint = {0805.0554},
                     primaryClass = {astro-ph},
                     adsurl = {https://ui.adsabs.harvard.edu/abs/2008A&A...486..951G},
-                    adsnote = {Provided by the SAO/NASA Astrophysics Data System}}
+                    adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+                }
             """
         elif "atlas" in filename:
             self.citation_info = r"""
@@ -57,7 +58,40 @@ class SavFile(AtmosphereGrid):
                     archivePrefix = {ascl},
                     eprint = {1710.017},
                     adsurl = {https://ui.adsabs.harvard.edu/abs/2017ascl.soft10017K},
-                    adsnote = {Provided by the SAO/NASA Astrophysics Data System}}
+                    adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+                }
+                @ARTICLE{2002A&A...392..619H,
+                    author = {{Heiter}, U. and {Kupka}, F. and {van't Veer-Menneret}, C. and {Barban}, C. and {Weiss}, W.~W. and {Goupil}, M. -J. and {Schmidt}, W. and {Katz}, D. and {Garrido}, R.},
+                    title = "{New grids of ATLAS9 atmospheres I: Influence of convection treatments on model structure and on observable quantities}",
+                    journal = {\aap},
+                    keywords = {stars: atmospheres, stars: fundamental parameters, stars: variables delta Scuti stars, convection, Astrophysics},
+                    year = 2002,
+                    month = sep,
+                    volume = {392},
+                    pages = {619-636},
+                    doi = {10.1051/0004-6361:20020788},
+                    archivePrefix = {arXiv},
+                    eprint = {astro-ph/0206156},
+                    primaryClass = {astro-ph},
+                    adsurl = {https://ui.adsabs.harvard.edu/abs/2002A&A...392..619H},
+                    adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+                }
+            """
+        elif "ll" in filename:
+            self.citation_info = r"""
+                @ARTICLE{2004A&A...428..993S,
+                    author = {{Shulyak}, D. and {Tsymbal}, V. and {Ryabchikova}, T. and {St{\"u}tz}, Ch. and {Weiss}, W.~W.},
+                    title = "{Line-by-line opacity stellar model atmospheres}",
+                    journal = {\aap},
+                    keywords = {stars: atmospheres, stars: abundances, stars: chemically peculiar, stars: fundamental parameters, stars: individual: CU Vir, stars: individual: HD 124224},
+                    year = 2004,
+                    month = dec,
+                    volume = {428},
+                    pages = {993-1000},
+                    doi = {10.1051/0004-6361:20034169},
+                    adsurl = {https://ui.adsabs.harvard.edu/abs/2004A&A...428..993S},
+                    adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+                }
             """
         else:
             self.citation_info = ""  # ???
