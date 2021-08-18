@@ -143,9 +143,7 @@ def get_rv_tell(wave, flux, wtell, ftell):
     sme.mask = np.where(sme.wave > 6866, 1, 0)
     sme.vrad_flag = "each"
     sme.cscale_flag = "none"
-    rv_tell = determine_radial_velocity(
-        sme, 0, [[1]], wtell, ftell, rv_bounds=(-200, 200)
-    )
+    rv_tell = determine_radial_velocity(sme, wtell, ftell, 0, rv_bounds=(-200, 200))
     # plt.plot(vel_shift(rv, wave[sme.mask[0] == 1]), flux[sme.mask[0] == 1])
     # plt.plot(wtapas[wtapas > 6866], ftapas[wtapas > 6866])
     # plt.show()
@@ -278,7 +276,7 @@ def run(target, mask=None, linelist="harps.lin", segments="all"):
     # Set RV and Continuum flags
     sme.vrad_flag = "each"
     sme.cscale_flag = "quadratic"
-    sme.cscale_type = "spline"
+    sme.cscale_type = "match"
     sme.vrad = 0
 
     # Determine the radial velocity offsets
@@ -299,7 +297,7 @@ def run_again(target, segments="all"):
 
     plot_file = join(examples_dir, f"results/{target}.html")
     mask_file = join(
-        examples_dir, "results/HD_22049_mask_new_out_monh_teff_logg_vmic_vmac_vsini.sme"
+        examples_dir, "results_spline/HD_22049_mask_new_out_monh_teff_logg_vmic_vmac_vsini.sme"
     )
 
     try:
@@ -531,21 +529,21 @@ if __name__ == "__main__":
     #     hdu.close()
     #     print(f"{target} & {program_id} & {archive_id} \\\\")
     #     pass
-    for target in ["55_Cnc"]:
-        segments = range(6, 31)
-        mask = masked.get(target)
-        ll = linelist.get(target, "harps.lin")
-        sme = run(target, mask=mask, linelist=ll, segments=segments)
-        examples_dir = dirname(realpath(__file__))
-        mask_file = join(
-            examples_dir,
-            "results/HD_22049_mask_new_out_monh_teff_logg_vmic_vmac_vsini.sme",
-        )
-        sme_mask = SME.SME_Structure.load(mask_file)
-        sme = sme.import_mask(sme_mask, keep_bpm=True)
+    for target in targets:
+        # segments = range(6, 31)
+        # mask = masked.get(target)
+        # ll = linelist.get(target, "harps.lin")
+        # sme = run(target, mask=mask, linelist=ll, segments=segments)
+        # examples_dir = dirname(realpath(__file__))
+        # mask_file = join(
+        #     examples_dir,
+        #     "results/HD_22049_mask_new_out_monh_teff_logg_vmic_vmac_vsini.sme",
+        # )
+        # sme_mask = SME.SME_Structure.load(mask_file)
+        # sme = sme.import_mask(sme_mask, keep_bpm=True)
 
-        save_as_idl(sme, "cnc55.inp")
-        # parallel(target)
+        # save_as_idl(sme, "cnc55.inp")
+        parallel(target)
 
     # with ProcessPoolExecutor() as executor:
     #     futures = {}

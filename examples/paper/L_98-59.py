@@ -708,11 +708,9 @@ if __name__ == "__main__":
     # err = hdu[1].data["ERR"]
     # sme = SME.SME_Structure.load(in_file)
     sme = SME.SME_Structure(wave=wave, sob=flux)
-    sme.mu = np.geomspace(0.1, 1, num=7)
+    sme.nmu = 7
 
-    sme.uncs = [
-        np.nan_to_num(1 / np.sqrt(np.abs(spec)) ** 2, nan=1) for spec in sme.spec
-    ]
+    sme.uncs = [np.nan_to_num(np.sqrt(np.abs(spec)), nan=1) for spec in sme.spec]
     # sme.mask = get_mask_from_neural_network(sme)
     # sme.mask = sme.mask_values["line"]
     # for i in range(sme.nseg):
@@ -770,12 +768,6 @@ if __name__ == "__main__":
     sky_location.location = observatory
     correction = sky_location.radial_velocity_correction().to_value("km/s")
 
-    # Set radial velocity and continuum settings
-    # Set RV and Continuum flags
-    sme.vrad_flag = "each"
-    sme.cscale_flag = 3
-    sme.cscale_type = "match"
-
     # sme.vrad = (
     #     star["radial_velocity"].to_value("km/s") if "radial_velocity" in star else 0
     # )
@@ -791,14 +783,107 @@ if __name__ == "__main__":
 
     # Restrict the linelist to relevant lines
     # for this segment
-    # rvel = 100
-    # wmin, wmax = sme.wran[6]
-    # wmin *= 1 - rvel / 3e5
-    # wmax *= 1 + rvel / 3e5
-    # sme.linelist = sme.linelist.trim(wmin, wmax)
+    s = 2
+    wmin, wmax = sme.wran[s]
+    sme.linelist = sme.linelist.trim(wmin, wmax, rvel=100)
 
-    # Start SME solver
-    sme = synthesize_spectrum(sme)
+    # Set radial velocity and continuum settings
+    cscale = {}
+    x = sme.wave[s] - sme.wave[s][0]
+
+    sme.vrad_flag = "each"
+    sme.cscale_type = "match"
+    sme.cscale_flag = "cubic"
+    sme = synthesize_spectrum(sme, segments=[s])
+    cscale["match+cubic"] = np.polyval(sme.cscale[s], x)
+
+    sme.vrad_flag = "each"
+    sme.cscale_type = "spline"
+    sme.cscale_flag = 3
+    sme.cscale = None
+    sme.vrad = None
+    sme = synthesize_spectrum(sme, segments=[s])
+    cscale["spline+3"] = np.copy(sme.cscale[s])
+
+    sme.vrad_flag = "each"
+    sme.cscale_flag = "none"
+    sme = synthesize_spectrum(sme, segments=[s])
+
+    plot_file = join(dirname(__file__), "images/cont_l9859.png")
+    plt.plot(sme.wave[s], sme.spec[s], label="Observation")
+    plt.plot(sme.wave[s], sme.synth[s], label="Synthetic")
+    # plt.fill_between(
+    #     sme.wave[s],
+    #     0,
+    #     sme.spec[s],
+    #     where=sme.mask[s] == 1,
+    #     label="Mask Line",
+    #     facecolor="#bcbd22",
+    #     alpha=1,
+    # )
+
+    # m = sme.mask[s] == 2
+    # m[1:] = m[:-1] | m[1:]
+    # m[:-1] = m[:-1] | m[1:]
+    # plt.fill_between(
+    #     sme.wave[s],
+    #     0,
+    #     sme.spec[s],
+    #     where=m,
+    #     label="Mask Continuum",
+    #     facecolor="#d62728",
+    #     alpha=1,
+    # )
+
+    for k, cs in cscale.items():
+        plt.plot(sme.wave[s], cs, label=k)
+    plt.legend()
+    plt.xlabel("Wavelength [Å]")
+    plt.ylabel("Flux [A.U.]")
+    # plt.xlim(4023, 4031)
+    plt.ylim(0, 1.2)
+
+    plt.savefig(plot_file)
+    plt.show()
+    plt.clf()
+
+    plot_file = join(dirname(__file__), "images/cont_l9859_2.png")
+    plt.plot(sme.wave[s], sme.spec[s], label="Observation")
+    plt.plot(sme.wave[s], sme.synth[s], label="Synthetic")
+    # plt.fill_between(
+    #     sme.wave[s],
+    #     0,
+    #     sme.spec[s],
+    #     where=sme.mask[s] == 1,
+    #     label="Mask Line",
+    #     facecolor="#bcbd22",
+    #     alpha=1,
+    # )
+
+    # m = sme.mask[s] == 2
+    # m[1:] = m[:-1] | m[1:]
+    # m[:-1] = m[:-1] | m[1:]
+    # plt.fill_between(
+    #     sme.wave[s],
+    #     0,
+    #     sme.spec[s],
+    #     where=m,
+    #     label="Mask Continuum",
+    #     facecolor="#d62728",
+    #     alpha=1,
+    # )
+
+    for k, cs in cscale.items():
+        plt.plot(sme.wave[s], cs * sme.synth[s], label=k)
+    plt.legend()
+    plt.xlabel("Wavelength [Å]")
+    plt.ylabel("Flux [A.U.]")
+    plt.xlim(4023, 4031)
+    plt.ylim(0, 1.2)
+
+    plt.savefig(plot_file)
+    plt.show()
+
     # sme.cscale_flag = "fix"
 
     # sme.save(out_file)
