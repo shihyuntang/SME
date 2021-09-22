@@ -15,8 +15,6 @@ from scipy.ndimage.filters import convolve, gaussian_filter1d
 from scipy.interpolate import interp1d, UnivariateSpline
 
 import uuid
-from pathos.multiprocessing import ProcessPool
-from pathos.pools import ThreadPool
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 

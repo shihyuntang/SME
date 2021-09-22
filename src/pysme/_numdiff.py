@@ -11,7 +11,6 @@ from scipy.optimize._numdiff import (
     csc_matrix,
     _sparse_difference,
 )
-from pathos.multiprocessing import ProcessPool
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
 
