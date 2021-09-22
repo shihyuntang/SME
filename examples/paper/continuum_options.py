@@ -157,6 +157,7 @@ if __name__ == "__main__":
         plt.legend(loc="upper left", fontsize="small")
         plt.xlabel("Wavelength [Å]")
         plt.ylabel("Flux [A.U.]")
+        plt.ylim(0.9925, 1.004)
         # plt.ylim(0.9925, 1.01)
         plt.savefig(plot_file)
         # plt.show()

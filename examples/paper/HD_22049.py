@@ -1,14 +1,11 @@
 """ Minimum working example of an SME script 
 """
 import os
+import sys
 import os.path
 import re
 from os.path import dirname, join, realpath, exists, basename
 import datetime
-from concurrent.futures import (
-    ProcessPoolExecutor,
-    as_completed,
-)
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -21,9 +18,7 @@ from pysme.abund import Abund
 from pysme.gui import plot_plotly
 from pysme.iliffe_vector import Iliffe_vector
 from pysme.linelist.vald import ValdFile
-from pysme.persistence import save_as_idl
 from pysme.solve import solve
-from pysme.synthesize import synthesize_spectrum
 from pysme.continuum_and_radial_velocity import determine_radial_velocity
 from flex.flex import FlexFile
 from scipy.ndimage.filters import gaussian_filter1d, median_filter
@@ -275,7 +270,7 @@ def run(target, mask=None, linelist="harps.lin", segments="all"):
     # Set radial velocity and continuum settings
     # Set RV and Continuum flags
     sme.vrad_flag = "each"
-    sme.cscale_flag = "quadratic"
+    sme.cscale_flag = "linear"
     sme.cscale_type = "match"
     sme.vrad = 0
 
@@ -297,18 +292,21 @@ def run_again(target, segments="all"):
 
     plot_file = join(examples_dir, f"results/{target}.html")
     mask_file = join(
-        examples_dir, "results_spline/HD_22049_mask_new_out_monh_teff_logg_vmic_vmac_vsini.sme"
+        examples_dir,
+        "results_spline/HD_22049_mask_new_out_monh_teff_logg_vmic_vmac_vsini.sme",
     )
 
     try:
         ff = FlexFile.read(mid_mask_file)
-        ff.header["cscale_type"] = "spline"
+        ff.header["cscale_type"] = "match"
+        ff.header["cscale_flag"] = "linear"
         ff.write(mid_mask_file)
         sme = SME.SME_Structure.load(mid_mask_file)
         mid_file = mid_mask_file
     except FileNotFoundError:
         ff = FlexFile.read(mid_file)
         ff.header["cscale_type"] = "spline"
+        ff.header["cscale_flag"] = "linear"
         ff.write(mid_file)
         sme = SME.SME_Structure.load(mid_file)
 
@@ -362,7 +360,7 @@ def fit(sme, segments="all"):
 
     # Plot results
     fig = plot_plotly.FinalPlot(sme)
-    fig.save(filename=plot_file)
+    fig.save(filename=plot_file, auto_open=False)
     print(f"Finished: {target}")
     return sme
 
@@ -517,46 +515,11 @@ if __name__ == "__main__":
         sme = fit(sme, segments=segments)
         return sme
 
-    # examples_dir = dirname(realpath(__file__))
-    # data_dir = join(examples_dir, "data")
-    # for target in targets:
-    #     star = load_star(target, update=False)
-    #     in_file = load_fname(star, data_dir)
-    #     hdu = fits.open(in_file)
-    #     program_id = hdu[0].header["ESO OBS PROG ID"]
-    #     archive_id = basename(in_file).rsplit(".", 1)[0]
-    #     archive_id = archive_id.replace(" ", ":").replace("_", ":")
-    #     hdu.close()
-    #     print(f"{target} & {program_id} & {archive_id} \\\\")
-    #     pass
-    for target in targets:
-        # segments = range(6, 31)
-        # mask = masked.get(target)
-        # ll = linelist.get(target, "harps.lin")
-        # sme = run(target, mask=mask, linelist=ll, segments=segments)
-        # examples_dir = dirname(realpath(__file__))
-        # mask_file = join(
-        #     examples_dir,
-        #     "results/HD_22049_mask_new_out_monh_teff_logg_vmic_vmac_vsini.sme",
-        # )
-        # sme_mask = SME.SME_Structure.load(mask_file)
-        # sme = sme.import_mask(sme_mask, keep_bpm=True)
-
-        # save_as_idl(sme, "cnc55.inp")
+    if len(sys.argv) == 1:
+        for target in tqdm(targets):
+            parallel(target)
+    else:
+        target = sys.argv[1]
         parallel(target)
-
-    # with ProcessPoolExecutor() as executor:
-    #     futures = {}
-    #     for target in targets[1:]:
-    #         print(f"Starting {target}")
-    #         futures[executor.submit(parallel, target)] = target
-
-    #     for future in tqdm(as_completed(futures), total=len(targets)):
-    #         target = futures[future]
-    #         try:
-    #             sme = future.result()
-    #             print(f"Completed {target}")
-    #         except Exception as ex:
-    #             print(f"Encountered error in {target}: {str(ex)}")
 
     pass
