@@ -338,7 +338,9 @@ class LineList(IPersist):
             "gamvw",
         ]
         # Select fields
-        return self._lines.reindex(columns=names).values
+        values = self._lines.reindex(columns=names).values
+        values = values.astype(float)
+        return values
 
     def sort(self, field="wlcent", ascending=True):
         """Sort the linelist
