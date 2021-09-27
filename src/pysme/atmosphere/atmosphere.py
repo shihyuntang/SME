@@ -192,9 +192,8 @@ class AtmosphereGrid(np.recarray):
         names = [s[0].lower() for s in dtype]
         titles = [s[0].upper() for s in dtype]
 
-        atmo_grid = np.recarray(natmo, dtype=dtype, names=names, titles=titles)
+        data = super().__new__(cls, (natmo,), dtype=dtype, names=names, titles=titles)
 
-        data = atmo_grid.view(cls)
         data.interp = "TAU"
         data.depth = "RHOX"
         data.method = "grid"
@@ -202,6 +201,7 @@ class AtmosphereGrid(np.recarray):
         data.source = ""
         data.citation_info = ""
         data.abund_format = "sme"
+        data.info = ""
         return data
 
     def __array_finalize__(self, obj):
@@ -209,12 +209,12 @@ class AtmosphereGrid(np.recarray):
             return
         self.interp = getattr(self, "interp", "TAU")
         self.depth = getattr(self, "depth", "RHOX")
-        self.source = getattr(self, "source", "")
-        self.geom = getattr(self, "geom", "PP")
-        self.citation_info = getattr(self, "citation_info", "")
         self.method = getattr(self, "method", "grid")
+        self.geom = getattr(self, "geom", "PP")
+        self.source = getattr(self, "source", "")
+        self.citation_info = getattr(self, "citation_info", "")
         self.abund_format = getattr(self, "abund_format", "sme")
-        self.wlstd = getattr(self, "wlstd", 5000)
+        self.info = getattr(self, "info", "")
 
     def __reduce__(self):
         # Get the parent's __reduce__ tuple
@@ -228,7 +228,7 @@ class AtmosphereGrid(np.recarray):
             self.citation_info,
             self.method,
             self.abund_format,
-            self.wlstd,
+            self.info,
         )
         # Return a tuple that replaces the parent's __setstate__ tuple with our own
         return (pickled_state[0], pickled_state[1], new_state)
@@ -241,7 +241,8 @@ class AtmosphereGrid(np.recarray):
         self.citation_info = state[-4]
         self.method = state[-3]
         self.abund_format = state[-2]
-        self.wlstd = state[-1]
+        self.info = state[-1]
+
         # Call the parent's __setstate__ with the other tuple elements.
         super(AtmosphereGrid, self).__setstate__(state[0:-8])
 
@@ -277,3 +278,32 @@ class AtmosphereGrid(np.recarray):
     @property
     def ndep(self):
         return self.shape[1]
+
+    def save(self, filename):
+        """ Save the Atmopshere grid to a file using a numpy save format """
+        header = {
+            "interp": self.interp,
+            "depth": self.depth,
+            "source": self.source,
+            "geom": self.geom,
+            "citation_info": self.citation_info,
+            "method": self.method,
+            "abund_format": self.abund_format,
+            "info": self.info,
+        }
+        names = list(header.keys())
+        values = [header[n] for n in names]
+        header = np.rec.array(values, names=names)
+        np.savez(filename, data=self, header=header)
+        return
+
+    @classmethod
+    def load(cls, filename):
+        """ Load the atmosphere grid data from disk """
+        data = np.load(filename)
+        self = data["data"].view(cls)
+        header = data["header"]
+        for k in header.dtype.names:
+            v = header[k][()]
+            setattr(self, k, v)
+        return self

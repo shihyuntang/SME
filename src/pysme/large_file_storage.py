@@ -87,6 +87,22 @@ class LargeFileStorage:
         fullpath : str
             Absolute path to the datafile
         """
+        url = self.get_url(key)
+        is_cached = is_url_in_cache(url, pkgname="pysme")
+        fname = download_file(url, cache=True, pkgname="pysme")
+
+        if not is_cached and url.endswith(".gz"):
+            # If the file is compressed
+            # Replace the cache file with the decompressed file
+            with gzip.open(fname, "rb") as f_in:
+                with NamedTemporaryFile("wb") as f_out:
+                    shutil.copyfileobj(f_in, f_out)
+                    f_out.flush()
+                    import_file_to_cache(url, f_out.name, pkgname="pysme")
+
+        return fname
+
+    def get_url(self, key):
         key = str(key)
 
         # Check if the file is tracked and/or exists in the storage directory
@@ -104,19 +120,7 @@ class LargeFileStorage:
         # Otherwise get it from the cache or online if necessary
         newest = self.pointers[key]
         url = join(self.server, newest)
-        is_cached = is_url_in_cache(url, pkgname="pysme")
-        fname = download_file(url, cache=True, pkgname="pysme")
-
-        if not is_cached and url.endswith(".gz"):
-            # If the file is compressed
-            # Replace the cache file with the decompressed file
-            with gzip.open(fname, "rb") as f_in:
-                with NamedTemporaryFile("wb") as f_out:
-                    shutil.copyfileobj(f_in, f_out)
-                    f_out.flush()
-                    import_file_to_cache(url, f_out.name, pkgname="pysme")
-
-        return fname
+        return url
 
     def clean_cache(self):
         """ Remove unused cache files (from old versions) """
@@ -126,10 +130,11 @@ class LargeFileStorage:
         """ Delete a file, including the cache file """
         clear_download_cache(fname, pkgname="pysme")
 
-    def move_to_cache(self, fname):
+    def move_to_cache(self, fname, key=None):
         """ Move currently used files into cache directory and use symlinks instead,
         just as if downloaded from a server """
-        key = basename(fname)
+        if key is None:
+            key = basename(fname)
         import_file_to_cache(key, fname, pkgname="pysme")
         self.pointers[key] = key
 

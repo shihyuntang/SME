@@ -1,7 +1,8 @@
-from scipy.io import readsav
-import numpy as np
-
 from os.path import basename
+from tempfile import NamedTemporaryFile
+
+import numpy as np
+from scipy.io import readsav
 
 from .atmosphere import AtmosphereGrid
 
@@ -9,22 +10,29 @@ from .atmosphere import AtmosphereGrid
 class SavFile(AtmosphereGrid):
     """ IDL savefile atmosphere grid """
 
-    def __new__(cls, filename, source=None):
+    def __new__(cls, filename, source=None, lfs=None):
+        # Try loading the datafile using Numpy which is faster
+        # and was generated in a previous iteration of PySME
+        try:
+            return cls.load(filename)
+        except:
+            pass
+
+        # Otherwise we parse the sav file
         data = readsav(filename)
 
         npoints = data["atmo_grid_maxdep"]
         ngrids = data["atmo_grid_natmo"]
         self = super(SavFile, cls).__new__(cls, ngrids, npoints)
-
         if source is None:
-            filename = basename(filename)
-            self.source = filename
-        else:
-            self.source = source
-            filename = source
+            source = basename(filename)
+        self.source = source
+
+        if "atmo_grid_intro" in data.keys():
+            self.info = b" ".join(data["atmo_grid_intro"]).decode()
 
         # TODO cover all cases
-        if "marcs" in filename:
+        if "marcs" in self.source:
             self.citation_info = r"""
                 @ARTICLE{2008A&A...486..951G,
                     author = {{Gustafsson}, B. and {Edvardsson}, B. and {Eriksson}, K. and
@@ -45,7 +53,7 @@ class SavFile(AtmosphereGrid):
                     adsnote = {Provided by the SAO/NASA Astrophysics Data System}
                 }
             """
-        elif "atlas" in filename:
+        elif "atlas" in self.source:
             self.citation_info = r"""
                 @MISC{2017ascl.soft10017K,
                     author = {{Kurucz}, Robert L.},
@@ -77,7 +85,7 @@ class SavFile(AtmosphereGrid):
                     adsnote = {Provided by the SAO/NASA Astrophysics Data System}
                 }
             """
-        elif "ll" in filename:
+        elif "ll" in self.source:
             self.citation_info = r"""
                 @ARTICLE{2004A&A...428..993S,
                     author = {{Shulyak}, D. and {Tsymbal}, V. and {Ryabchikova}, T. and {St{\"u}tz}, Ch. and {Weiss}, W.~W.},
@@ -126,4 +134,11 @@ class SavFile(AtmosphereGrid):
         self["xna"] = np.stack(atmo_grid["xna"])
         self["abund"] = np.stack(atmo_grid["abund"])
         self["opflag"] = np.stack(atmo_grid["opflag"])
+
+        # And also replace the IDL file with a numpy file in the cache
+        if lfs is not None:
+            with NamedTemporaryFile() as named:
+                self.save(named)
+                lfs.move_to_cache(named.name, key=lfs.get_url(self.source))
+
         return self
