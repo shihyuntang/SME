@@ -430,11 +430,14 @@ def write_as_idl(sme):
         idl_fields["nlte"]["nlte_grids"] = grids
         idl_fields["nlte"]["nlte_pro"] = "sme_nlte"
 
-    # if sme.iptype is not None:
-    #     idl_fields["iptype"] = sme.iptype
-    #     idl_fields["ipres"] = sme.ipres
-    #     # "ip_x": sme.ip_x,
-    #     # "ip_y": sme.ip_y,
+    if sme.iptype is not None:
+        idl_fields["iptype"] = sme.iptype
+        idl_fields["ipres"] = sme.ipres[0]
+        # "ip_x": sme.ip_x,
+        # "ip_y": sme.ip_y,
+    else:
+        idl_fields["iptype"] = "gauss"
+        idl_fields["ipres"] = 0
 
     if sme.wave is not None:
         wind = np.cumsum(sme.wave.shape[1]) - 1
