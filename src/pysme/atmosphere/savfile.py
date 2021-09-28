@@ -10,11 +10,20 @@ from .atmosphere import AtmosphereGrid
 class SavFile(AtmosphereGrid):
     """ IDL savefile atmosphere grid """
 
+    _cache = {}
+
     def __new__(cls, filename, source=None, lfs=None):
+        # Check if the file is in the cache
+        try:
+            return cls._cache[filename]
+        except:
+            pass
         # Try loading the datafile using Numpy which is faster
         # and was generated in a previous iteration of PySME
         try:
-            return cls.load(filename)
+            self = cls.load(filename)
+            cls._cache = self
+            return self
         except:
             pass
 
@@ -135,6 +144,8 @@ class SavFile(AtmosphereGrid):
         self["abund"] = np.stack(atmo_grid["abund"])
         self["opflag"] = np.stack(atmo_grid["opflag"])
 
+        # Store in cache
+        cls._cache = self
         # And also replace the IDL file with a numpy file in the cache
         if lfs is not None:
             with NamedTemporaryFile() as named:
