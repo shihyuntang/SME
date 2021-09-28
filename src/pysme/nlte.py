@@ -9,6 +9,7 @@ import warnings
 
 import numpy as np
 from scipy import interpolate
+from tqdm import tqdm
 
 from .abund import Abund, elements as abund_elem
 from .data_structure import Collection, CollectionFactory, astype, array, this, oneof
@@ -266,8 +267,10 @@ class Grid:
         self.linelist = sme.linelist
         #:array(str): Elemental Species Names for the linelist
         self.species = sme.linelist.species
+        #:str: Name of the grid
+        self.grid_name = sme.nlte.grids[elem]
         #:str: complete filename of the NLTE grid data file
-        self.fname = lfs_nlte.get(sme.nlte.grids[elem])
+        self.fname = lfs_nlte.get(self.grid_name)
         #:{"levels", "energy"}: Selection algorithm to match lines in grid with linelist
         self.selection = selection
         #:float: Minimum difference between energy levels to match, only relevant for selection=='energy'
@@ -293,8 +296,8 @@ class Grid:
         # The position of the models in the datafile
         self._keys = self.directory["models"].astype("U")
 
+        depth_name = str.lower(sme.atmo.interp)
         try:
-            depth_name = str.lower(sme.atmo.interp)
             depth = self.directory[depth_name]
         except KeyError:
             other_depth_name = "tau" if depth_name == "rhox" else "rhox"
@@ -343,7 +346,16 @@ class Grid:
 
         conf = self.directory["conf"].astype("U")
         term = self.directory["term"].astype("U")
-        species = self.directory["spec"].astype("U")
+        try:
+            species = self.directory["spec"].astype("U")
+        except KeyError:
+            logger.warning(
+                "Could not find 'species' field in NLTE file %s. Assuming they are all '%s 1'.",
+                self.grid_name,
+                self.elem,
+            )
+            species = np.full(conf.shape, "%s 1" % self.elem)
+            pass
         rotnum = self.directory["J"]  # rotational number of the atomic state
         if self.version[0] == 1 and self.version[1] >= 10:
             energies = self.directory["energy"]  # energy in eV
@@ -450,7 +462,11 @@ class Grid:
 
         self.bgrid = np.zeros((ndepths, nlevel, nabund, nteff, ngrav, nfeh))
 
-        for i, j, k, l in np.ndindex(nabund, nteff, ngrav, nfeh):
+        for i, j, k, l in tqdm(
+            np.ndindex(nabund, nteff, ngrav, nfeh),
+            desc="Loading NLTE %s" % self.elem,
+            total=nabund * nteff * ngrav * nfeh,
+        ):
             model = self._keys[f[l], g[k], t[j], x[i]]
             try:
                 self.bgrid[:, :, i, j, k, l] = self.directory[model]
@@ -756,21 +772,31 @@ class Grid:
         target_depth = np.log10(target_depth)
         ntarget = len(target_depth)
 
-        # TODO: We only need to interpolate the closest 2**4 grids, and not all of them
-        grid = np.empty((*nparam, ntarget, ndepths), float)
-        for l, x, t, g, f in np.ndindex(ndepths, *nparam):
-            xp = self.depth[f, g, t, :]
-            yp = self.bgrid[l, :, x, t, g, f]
+        iabund = np.digitize(rabund, self._points[0]) - 1
+        iteff = np.digitize(teff, self._points[1]) - 1
+        ilogg = np.digitize(logg, self._points[2]) - 1
+        imonh = np.digitize(monh, self._points[3]) - 1
 
+        # Interpolate on the grid
+        # We only interpolate on the 2**4 points around the requested values
+        # self._points and self._grid are interpolated when reading the data in read_grid
+        target = (rabund, teff, logg, monh)
+        points = (
+            self._points[0][iabund : iabund + 2],
+            self._points[1][iteff : iteff + 2],
+            self._points[2][ilogg : ilogg + 2],
+            self._points[3][imonh : imonh + 2],
+        )
+        npoints = (points[0].size, points[1].size, points[2].size, points[3].size)
+
+        grid = np.empty((*npoints, ntarget, ndepths), float)
+        for l, x, t, g, f in np.ndindex(ndepths, *npoints):
+            xp = self.depth[imonh + f, ilogg + g, iteff + t, :]
+            yp = self.bgrid[l, :, iabund + x, iteff + t, ilogg + g, imonh + f]
             xp = np.log10(xp)
             grid[x, t, g, f, :, l] = interpolate.interp1d(
                 xp, yp, bounds_error=False, fill_value="extrapolate", kind="cubic",
             )(target_depth)
-
-        # Interpolate on the grid
-        # self._points and self._grid are interpolated when reading the data in read_grid
-        target = (rabund, teff, logg, monh)
-        points = self._points
 
         # Check if we need to extrapolate
         if any([t < min(p) or t > max(p) for t, p in zip(target, points)]):
@@ -970,6 +996,7 @@ class NLTE(Collection):
             logger.info("Running in NLTE: %s", ", ".join(self.elements))
 
         # Call each element to update and return its set of departure coefficients
+        marked_for_removal = []
         for elem in self.elements:
             # Call function to retrieve interpolated NLTE departure coefficients
             # the abundances for NLTE are handled in the H-12 format
@@ -977,9 +1004,12 @@ class NLTE(Collection):
             bmat = grid.get(sme.abund, sme.teff, sme.logg, sme.monh, sme.atmo)
 
             if bmat is None or grid.linerefs.size == 0:
-                # no data were returned. Don't bother?
-                # logger.warning(f"No NLTE transitions found for {elem}")
-                self.remove_nlte(elem)
+                # No lines are found for this element
+                # remove it from the elements after this loop
+                logger.warning(
+                    "No %s NLTE lines found, removing it from NLTE calculations", elem
+                )
+                marked_for_removal += [elem]
             else:
                 # Put corrections into the nlte_b matrix, don't cache the data
                 for lr, li in zip(grid.linerefs, grid.lineindices):
@@ -987,6 +1017,9 @@ class NLTE(Collection):
                     # Make sure both levels have corrections available
                     if lr[0] != -1 and lr[1] != -1:
                         dll.InputNLTE(bmat[:, lr].T, li)
+
+        for elem in marked_for_removal:
+            self.remove_nlte(elem)
 
         # flags = sme_synth.GetNLTEflags(sme.linelist)
 
