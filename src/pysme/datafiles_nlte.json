@@ -42,5 +42,16 @@
     "nlte_N_ama51_pysme.grd": "nlte_N_ama51_pysme_v1.0.0.grd.gz",
     "nlte_O_ama51_pysme.grd": "nlte_O_ama51_pysme_v1.0.0.grd.gz",
     "nlte_Si_ama51_pysme.grd": "nlte_Si_ama51_pysme_v1.0.0.grd.gz",
-    "marcs2012_H2018.grd": "marcs2012_H2018_v1.0.0.grd.gz"
+    "marcs2012_H2018.grd": "marcs2012_H2018_v1.0.0.grd.gz",
+    "marcs2012_Al.grd": "marcs2012_Al_v1.0.0.grd.gz",
+    "marcs2012_Ba.grd": "marcs2012_Ba_v1.0.0.grd.gz",
+    "marcs2012_Ca.grd": "marcs2012_Ca_v1.0.0.grd.gz",
+    "marcs2012_C.grd": "marcs2012_C_v1.0.0.grd.gz",
+    "marcs2012_Fe.grd": "marcs2012_Fe_v1.0.0.grd.gz",
+    "marcs2012_K.grd": "marcs2012_K_v1.0.0.grd.gz",
+    "marcs2012_Mg.grd": "marcs2012_Mg_v1.0.0.grd.gz",
+    "marcs2012_Mn.grd": "marcs2012_Mn_v1.0.0.grd.gz",
+    "marcs2012_N.grd": "marcs2012_N_v1.0.0.grd.gz",
+    "marcs2012_O.grd": "marcs2012_O_v1.0.0.grd.gz",
+    "marcs2012_Si.grd": "marcs2012_Si_v1.0.0.grd.gz"
 }
