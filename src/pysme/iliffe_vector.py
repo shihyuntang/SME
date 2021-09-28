@@ -18,7 +18,7 @@ class Iliffe_vector(MultipleDataExtension):
     def __init__(self, nseg=None, values=None, index=None, dtype=float):
         # sizes = size of the individual parts
         # the indices are then [0, s1, s1+s2, s1+s2+s3, ...]
-        super().__init__()
+        super().__init__(cls=MultipleDataExtension)
         if values is not None and index is None:
             if isinstance(values, np.ndarray):
                 values = [values]
