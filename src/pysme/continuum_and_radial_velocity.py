@@ -855,12 +855,16 @@ def determine_radial_velocity(
 
         if np.all(sme.vrad[segment] == 0):
             # Get a first rough estimate from cross correlation
-            # Subtract continuum level of 1, for better correlation
-            corr = correlate(
-                y_obs - np.percentile(y_obs, 95),
-                y_tmp - np.percentile(y_tmp, 95),
-                mode="same",
-            )
+            # Normalize both spectra to 0 and 1 range
+            # and subtract continuum level of 1, for better correlation
+            y_obs_tmp = y_obs - np.min(y_obs)
+            y_obs_tmp /= np.max(y_obs_tmp)
+            y_obs_tmp -= 1
+            y_tmp_tmp = y_tmp - np.min(y_tmp)
+            y_tmp_tmp /= np.max(y_tmp_tmp)
+            y_tmp_tmp -= 1
+            # Perform cross correaltion between normalized spectra
+            corr = correlate(y_obs_tmp, y_tmp_tmp, mode="same",)
             x_mid = x_obs[len(x_obs) // 2]
             x_shift = c_light * (1 - x_mid / x_obs)
             idx = (x_shift >= rv_bounds[0]) & (x_shift <= rv_bounds[1])
@@ -970,9 +974,12 @@ def match_rv_continuum(sme, segments, x_syn, y_syn):
     else:
         if sme.cscale_type == "mcmc":
             for s in segments:
-                vrad[s], vrad_unc[s], cscale[s], cscale_unc[s] = continuum_normalization(
-                    sme, x_syn[s], y_syn[s], s, rvel=vrad[s]
-                )
+                (
+                    vrad[s],
+                    vrad_unc[s],
+                    cscale[s],
+                    cscale_unc[s],
+                ) = continuum_normalization(sme, x_syn[s], y_syn[s], s, rvel=vrad[s])
         else:
             for s in segments:
                 cscale[s] = continuum_normalization(
