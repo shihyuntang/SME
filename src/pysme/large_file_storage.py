@@ -16,6 +16,9 @@ import gzip
 import shutil
 from tempfile import NamedTemporaryFile
 
+from tqdm.auto import tqdm
+from tqdm.utils import CallbackIOWrapper
+
 from astropy.utils.data import (
     import_file_to_cache,
     download_file,
@@ -94,13 +97,31 @@ class LargeFileStorage:
         if not is_cached and url.endswith(".gz"):
             # If the file is compressed
             # Replace the cache file with the decompressed file
-            with gzip.open(fname, "rb") as f_in:
-                with NamedTemporaryFile("wb") as f_out:
-                    shutil.copyfileobj(f_in, f_out)
-                    f_out.flush()
-                    import_file_to_cache(url, f_out.name, pkgname="pysme")
+            self._unpack(fname, key, url)
 
         return fname
+
+    def _unpack(self, fname, key, url):
+        logger.debug("Unpacking data file %s", key)
+
+        with gzip.open(fname, "rb") as f_in:
+            with NamedTemporaryFile("wb") as f_out:
+                with tqdm(
+                    # total=f_in.size,
+                    desc="Unpack",
+                    unit="B",
+                    unit_scale=True,
+                    unit_divisor=1024,
+                ) as t:
+                    fobj = CallbackIOWrapper(t.update, f_in, "read")
+                    while True:
+                        chunk = fobj.read(1024)
+                        if not chunk:
+                            break
+                        f_out.write(chunk)
+                    f_out.flush()
+                    t.reset()
+                import_file_to_cache(url, f_out.name, pkgname="pysme")
 
     def get_url(self, key):
         key = str(key)
