@@ -412,10 +412,15 @@ class SME_Solver:
             sigma = (interval[1] - interval[0]) / 2
             return sigma
 
-        for i in range(nparameters):
+        for i, pname in enumerate(freep_name):
             pder = deriv[:, i]
-            gradlim = np.median(np.abs(pder))
-            idx = np.abs(pder) > gradlim
+            idx = pder != 0
+            idx &= np.abs(resid) < 5 * unc
+
+            med = np.median(np.abs(pder))
+            mad = np.median(np.abs(np.abs(pder) - med))
+            idx &= np.abs(pder) < med + 20 * mad
+
             if np.count_nonzero(idx) <= 5:
                 logger.warning(
                     "Not enough data points with a suitable derivative to determine the uncertainties of %s",
@@ -478,7 +483,7 @@ class SME_Solver:
             # plt.xlim(r)
             # plt.show()
 
-            logger.debug(f"{freep_name[i]}: {hmed}, {sigma_estimate}")
+            logger.debug(f"{pname}: {hmed}, {sigma_estimate}")
 
         return freep_unc
 
