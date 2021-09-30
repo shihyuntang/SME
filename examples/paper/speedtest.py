@@ -49,11 +49,14 @@ if __name__ == "__main__":
     runtime = end - start
     print(f"Single Runtime: {runtime} s")
 
+    gc.disable()
     runtime = []
-    for i in range(10):
+    for i in range(1000):
         start = time.time()
         synthesize_spectrum(sme)
         end = time.time()
         runtime += [end - start]
 
-    print(f"Runtime: {np.mean(runtime)}s +- {np.std(runtime)}")
+    print(
+        f"Runtime: {np.mean(runtime)} s +- {np.std(runtime)}, min {np.min(runtime)} s"
+    )

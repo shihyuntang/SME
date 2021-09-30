@@ -26,7 +26,7 @@ from pysme.synthesize import synthesize_spectrum
 from pysme.continuum_and_radial_velocity import determine_radial_velocity
 from scipy.linalg import lstsq, solve_banded
 from scipy.ndimage.filters import gaussian_filter1d, median_filter
-from scipy.optimize import least_squares
+from scipy.optimize import least_squares, minimize
 from scipy.interpolate import interp1d
 from scipy.optimize.minpack import curve_fit
 from scipy.stats import gennorm, norm, skewnorm, exponnorm
@@ -56,7 +56,8 @@ def cdf(x, mu, alpha, *beta):
 
 def std(mu, alpha, *beta):
     """ 1 sigma (68.27 %) quantile, assuming symmetric distribution """
-    # interval = gennorm.interval(0.6827, beta, loc=mu, scale=alpha * np.sqrt(2))
+    # percentile = 0.997  # 5 sigma
+    # interval = gennorm.interval(percentile, beta, loc=mu, scale=alpha * np.sqrt(2))
     # interval = exponnorm.interval(0.6827, beta, loc=mu, scale=alpha)
     interval = norm.interval(0.6827, loc=mu, scale=alpha)
     # interval = cauchy.interval(0.6827, loc=mu, scale=alpha)
@@ -76,6 +77,50 @@ def pdf(x, mu, alpha, *beta):
     # return 2 / alpha * norm.pdf(x) * norm.cdf(l1 * x / np.sqrt(1 + l2 * x ** 2))
 
 
+def fit(x):
+    plimit = np.clip(x[0], 0, 100)
+    gradlim = np.nanpercentile(np.abs(pder), plimit)
+    idx = pder != 0
+    idx &= np.abs(resid) < 5 * unc
+    idx &= np.abs(pder) < gradlim
+
+    # Sort pixels according to the change of the i
+    # parameter needed to match the observations
+    idx_sort = np.argsort(resid[idx] / pder[idx])
+    ch_x = resid[idx][idx_sort] / pder[idx][idx_sort]
+    # Weights of the individual pixels also sorted
+    ch_y = np.abs(pder[idx][idx_sort]) / unc[idx][idx_sort]
+    # Cumulative weights
+    ch_y = np.cumsum(ch_y)
+    # Normalized cumulative weights
+    ch_y /= ch_y[-1]
+
+    # Initial guess
+
+    hmed = np.interp(0.5, ch_y, ch_x)
+    interval = np.interp([0.16, 0.84], ch_y, ch_x)
+    sigma_estimate = (interval[1] - interval[0]) / 2
+
+    p0 = [hmed, sigma_estimate, 1]
+    sopt = p0
+
+    # Fit the distribution
+    try:
+        sopt, _ = curve_fit(cdf, ch_x, ch_y, p0=p0)
+    except RuntimeError:
+        # Fit failed, use dogbox instead
+        try:
+            sopt, _ = curve_fit(cdf, ch_x, ch_y, p0=p0, method="dogbox")
+        except RuntimeError:
+            sopt = p0
+
+    sigma, interval = std(*sopt)
+    hmed = (interval[0] + interval[1]) / 2
+
+    res = ch_y - cdf(ch_x, *sopt)
+    return np.sum(np.nan_to_num(res) ** 2) / ch_y.size
+
+
 if __name__ == "__main__":
     # Define the location of all your files
     # this will put everything into the example dir
@@ -86,20 +131,43 @@ if __name__ == "__main__":
     os.makedirs(image_dir, exist_ok=True)
 
     in_file = os.path.join(
-        examples_dir,
-        f"results/HD_22049_mask_new_out_monh_teff_logg_vmic_vmac_vsini.sme",
+        examples_dir, f"results/Eps_Eri_monh_teff_logg_vmic_vmac_vsini.sme",
     )
     sme = SME.SME_Structure.load(in_file)
 
     segments = np.arange(6, 31)
     mask = sme.mask_good[segments]
     resid = sme.fitresults.residuals
-    unc = np.concatenate(sme.uncs[segments][mask])
+    # unc = np.concatenate(sme.uncs[segments][mask])
+    s = np.concatenate(sme.spec[segments][mask])
+    unc = np.sqrt(s)
+    # unc = np.ones(resid.size)
 
     for i, param in enumerate(sme.fitresults.parameters):
         pder = sme.fitresults.derivative[:, i]
-        gradlim = np.median(np.abs(pder))
-        idx = np.abs(pder) > gradlim
+
+        idx = pder != 0
+        idx &= np.abs(resid) < 5 * unc
+        # Fit which cutoff makes the curve most gaussian
+        # res = minimize(fit, [80], method="Nelder-Mead")
+        # plimit = res.x[0]
+        # gradlim = np.nanpercentile(np.abs(pder), plimit)
+        # idx &= np.abs(pder) < gradlim
+        # Only use the center part of ch_x
+        # This does not affect the results
+        # ch_x = resid / pder
+        # plimit = np.nanpercentile(ch_x, [2.5, 97.5])
+        # idx &= (ch_x > plimit[0]) & (ch_x < plimit[1])
+
+        # Only use derivatives around the center
+        # this is roughly equivalent to the above cutoff
+        # due to the percentile
+        med = np.median(np.abs(pder))
+        mad = np.median(np.abs(np.abs(pder) - med))
+        idx &= np.abs(pder) < med + 20 * mad
+
+        percentage_points = np.count_nonzero(idx) / idx.size * 100
+        print(f"Using {percentage_points:.2}% points for the derivative")
 
         # Sort pixels according to the change of the i
         # parameter needed to match the observations
@@ -113,7 +181,6 @@ if __name__ == "__main__":
         ch_y /= ch_y[-1]
 
         # Initial guess
-
         hmed = np.interp(0.5, ch_y, ch_x)
         interval = np.interp([0.16, 0.84], ch_y, ch_x)
         sigma_estimate = (interval[1] - interval[0]) / 2
@@ -121,15 +188,7 @@ if __name__ == "__main__":
         p0 = [hmed, sigma_estimate]
         sopt = p0
 
-        # try:
-        #     sopt, _ = curve_fit(pdf, b, h, p0=p0)
-        # except RuntimeError:
-        #     try:
-        #         sopt, _ = curve_fit(pdf, b, h, p0=p0, method="dogbox")
-        #     except RuntimeError:
-        #         sopt = p0
-
-        # Fit the distribution
+        # # Fit the distribution
         # try:
         #     sopt, _ = curve_fit(cdf, ch_x, ch_y, p0=p0)
         # except RuntimeError:
@@ -138,13 +197,13 @@ if __name__ == "__main__":
         #         sopt, _ = curve_fit(cdf, ch_x, ch_y, p0=p0, method="dogbox")
         #     except RuntimeError:
         #         sopt = p0
-
         # sigma, interval = std(*sopt)
         # hmed = (interval[0] + interval[1]) / 2
+        sigma = sigma_estimate
 
         # Plot 1 (cumulative distribution)
-        r = (sopt[0] - 3 * sopt[1], sopt[0] + 3 * sopt[1])
-        x = np.linspace(ch_x.min(), ch_x.max(), ch_x.size * 10)
+        r = (hmed - 3 * sigma, hmed + 3 * sigma)
+        x = np.linspace(r[0], r[1], ch_x.size * 10)
         plt.plot(ch_x, ch_y, "+", label="measured")
         plt.plot(x, cdf(x, *sopt), label="Gaussian")
 
@@ -172,7 +231,7 @@ if __name__ == "__main__":
         plt.fill_between(
             b[:-1], h, where=where, interpolate=False, step="post", alpha=0.5
         )
-        plt.plot(x, pdf(x, *sopt), label="Gaussian")
+        plt.plot(x, pdf(x, hmed, sigma), label="Gaussian")
         # plt.plot(x, pdf(x, *p0), "--", label="estimate")
 
         idx = np.argmin(np.abs(b - hmed))

@@ -219,7 +219,7 @@ def run(target, mask=None, linelist="harps.lin", segments="all"):
     sme.meta["object"] = target
     sme.mu = np.geomspace(0.1, 1, num=7)
     # Use simple shot noise assumption for uncertainties
-    sme.uncs = [1 / np.sqrt(spec) ** 2 for spec in sme.spec]
+    sme.uncs = [np.sqrt(spec) ** 2 for spec in sme.spec]
     # Add telluric data (without rayleigh scattering)
     sme.telluric = Iliffe_vector(values=ftapas)
     # Create first mask by removing the telluric offset
@@ -269,7 +269,7 @@ def run(target, mask=None, linelist="harps.lin", segments="all"):
 
     # Set radial velocity and continuum settings
     # Set RV and Continuum flags
-    sme.vrad_flag = "each"
+    sme.vrad_flag = "whole"
     sme.cscale_flag = "linear"
     sme.cscale_type = "match"
     sme.vrad = 0
@@ -290,33 +290,35 @@ def run_again(target, segments="all"):
     mid_mask_file = join(examples_dir, f"results/{target}_inp_mask.sme")
     mid_file = join(examples_dir, f"results/{target}_inp.sme")
 
-    plot_file = join(examples_dir, f"results/{target}.html")
     mask_file = join(
         examples_dir,
         "results_spline/HD_22049_mask_new_out_monh_teff_logg_vmic_vmac_vsini.sme",
     )
 
     try:
-        ff = FlexFile.read(mid_mask_file)
-        ff.header["cscale_type"] = "match"
-        ff.header["cscale_flag"] = "linear"
-        ff.write(mid_mask_file)
+        # ff = FlexFile.read(mid_mask_file)
+        # ff.header["cscale_type"] = "match"
+        # ff.header["cscale_flag"] = "linear"
+        # ff.write(mid_mask_file)
         sme = SME.SME_Structure.load(mid_mask_file)
         mid_file = mid_mask_file
     except FileNotFoundError:
-        ff = FlexFile.read(mid_file)
-        ff.header["cscale_type"] = "spline"
-        ff.header["cscale_flag"] = "linear"
-        ff.write(mid_file)
+        # ff = FlexFile.read(mid_file)
+        # ff.header["cscale_type"] = "match"
+        # ff.header["cscale_flag"] = "linear"
+        # ff.write(mid_file)
         sme = SME.SME_Structure.load(mid_file)
 
-    # We fix broken save files
-    if isinstance(sme.cscale._values, Iliffe_vector):
-        sme.cscale = [sme.cscale._values.data[str(i)] for i in range(sme.nseg)]
-        sme.save(mid_file)
-        sme = SME.SME_Structure.load(mid_file)
-    sme.save(mid_file)
-    sme = SME.SME_Structure.load(mid_file)
+    # # We fix broken save files
+    # try:
+    #     if isinstance(sme.cscale._values, Iliffe_vector):
+    #         sme.cscale = [sme.cscale._values.data[str(i)] for i in range(sme.nseg)]
+    #         sme.save(mid_file)
+    #         sme = SME.SME_Structure.load(mid_file)
+    # except:
+    #     pass
+    # sme.save(mid_file)
+    # sme = SME.SME_Structure.load(mid_file)
 
     # Import manual mask
     # we needed to run sme once to get the correct radial velocities
@@ -338,9 +340,13 @@ def fit(sme, segments="all"):
     # For linelist use: 'linelist {Nr} {p}', where Nr is the number in the
     # linelist and p is the line parameter (e.g. 'linelist 17 gflog')
     fitparameters = [
-        # ["monh"],
         ["monh", "teff", "logg", "vmic", "vmac", "vsini"],
     ]
+    sme.cscale_type = "match"
+    sme.cscale_flag = "linear"
+    sme.vrad_flag = "whole"
+    sme.vrad = None
+    sme.cscale = None
 
     for fp in fitparameters:
         tmp = os.path.join(examples_dir, f"results/{target}.json")
@@ -351,7 +357,7 @@ def fit(sme, segments="all"):
 
         plot_file = os.path.join(examples_dir, "results", fname + ".html")
         fig = plot_plotly.FinalPlot(sme)
-        fig.save(filename=plot_file)
+        fig.save(filename=plot_file, auto_open=False)
 
     # Save results
     out_file = join(examples_dir, f"results/{target}_out.sme")
@@ -503,14 +509,15 @@ if __name__ == "__main__":
         mask = masked.get(target)
         ll = linelist.get(target, "harps.lin")
         sme = run(target, mask=mask, linelist=ll, segments=segments)
-        # Run it again, but this time with a mask
-        sme = run_again(target, segments=segments)
+        # Add the mask
+        mask_file = join(
+            examples_dir,
+            "results_spline/HD_22049_mask_new_out_monh_teff_logg_vmic_vmac_vsini.sme",
+        )
+        sme_mask = SME.SME_Structure.load(mask_file)
+        sme = sme.import_mask(sme_mask, keep_bpm=True)
+
         # Finally fit it to the data
-        # mid_mask_file = join(examples_dir, f"results/{target}_inp_mask.sme")
-        # mid_file = join(examples_dir, f"results/{target}_inp.sme")
-        # if exists(mid_mask_file):
-        #     mid_file = mid_mask_file
-        # sme = SME.SME_Structure.load(mid_file)
         sme.meta["object"] = target
         sme = fit(sme, segments=segments)
         return sme
