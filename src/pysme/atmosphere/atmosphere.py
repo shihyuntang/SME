@@ -49,7 +49,7 @@ class Atmosphere(Collection):
             "str: the geometry of the atmopshere model"),
         ("radius", 0, asfloat, this, "float: radius of the spherical model"),
         ("height", None, array(None, "f8"), this, "array: height of the spherical model"),
-        ("opflag", [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0], array(20, int), this,
+        ("opflag", [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], array(20, int), this,
             "array of size (20,): opacity flags"),
         ("wlstd", 5000, asfloat, this, "float: wavelength standard deviation"),
         ("depth", None, uppercase(oneof(None, "RHOX", "TAU")), this,
