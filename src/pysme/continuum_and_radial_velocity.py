@@ -614,11 +614,10 @@ class ContinuumNormalizationSpline(ContinuumNormalizationAbstract):
             tlen = 7
         else:
             tlen = int(sme.cscale_flag)
-        t = np.linspace(w.min(), w.max(), tlen)[1:-1]
-
         # We need to avoid the 0 points
         m2 = ym != 0
         # Get a first guess by dividing by ym
+        t = np.linspace(wm[m2].min(), wm[m2].max(), tlen)[1:-1]
         t, c, k = splrep(wm[m2], sm[m2] / ym[m2], w=1 / um[m2], k=3, t=t)
         # Then get a real fit using the function
         res = least_squares(func, x0=c, loss="soft_l1", method="trf", f_scale=0.01)
@@ -853,30 +852,24 @@ def determine_radial_velocity(
         else:
             tell = 1
 
-        if np.all(sme.vrad[segment] == 0):
-            # Get a first rough estimate from cross correlation
-            # Normalize both spectra to 0 and 1 range
-            # and subtract continuum level of 1, for better correlation
-            y_obs_tmp = y_obs - np.min(y_obs)
-            y_obs_tmp /= np.max(y_obs_tmp)
-            y_obs_tmp -= 1
-            y_tmp_tmp = y_tmp - np.min(y_tmp)
-            y_tmp_tmp /= np.max(y_tmp_tmp)
-            y_tmp_tmp -= 1
-            # Perform cross correaltion between normalized spectra
-            corr = correlate(y_obs_tmp, y_tmp_tmp, mode="same",)
-            x_mid = x_obs[len(x_obs) // 2]
-            x_shift = c_light * (1 - x_mid / x_obs)
-            idx = (x_shift >= rv_bounds[0]) & (x_shift <= rv_bounds[1])
-            x_shift = x_shift[idx]
-            corr = corr[idx]
-            offset = np.argmax(corr)
-            rvel = x_shift[offset]
-        else:
-            if sme.vrad_flag == "whole":
-                rvel = sme.vrad[0]
-            else:
-                rvel = sme.vrad[segment]
+        # Get a first rough estimate from cross correlation
+        # Normalize both spectra to 0 and 1 range
+        # and subtract continuum level of 1, for better correlation
+        y_obs_tmp = y_obs - np.min(y_obs)
+        y_obs_tmp /= np.max(y_obs_tmp)
+        y_obs_tmp -= 1
+        y_tmp_tmp = y_tmp - np.min(y_tmp)
+        y_tmp_tmp /= np.max(y_tmp_tmp)
+        y_tmp_tmp -= 1
+        # Perform cross correaltion between normalized spectra
+        corr = correlate(y_obs_tmp, y_tmp_tmp, mode="same",)
+        x_mid = x_obs[len(x_obs) // 2]
+        x_shift = c_light * (1 - x_mid / x_obs)
+        idx = (x_shift >= rv_bounds[0]) & (x_shift <= rv_bounds[1])
+        x_shift = x_shift[idx]
+        corr = corr[idx]
+        offset = np.argmax(corr)
+        rvel = x_shift[offset]
 
         # Then minimize the least squares for a better fit
         # as cross correlation can only find
