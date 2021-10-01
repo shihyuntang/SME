@@ -4,7 +4,7 @@ numpy==1.21.2
 astropy==4.3.1
 wget==3.2
 requests==2.26.0
-tqdm==4.62.2
+tqdm==4.62.3
 colorlog==6.4.1
 emcee==3.1.0
 pathos==0.2.8
