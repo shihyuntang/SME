@@ -415,7 +415,7 @@ class SME_Solver:
         for i, pname in enumerate(freep_name):
             pder = deriv[:, i]
             idx = pder != 0
-            idx &= np.abs(resid) < 5 * unc
+            # idx &= np.abs(resid) < 5 * unc / unc_median
 
             med = np.median(np.abs(pder))
             mad = np.median(np.abs(np.abs(pder) - med))
