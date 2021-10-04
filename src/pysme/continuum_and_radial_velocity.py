@@ -5,21 +5,16 @@ and fit best radial velocity to observation
 
 import logging
 import warnings
-from itertools import product
 
 import emcee
 import numpy as np
 from scipy.constants import speed_of_light
-from scipy.linalg import lu_factor, lu_solve
-from scipy.ndimage.filters import median_filter, gaussian_filter1d
-from scipy.optimize import least_squares, minimize_scalar, curve_fit
-from scipy.signal import correlate, find_peaks
-from scipy.interpolate import UnivariateSpline
+from scipy.optimize import least_squares
+from scipy.signal import correlate
 from scipy.interpolate import splrep, splev
 
 from tqdm import tqdm
 
-from . import util
 from .iliffe_vector import Iliffe_vector
 from .sme_synth import SME_DLL
 
@@ -521,10 +516,10 @@ class ContinuumNormalizationMatch(ContinuumNormalizationAbstract):
         else:
             m = sme.mask_good[segments]
 
-        rv_factor = np.sqrt((1 - rvel / c_light) / (1 + rvel / c_light))
-        xp = x * rv_factor
-        yp = np.interp(xp, x_syn, y_syn)
+        # Interpolate the synthetic spectrum to the observed wavelength grid
+        yp = apply_radial_velocity([x], [x_syn], [y_syn], [rvel], [0], copy=True)[0]
 
+        # Apply the mask to all vectors
         xs = x - x[0]
         xs, y, u, yp = xs[m], y[m], u[m], yp[m]
 
@@ -533,12 +528,6 @@ class ContinuumNormalizationMatch(ContinuumNormalizationAbstract):
             # also it should be in the correct restframe
             tell = sme.telluric[segments][m]
             yp *= tell
-
-        # def func(p):
-        #     val = yp * np.polyval(p, xs)
-        #     resid = y - val
-        #     resid /= u
-        #     return resid
 
         deg = sme.cscale_degree
         p0 = sme.cscale[segments]
@@ -578,9 +567,7 @@ class ContinuumNormalizationSpline(ContinuumNormalizationAbstract):
         u = sme.uncs[segments]
 
         # Apply RV correction to the synthetic spectrum
-        rv_factor = np.sqrt((1 - rvel / c_light) / (1 + rvel / c_light))
-        wp = w * rv_factor
-        y = np.interp(wp, x_syn, y_syn)
+        y = apply_radial_velocity([w], [x_syn], [y_syn], [rvel], [0], copy=True)[0]
         # and don't forget the telluric spectrum if available
         if sme.telluric is not None:
             tell = sme.telluric[segments]
@@ -624,11 +611,6 @@ class ContinuumNormalizationSpline(ContinuumNormalizationAbstract):
         # And finally evaluate the continuum
         c = res.x
         coef = splev(w, (t, c, k))
-
-        # sf = UnivariateSpline(wm, sm, w=1 / np.sqrt(sm))(w)
-        # yf = UnivariateSpline(wm, ym, w=1 / np.sqrt(ym))(w)
-        # coef = -yf + sf
-
         return coef
 
 
@@ -640,8 +622,8 @@ class ContinuumNormalizationSplineMask(ContinuumNormalizationSpline):
 
 def apply_radial_velocity(wave, wmod, smod, vrad, segments, copy=False):
     if copy:
-        wmod = np.copy(wmod)
-        smod = np.copy(smod)
+        wmod = wmod.copy() if hasattr(wmod, "copy") else np.copy(wmod)
+        smod = smod.copy() if hasattr(smod, "copy") else np.copy(smod)
 
     if vrad is None:
         return smod
@@ -721,6 +703,32 @@ def null_result(nseg, ndeg=0, ctype=None):
     return vrad, vrad_unc, cscale, cscale_unc
 
 
+def cross_correlate_segment(x_obs, y_obs, x_syn, y_syn, mask, rv_bounds):
+    # Interpolate synthetic observation onto the observation wavelength grid
+    y_tmp = np.interp(x_obs, x_syn, y_syn)
+
+    # Normalize both spectra
+    y_obs_tmp = y_obs - np.min(y_obs)
+    y_obs_tmp /= np.max(y_obs_tmp)
+    y_obs_tmp -= np.nanpercentile(y_obs_tmp, 95)
+    y_tmp_tmp = y_tmp - np.min(y_tmp)
+    y_tmp_tmp /= np.max(y_tmp_tmp)
+    y_tmp_tmp -= np.nanpercentile(y_tmp_tmp, 95)
+
+    # Perform cross correaltion between normalized spectra
+    corr = correlate(y_obs_tmp, y_tmp_tmp, mode="same", method="direct")
+
+    # Determine the radial velocity offset
+    # and only retain the area within the bounds
+    x_mid = x_obs[len(x_obs) // 2]
+    x_shift = c_light * (1 - x_mid / x_obs)
+    idx = (x_shift >= rv_bounds[0]) & (x_shift <= rv_bounds[1])
+    x_shift = x_shift[idx]
+    corr = corr[idx]
+
+    return x_shift, corr
+
+
 def determine_radial_velocity(
     sme,
     x_syn,
@@ -795,6 +803,8 @@ def determine_radial_velocity(
         mask = m[segment]
         if sme.telluric is not None:
             tell = sme.telluric[segment]
+        else:
+            tell = 1
 
         if sme.vrad_flag == "each":
             # apply continuum
@@ -811,27 +821,6 @@ def determine_radial_velocity(
             y_syn = apply_continuum(
                 x_syn, y_syn, sme.wave, cscale, sme.cscale_type, range(len(y_obs))
             )
-
-            x_obs = x_obs.ravel()
-            y_obs = y_obs.ravel()
-            u_obs = u_obs.ravel()
-            x_syn = np.concatenate(x_syn)
-            y_syn = np.concatenate(y_syn)
-
-            sort = np.argsort(x_syn)
-            x_syn = x_syn[sort]
-            y_syn = y_syn[sort]
-
-            sort = np.argsort(x_obs)
-            x_obs = x_obs[sort]
-            y_obs = y_obs[sort]
-            u_obs = u_obs[sort]
-
-            mask = mask.ravel()
-            mask = mask[sort]
-            if sme.telluric is not None:
-                tell = tell.ravel()
-                tell = tell[sort]
         else:
             raise ValueError(
                 f"Radial velocity flag {sme.vrad_flag} not recognised, expected one of 'each', 'whole', 'none'"
@@ -843,31 +832,47 @@ def determine_radial_velocity(
             mask = mask == sme.mask_values["line"]
             mask |= mask == sme.mask_values["continuum"]
 
-        x_obs = x_obs[mask]
-        y_obs = y_obs[mask]
-        u_obs = u_obs[mask]
-        y_tmp = np.interp(x_obs, x_syn, y_syn)
-        if sme.telluric is not None:
-            tell = tell[mask]
-        else:
-            tell = 1
+        # x_obs = x_obs[mask]
+        # y_obs = y_obs[mask]
+        # u_obs = u_obs[mask]
+        # y_tmp = np.interp(x_obs, x_syn, y_syn)
+        # if sme.telluric is not None:
+        #     tell = tell[mask]
+        # else:
+        #     tell = 1
 
         # Get a first rough estimate from cross correlation
-        # Normalize both spectra to 0 and 1 range
-        # and subtract continuum level of 1, for better correlation
-        y_obs_tmp = y_obs - np.min(y_obs)
-        y_obs_tmp /= np.max(y_obs_tmp)
-        y_obs_tmp -= 1
-        y_tmp_tmp = y_tmp - np.min(y_tmp)
-        y_tmp_tmp /= np.max(y_tmp_tmp)
-        y_tmp_tmp -= 1
-        # Perform cross correaltion between normalized spectra
-        corr = correlate(y_obs_tmp, y_tmp_tmp, mode="same",)
-        x_mid = x_obs[len(x_obs) // 2]
-        x_shift = c_light * (1 - x_mid / x_obs)
-        idx = (x_shift >= rv_bounds[0]) & (x_shift <= rv_bounds[1])
-        x_shift = x_shift[idx]
-        corr = corr[idx]
+        if sme.vrad_flag == "each":
+            x_shift, corr = cross_correlate_segment(
+                x_obs, y_obs, x_syn, y_syn, mask, rv_bounds
+            )
+        else:
+            # If using several segments we run the cross correlation for each
+            # segment seperately and then sum the results
+            nseg = len(segment)
+            shift = [None for _ in range(nseg)]
+            corr = [None for _ in range(nseg)]
+            for i in range(len(x_obs)):
+                shift[i], corr[i] = cross_correlate_segment(
+                    x_obs[i], y_obs[i], x_syn[i], y_syn[i], mask[i], rv_bounds
+                )
+
+            n_min = min([len(s) for s in shift])
+            x_shift = np.linspace(rv_bounds[0], rv_bounds[1], n_min)
+            corrs_interp = [np.interp(x_shift, s, c) for s, c in zip(shift, corr)]
+            corrs_interp = np.array(corrs_interp)
+            corr = np.sum(corrs_interp, axis=0)
+
+            mask = np.concatenate(mask)
+            x_obs = np.concatenate(x_obs)[mask]
+            y_obs = np.concatenate(y_obs)[mask]
+            u_obs = np.concatenate(u_obs)[mask]
+            x_syn = np.concatenate(x_syn)
+            y_syn = np.concatenate(y_syn)
+            if sme.telluric is not None:
+                tell = np.concatenate(tell)[mask]
+
+        # Retrieve the initial cross correlation guess
         offset = np.argmax(corr)
         rvel = x_shift[offset]
 
