@@ -287,7 +287,7 @@ class Iliffe_vector(numpy.lib.mixins.NDArrayOperatorsMixin, MultipleDataExtensio
         file.writestr(f"{folder}.npz", b.getvalue())
 
     @classmethod
-    def _load_v1(file):
+    def _load_v1(cls, file):
         # file: npzfile
         names = file.files
         values = [file[n] for n in names]
