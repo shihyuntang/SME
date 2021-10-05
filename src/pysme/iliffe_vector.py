@@ -207,11 +207,21 @@ class Iliffe_vector(numpy.lib.mixins.NDArrayOperatorsMixin, MultipleDataExtensio
         return self.__class__(data)
 
     @classmethod
+    def from_offsets(cls, array, offsets):
+        if offsets is None:
+            return cls([array])
+        else:
+            if offsets[0] != 0:
+                offsets = [0, *offsets]
+            arr = [array[l:u] for l, u in zip(offsets[:-1], offsets[1:])]
+            return cls(arr)
+
+    @classmethod
     def from_indices(cls, array, indices):
         if indices is None:
             return cls([array])
         else:
-            offsets = [0, *indices]
+            offsets = [0, *np.cumsum(indices)]
             arr = [array[l:u] for l, u in zip(offsets[:-1], offsets[1:])]
             return cls(arr)
 
