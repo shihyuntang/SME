@@ -126,18 +126,18 @@ def vector(self, value):
     if value is None:
         return None
     elif np.isscalar(value):
-        wind = [0, *np.cumsum(self.wave.sizes)] if self.wave is not None else None
+        wind = self.wave.sizes if self.wave is not None else None
         values = np.full(self.wave.size, value)
-        value = Iliffe_vector(values=values, index=wind)
+        value = Iliffe_vector.from_indices(values, self.wave.sizes)
     elif isinstance(value, np.ndarray):
         value = np.require(value, requirements="W")
         if value.ndim == 1:
-            wind = [0, *np.cumsum(self.wave.sizes)] if self.wave is not None else None
-            value = Iliffe_vector(values=value, index=wind)
+            wind = self.wave.sizes if self.wave is not None else None
+            value = Iliffe_vector.from_indices(value, wind)
         else:
-            value = Iliffe_vector(nseg=len(value), values=[v for v in value])
+            value = Iliffe_vector(value)
     elif isinstance(value, list):
-        value = Iliffe_vector(nseg=len(value), values=value)
+        value = Iliffe_vector(value)
     elif isinstance(value, Iliffe_vector):
         pass
     elif isinstance(value, FlexExtension):

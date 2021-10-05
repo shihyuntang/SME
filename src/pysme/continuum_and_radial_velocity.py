@@ -622,8 +622,8 @@ class ContinuumNormalizationSplineMask(ContinuumNormalizationSpline):
 
 def apply_radial_velocity(wave, wmod, smod, vrad, segments, copy=False):
     if copy:
-        wmod = wmod.copy() if hasattr(wmod, "copy") else np.copy(wmod)
-        smod = smod.copy() if hasattr(smod, "copy") else np.copy(smod)
+        wmod = [np.copy(w) for w in wmod]
+        smod = [np.copy(s) for s in smod]
 
     if vrad is None:
         return smod

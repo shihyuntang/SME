@@ -517,7 +517,6 @@ class SME_Solver:
 
         mask = sme.mask_good[segments]
         unc = sme.uncs[segments][mask]
-        unc = np.concatenate(unc)
         sme.fitresults.uncertainties = self.estimate_uncertainties(
             unc, result.fun, result.jac
         )

@@ -226,8 +226,7 @@ class SME_Structure(Parameters):
         super().__init__(**kwargs)
 
         if wind is not None and self.wave is not None:
-            wind = np.array([0, *(wind + 1)])
-            self.wave = Iliffe_vector(values=self.wave.ravel(), index=wind)
+            self.wave = Iliffe_vector.from_indices(self.wave.ravel(), wind)
 
         self.spec = kwargs.get("sob", None)
         self.uncs = kwargs.get("uob", None)
@@ -450,9 +449,7 @@ class SME_Structure(Parameters):
     def _cscale(self, value):
         if self.cscale_type in ["spline", "spline+mask"]:
             if not isinstance(value, Iliffe_vector):
-                self.__cscale = (
-                    Iliffe_vector(values=value) if value is not None else None
-                )
+                self.__cscale = vector(self, value)
             else:
                 self.__cscale = value
         else:
