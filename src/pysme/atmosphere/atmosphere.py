@@ -43,7 +43,7 @@ class Atmosphere(Collection):
         ("vturb", 0, absolute, this, "float: turbulence velocity in km/s"),
         ("lonh", 0, asfloat, this, "float: ?"),
         ("source", "marcs2014.sav", this, this, "str: datafile name of this data, or atmosphere grid/file"),
-        ("method", "grid", lowercase(oneof("grid", "embedded")), this, 
+        ("method", "grid", lowercase(oneof("grid", "embedded")), this,
             "str: whether the data source is a grid or a fixed atmosphere"),
         ("geom", "PP", uppercase(oneof("PP", "SPH", None)), this,
             "str: the geometry of the atmopshere model"),
@@ -155,7 +155,7 @@ class AtmosphereGrid(np.recarray):
     # fmt: off
     _fields = [
         ("source", None, asstr, this, "str: datafile name of this data"),
-        ("method", "grid", lowercase(oneof("grid", "embedded")), this, 
+        ("method", "grid", lowercase(oneof("grid", "embedded")), this,
             "str: whether the data source is a grid or a fixed atmosphere"),
         ("geom", None, uppercase(oneof(None, "PP", "SPH")), this,
             "str: the geometry of the atmopshere model"),
@@ -207,14 +207,14 @@ class AtmosphereGrid(np.recarray):
     def __array_finalize__(self, obj):
         if obj is None:
             return
-        self.interp = getattr(self, "interp", "TAU")
-        self.depth = getattr(self, "depth", "RHOX")
-        self.method = getattr(self, "method", "grid")
-        self.geom = getattr(self, "geom", "PP")
-        self.source = getattr(self, "source", "")
-        self.citation_info = getattr(self, "citation_info", "")
-        self.abund_format = getattr(self, "abund_format", "sme")
-        self.info = getattr(self, "info", "")
+        self.interp = getattr(obj, "interp", "TAU")
+        self.depth = getattr(obj, "depth", "RHOX")
+        self.method = getattr(obj, "method", "grid")
+        self.geom = getattr(obj, "geom", "PP")
+        self.source = getattr(obj, "source", "")
+        self.citation_info = getattr(obj, "citation_info", "")
+        self.abund_format = getattr(obj, "abund_format", "sme")
+        self.info = getattr(obj, "info", "")
 
     def __reduce__(self):
         # Get the parent's __reduce__ tuple

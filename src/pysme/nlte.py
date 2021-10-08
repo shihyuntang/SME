@@ -812,7 +812,7 @@ class Grid:
             points = [p for m, p in zip(mask, points) if m]
             target = [t for m, t in zip(mask, target) if m]
             idx = [slice(None, None) if m else 0 for m in mask]
-            grid = grid[idx]
+            grid = grid[tuple(idx)]
 
         method = "order"
         if method == "grid":

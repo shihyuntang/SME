@@ -30,8 +30,14 @@ class Iliffe_vector(numpy.lib.mixins.NDArrayOperatorsMixin, MultipleDataExtensio
     Instead the index is a pointer to segments of a 1D array with varying sizes
     """
 
-    def __init__(self, values, dtype=None):
+    def __init__(self, values, offsets=None, dtype=None):
         FlexExtension.__init__(self, cls=MultipleDataExtension)
+        if offsets is not None:
+            if offsets[0] != 0:
+                offsets = [0, *offsets]
+            self.data = np.asarray(values, dtype=dtype)
+            self.offsets = np.asarray(offsets, dtype=int)
+            return
 
         sizes = [len(v) for v in values]
         offsets = np.array([0, *np.cumsum(sizes)])
@@ -50,13 +56,13 @@ class Iliffe_vector(numpy.lib.mixins.NDArrayOperatorsMixin, MultipleDataExtensio
             key = range(self.nseg)[key]
             values = [self.__getsegment__(k) for k in key]
             return self.__class__(values)
-        if isinstance(key, list):
+        if isinstance(key, (list, range)):
             values = [self.__getsegment__(k) for k in key]
             return self.__class__(values)
         if isinstance(key, tuple):
             if isinstance(key[0], Integral):
                 return self[key[0]][key[1]]
-            if isinstance(key[0], list):
+            if isinstance(key[0], (list, range)):
                 values = [self.__getsegment__(k) for k in key[0]]
                 values = [v[key[1]] for v in values]
                 if isinstance(key[1], Integral):
@@ -71,8 +77,11 @@ class Iliffe_vector(numpy.lib.mixins.NDArrayOperatorsMixin, MultipleDataExtensio
                     return np.array(values)
                 if isinstance(key[1], slice):
                     return self.__class__(values)
+                if isinstance(key[1], list):
+                    return self.__class__(values)
         if isinstance(key, Iliffe_vector):
-            return self.data[key.data]
+            data = [w[m] for w, m in zip(self.segments, key.segments)]
+            return self.__class__(data)
         raise KeyError
 
     def __setitem__(self, key, value):
@@ -125,7 +134,14 @@ class Iliffe_vector(numpy.lib.mixins.NDArrayOperatorsMixin, MultipleDataExtensio
         if seg > self.nseg - 1:
             raise IndexError
         low, upp = self.offsets[seg : seg + 2]
-        self.data[low:upp] = value
+        if value.size == upp - low:
+            # Keep using the existing memory
+            self.data[low:upp] = value
+        else:
+            # Need to set new memory
+            data = [s if i != seg else value for i, s in enumerate(self.segments)]
+            self.offsets = np.array([0, *np.cumsum([len(s) for s in data])])
+            self.data = np.concatenate(data)
 
     def __array__(self, dtype=None):
         arr = self.data
@@ -148,19 +164,28 @@ class Iliffe_vector(numpy.lib.mixins.NDArrayOperatorsMixin, MultipleDataExtensio
                         out.append(o)
                 kwargs["out"] = tuple(out)
             arr = ufunc(*inputs, **kwargs)
-            arr = [arr[l:u] for l, u in zip(self.offsets[:-1], self.offsets[1:])]
-            return self.__class__(arr)
+            return self.__class__.from_offsets(arr, self.offsets)
         else:
             return NotImplemented
 
     def __array_function__(self, func, types, args, kwargs):
         if func not in HANDLED_FUNCTIONS:
-            return NotImplemented
+            return func(self.data, *args, **kwargs)
         # Note: this allows subclasses that don't override
         # __array_function__ to handle DiagonalArray objects.
         if not all(issubclass(t, self.__class__) for t in types):
             return NotImplemented
         return HANDLED_FUNCTIONS[func](*args, **kwargs)
+
+    def __array_function_axis__(self, func, axis, args, kwargs):
+        if axis is None:
+            return func(self.data, *args, **kwargs)
+        elif axis == 0:
+            data = [func(s, *args, **kwargs) for s in self.segments]
+            data = np.array(data)
+            return data
+        else:
+            return NotImplemented
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self.segments})"
@@ -197,24 +222,45 @@ class Iliffe_vector(numpy.lib.mixins.NDArrayOperatorsMixin, MultipleDataExtensio
         return [self.data[l:u] for l, u in zip(self.offsets[:-1], self.offsets[1:])]
 
     @implements(np.ravel)
-    def ravel(self):
-        return self.data
+    def ravel(self, *args, **kwargs):
+        return np.ravel(self.data, *args, **kwargs)
+
+    @implements(np.ndarray.flatten)
+    def flatten(self, *args, **kwargs):
+        return self.data.flatten(*args, **kwargs)
 
     @implements(np.copy)
-    def copy(self):
-        data = self.segments
-        data = [np.copy(seg) for seg in data]
-        return self.__class__(data)
+    def copy(self, *args, **kwargs):
+        data = np.copy(self.data, *args, **kwargs)
+        offsets = np.copy(self.offsets, *args, **kwargs)
+        return self.__class__(data, offsets=offsets)
+
+    @implements(np.where)
+    def where(self, *args, **kwargs):
+        data = np.where(self.data, *args, **kwargs)
+        res = self.__class__(data, offsets=self.offsets)
+        return res
+
+    @implements(np.all)
+    def all(self, *args, axis=None, **kwargs):
+        return self.__array_function_axis__(np.all, axis, args, kwargs)
+
+    @implements(np.any)
+    def any(self, *args, axis=None, **kwargs):
+        return self.__array_function_axis__(np.any, axis, args, kwargs)
+
+    @implements(np.min)
+    def min(self, *args, axis=None, **kwargs):
+        return self.__array_function_axis__(np.min, axis, args, kwargs)
+
+    @implements(np.max)
+    def max(self, *args, axis=None, **kwargs):
+        return self.__array_function_axis__(np.max, axis, args, kwargs)
 
     @classmethod
     def from_offsets(cls, array, offsets):
-        if offsets is None:
-            return cls([array])
-        else:
-            if offsets[0] != 0:
-                offsets = [0, *offsets]
-            arr = [array[l:u] for l, u in zip(offsets[:-1], offsets[1:])]
-            return cls(arr)
+        self = cls(array, offsets=offsets)
+        return self
 
     @classmethod
     def from_indices(cls, array, indices):

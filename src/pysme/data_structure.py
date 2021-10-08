@@ -1,18 +1,13 @@
 import logging
-import os.path
-import platform
-import sys
 from copy import copy
-from datetime import datetime as dt
 
 import numpy as np
-from flex.extensions.bindata import BinaryDataExtension, MultipleDataExtension
+from flex.extensions.bindata import MultipleDataExtension
 from flex.flex import FlexExtension
-from numpy.lib.arraysetops import isin
 import pybtex
 
 
-from . import __file_ending__, __version__, echelle, persistence
+from . import __file_ending__, __version__, persistence
 from .iliffe_vector import Iliffe_vector
 
 logger = logging.getLogger(__name__)

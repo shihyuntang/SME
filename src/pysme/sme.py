@@ -227,7 +227,7 @@ class SME_Structure(Parameters):
 
         if wind is not None and self.wave is not None:
             wind = wind + 1
-            self.wave = Iliffe_vector.from_offsets(self.wave.ravel(), wind)
+            self.wave = Iliffe_vector(self.wave.ravel(), offsets=wind)
 
         self.spec = kwargs.get("sob", None)
         self.uncs = kwargs.get("uob", None)

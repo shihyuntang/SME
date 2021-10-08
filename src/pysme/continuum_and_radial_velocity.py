@@ -244,7 +244,9 @@ class ContinuumNormalizationMCMC(ContinuumNormalizationAbstract):
             )
 
         mask = sme.mask_good[segments]
-        x_obs = sme.wave[segments][mask]
+        x_obs = Iliffe_vector(
+            [w[m] for w, m in zip(sme.wave[segments].segments, mask.segments)]
+        )
         y_obs = sme.spec[segments][mask]
         x_num = x_obs - sme.wave[segments][:, 0]
 
@@ -301,7 +303,7 @@ class ContinuumNormalizationMCMC(ContinuumNormalizationAbstract):
             raise ValueError(f"Radial velocity Flag not understood {sme.vrad_flag}")
 
         # Limit shift to half an order
-        x1, x2 = x_obs[:, 0], x_obs[:, [s // 4 for s in x_obs.shape[1]]]
+        x1, x2 = x_obs[:, 0], x_obs[:, [s // 4 for s in x_obs.shape[1]]].ravel()
         rv_limit = np.abs(c_light * (1 - x2 / x1))
         if sme.vrad_flag == "whole":
             rv_limit = np.min(rv_limit)

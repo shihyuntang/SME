@@ -208,4 +208,5 @@ def test_transf(
     libsme.GetLineRange()
     for switch in range(-3, 13):
         if switch != 8:
+            print(switch)
             libsme.GetOpacity(switch)

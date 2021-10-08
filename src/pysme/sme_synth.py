@@ -71,12 +71,6 @@ class SME_DLL:
         return self.lib.interface
 
     @property
-    def file(self):
-        """str: Location of the library file"""
-        # Deprecated
-        return self.libfile
-
-    @property
     def datadir(self):
         """str: Expected directory of the data files"""
         return self.GetLibraryPath()
