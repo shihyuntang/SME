@@ -1,3 +1,4 @@
+import os
 from os.path import basename
 from tempfile import NamedTemporaryFile
 
@@ -147,9 +148,20 @@ class SavFile(AtmosphereGrid):
         # Store in cache
         cls._cache = self
         # And also replace the IDL file with a numpy file in the cache
+        # We have to use a try except block, as this will crash with
+        # permissions denied on windows, when trying to copy an open file
+        # here the temporary file
+        # Therefore we close the file, after copying and then delete it manually
         if lfs is not None:
-            with NamedTemporaryFile() as named:
-                self.save(named)
+            try:
+                with NamedTemporaryFile(delete=False) as named:
+                    self.save(named)
+                    named.flush()
                 lfs.move_to_cache(named.name, key=lfs.get_url(self.source))
+            finally:
+                try:
+                    os.remove(named.name)
+                except:
+                    pass
 
         return self

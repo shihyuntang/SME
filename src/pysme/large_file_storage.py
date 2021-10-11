@@ -11,7 +11,7 @@ import gzip
 import json
 import logging
 import os
-from os.path import basename, join
+from os.path import basename
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
@@ -102,24 +102,34 @@ class LargeFileStorage:
     def _unpack(self, fname, key, url):
         logger.debug("Unpacking data file %s", key)
 
-        with gzip.open(fname, "rb") as f_in:
-            with NamedTemporaryFile("wb") as f_out:
-                with tqdm(
-                    # total=f_in.size,
-                    desc="Unpack",
-                    unit="B",
-                    unit_scale=True,
-                    unit_divisor=1024,
-                ) as t:
-                    fobj = CallbackIOWrapper(t.update, f_in, "read")
-                    while True:
-                        chunk = fobj.read(1024)
-                        if not chunk:
-                            break
-                        f_out.write(chunk)
-                    f_out.flush()
-                    t.reset()
-                import_file_to_cache(url, f_out.name, pkgname="pysme")
+        # We have to use a try except block, as this will crash with
+        # permissions denied on windows, when trying to copy an open file
+        # here the temporary file
+        # Therefore we close the file, after copying and then delete it manually
+        try:
+            with gzip.open(fname, "rb") as f_in:
+                with NamedTemporaryFile("wb", delete=False) as f_out:
+                    with tqdm(
+                        # total=f_in.size,
+                        desc="Unpack",
+                        unit="B",
+                        unit_scale=True,
+                        unit_divisor=1024,
+                    ) as t:
+                        fobj = CallbackIOWrapper(t.update, f_in, "read")
+                        while True:
+                            chunk = fobj.read(1024)
+                            if not chunk:
+                                break
+                            f_out.write(chunk)
+                        f_out.flush()
+                        t.reset()
+            import_file_to_cache(url, f_out.name, pkgname="pysme")
+        finally:
+            try:
+                os.remove(f_out.name)
+            except:
+                pass
 
     def get_url(self, key):
         key = str(key)
@@ -132,13 +142,13 @@ class LargeFileStorage:
                         f"File {key} does not exist and is not tracked by the Large File system"
                     )
                 else:
-                    return str(key)
+                    return Path(key).as_uri()
             else:
-                return str(self.current / key)
+                return (self.current / key).as_uri()
 
         # Otherwise get it from the cache or online if necessary
         newest = self.pointers[key]
-        url = join(self.server, newest)
+        url = self.server + "/" + newest
         return url
 
     def clean_cache(self):

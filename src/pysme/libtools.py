@@ -91,6 +91,6 @@ def load_library(libfile=None):
 
 
 def get_full_datadir():
-    localdir = realpath(dirname(__file__))
+    localdir = dirname(__file__)
     datadir = join(localdir, "share/libsme/")
     return datadir

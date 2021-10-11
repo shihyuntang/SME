@@ -1,6 +1,7 @@
 """ Wrapper for sme_synth.so C library """
 import logging
 import os
+from os.path import normpath
 
 import numpy as np
 
@@ -181,6 +182,7 @@ class SME_DLL:
         """Set the path to the library"""
         if libpath is None:
             libpath = get_full_datadir()
+        libpath = normpath(libpath) + os.sep
         self.lib.SetLibraryPath(libpath, type="string", state=self.state)
 
     def InputWaveRange(self, wfirst, wlast):
