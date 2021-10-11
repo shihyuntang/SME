@@ -6,7 +6,7 @@ NLTE
 NLTE [#]_ calculations are important to accuarately fit certain lines.
 PySME supports them using pre-computed grids of NLTE departure coefficients, which need to be created for
 every element. For common elements PySME provides grids via the LFS
-(see :ref:`lfs`). If any of these grids are used, please kindly take care to cite the papers describing the NLTE models 
+(see :ref:`lfs`). If any of these grids are used, please kindly take care to cite the papers describing the NLTE models
 and departure coefficient calculations.
 
 If you want to provide your own NLTE grid files, they should be present in `~/.sme/nlte_grids`.

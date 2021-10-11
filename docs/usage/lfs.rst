@@ -58,7 +58,7 @@ NLTE grids:
     - marcs2012s_t2.0_Ti.grd `(Sitnova et al. 2016) <https://ui.adsabs.harvard.edu/abs/2016MNRAS.461.1000S>`_
 
   - deprecated:
-  
+
     - nlte_Ba.grd
     - nlte_Ba_test.grd
     - nlte_C.grd
