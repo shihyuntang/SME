@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 def download_libsme(loc=None):
     if loc is None:
-        loc = dirname(__file__)
+        loc = dirname(dirname(get_full_libfile()))
     # Download compiled library from github releases
     print("Downloading and installing the latest libsme version for this system")
     aliases = {"Linux": "manylinux2014_x86_64", "Windows": "windows", "Darwin": "macos"}
@@ -65,6 +65,7 @@ def get_full_libfile():
     # TODO: Or "bin" for Windows
     if platform.system() in ["Windows"]:
         dirpath = "bin"
+        libfile = "libsme-5.dll"
     else:
         dirpath = "lib"
     libfile = join(localdir, dirpath, libfile)
