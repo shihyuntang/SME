@@ -18,7 +18,7 @@ jobs:
     - uses: actions/checkout@v2
       with:
         fetch-depth: 0
-          
+
     - name: Set up Python 3.8
       uses: actions/setup-python@v2
       with:
@@ -38,14 +38,14 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test with pytest
       run: pytest
-    
+
     - name: GitHub Tag
       if: github.event_name != 'pull_request'
       id: tag_release
       uses: mathieudutour/github-tag-action@v5
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
-    
+
     - uses: actions/checkout@v2
       if: github.event_name != 'pull_request'
       with:
@@ -54,12 +54,12 @@ jobs:
 
     - name: Build Wheel
       run: pip install wheel && python setup.py sdist bdist_wheel
-  
+
     - name: Zip data
       id: zip_data
       run: zip -r dist dist && echo "::set-output name=filename::dist.zip"
 
-  
+
     - name: Create Release
       if: github.event_name != 'pull_request'
       id: create_release
@@ -71,19 +71,19 @@ jobs:
         release_name: Release ${{ steps.tag_release.outputs.new_tag }}
         draft: false
         prerelease: false
-  
+
     - name: Upload Release Asset
       if: github.event_name != 'pull_request'
-      id: upload-release-asset 
+      id: upload-release-asset
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
+        upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
         asset_path: ./dist.zip
         asset_name: dist.zip
         asset_content_type: application/zip
-  
+
     - name: Publish a Python distribution to PyPI
       if: github.event_name != 'pull_request'
       uses: pypa/gh-action-pypi-publish@master
