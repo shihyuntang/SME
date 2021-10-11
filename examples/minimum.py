@@ -1,16 +1,15 @@
-""" Minimum working example of an SME script 
+""" Minimum working example of an SME script
 """
 import os.path
 
-from pysme.gui import plot_plotly
 from pysme import sme as SME
 from pysme import util
-from pysme.solve import solve
-from pysme.synthesize import synthesize_spectrum
-
 from pysme.abund import Abund
+from pysme.gui import plot_plotly
 from pysme.linelist.vald import ValdFile
 from pysme.persistence import save_as_idl
+from pysme.solve import solve
+from pysme.synthesize import synthesize_spectrum
 
 if __name__ == "__main__":
 
@@ -24,10 +23,11 @@ if __name__ == "__main__":
     log_file = os.path.join(examples_dir, f"{target}.log")
 
     # Start the logging to the file
-    util.start_logging(log_file)
+    # util.start_logging(log_file)
 
     # Load your existing SME structure or create your own
     sme = SME.SME_Structure.load(in_file)
+    sme.save("test.sme")
     sme.abund = Abund(0, "asplund2009")
     sme.linelist = ValdFile(os.path.join(examples_dir, "sun.lin"))
 

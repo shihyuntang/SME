@@ -1,38 +1,39 @@
-""" Minimum working example of an SME script 
+""" Minimum working example of an SME script
 """
+import datetime
 import os
 import os.path
 import re
 from os.path import dirname, join, realpath
-import datetime
 
 import matplotlib.pyplot as plt
 import numpy as np
 from astropy import constants as const
 from astropy import coordinates as coord
+from astropy import units as u
 from astropy.io import fits
 from astropy.time import Time
-from astropy import units as u
 from data_sources.StellarDB import StellarDB
+from scipy.integrate import quad
+from scipy.interpolate import interp1d
+from scipy.linalg import lstsq, solve_banded
+from scipy.ndimage.filters import gaussian_filter1d, median_filter
+from scipy.optimize import least_squares, minimize
+from scipy.optimize.minpack import curve_fit
+from scipy.special import owens_t
+from scipy.stats import exponnorm, gennorm, norm, skewnorm
+from tqdm import tqdm
+
 from pysme import sme as SME
 from pysme import util
 from pysme.abund import Abund
+from pysme.continuum_and_radial_velocity import determine_radial_velocity
 from pysme.gui import plot_plotly
 from pysme.iliffe_vector import Iliffe_vector
 from pysme.linelist.vald import ValdFile
 from pysme.persistence import save_as_idl
 from pysme.solve import solve
 from pysme.synthesize import synthesize_spectrum
-from pysme.continuum_and_radial_velocity import determine_radial_velocity
-from scipy.linalg import lstsq, solve_banded
-from scipy.ndimage.filters import gaussian_filter1d, median_filter
-from scipy.optimize import least_squares, minimize
-from scipy.interpolate import interp1d
-from scipy.optimize.minpack import curve_fit
-from scipy.stats import gennorm, norm, skewnorm, exponnorm
-from scipy.special import owens_t
-from scipy.integrate import quad
-from tqdm import tqdm
 
 
 def find_roots(x, y):
@@ -55,7 +56,7 @@ def cdf(x, mu, alpha, *beta):
 
 
 def std(mu, alpha, *beta):
-    """ 1 sigma (68.27 %) quantile, assuming symmetric distribution """
+    """1 sigma (68.27 %) quantile, assuming symmetric distribution"""
     # percentile = 0.997  # 5 sigma
     # interval = gennorm.interval(percentile, beta, loc=mu, scale=alpha * np.sqrt(2))
     # interval = exponnorm.interval(0.6827, beta, loc=mu, scale=alpha)
@@ -131,7 +132,7 @@ if __name__ == "__main__":
     os.makedirs(image_dir, exist_ok=True)
 
     in_file = os.path.join(
-        examples_dir, f"results/Eps_Eri_monh_teff_logg_vmic_vmac_vsini.sme",
+        examples_dir, f"results/Eps_Eri_monh_teff_logg_vmic_vmac_vsini.sme"
     )
     sme = SME.SME_Structure.load(in_file)
 
@@ -225,7 +226,12 @@ if __name__ == "__main__":
         # r = (sopt[0] - 20 * sopt[1], sopt[0] + 20 * sopt[1])
         x = np.linspace(r[0], r[-1], ch_x.size * 10)
         h, b, _ = plt.hist(
-            ch_x, bins="auto", density=True, histtype="step", range=r, label="measured",
+            ch_x,
+            bins="auto",
+            density=True,
+            histtype="step",
+            range=r,
+            label="measured",
         )
         where = (b[:-1] > interval[0]) & (b[:-1] < interval[1])
         plt.fill_between(

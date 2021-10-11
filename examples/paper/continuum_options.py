@@ -1,20 +1,20 @@
-""" Minimum working example of an SME script 
+""" Minimum working example of an SME script
 """
 
-from os.path import dirname, realpath, join
-import numpy as np
+from os.path import dirname, join, realpath
+
 import matplotlib.pyplot as plt
+import numpy as np
 from scipy.io import readsav
 from scipy.ndimage import label as scipy_label
 
 from pysme import sme as SME
 from pysme import util
-from pysme.solve import solve
-from pysme.synthesize import synthesize_spectrum
-
 from pysme.abund import Abund
 from pysme.linelist.vald import ValdFile
 from pysme.persistence import save_as_idl
+from pysme.solve import solve
+from pysme.synthesize import synthesize_spectrum
 
 if __name__ == "__main__":
     # Define the location of all your files
@@ -145,7 +145,10 @@ if __name__ == "__main__":
 
         plt.plot(sme.wave[0], cont, label=f"{label} Continuum")
         plt.plot(
-            sme.wave[0], synth[label], label=f"{label} Corrected", color="tab:purple",
+            sme.wave[0],
+            synth[label],
+            label=f"{label} Corrected",
+            color="tab:purple",
         )
 
         plt.legend(loc="lower left", fontsize="small")

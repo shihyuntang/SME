@@ -1,10 +1,10 @@
-""" Minimum working example of an SME script 
+""" Minimum working example of an SME script
 """
+import datetime
 import os
 import os.path
 import re
 from os.path import dirname, join, realpath
-import datetime
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -13,6 +13,11 @@ from astropy import coordinates as coord
 from astropy.io import fits
 from astropy.time import Time
 from data_sources.StellarDB import StellarDB
+from scipy.linalg import lstsq, solve_banded
+from scipy.ndimage.filters import gaussian_filter1d, median_filter
+from scipy.optimize import least_squares
+from tqdm import tqdm
+
 from pysme import sme as SME
 from pysme import util
 from pysme.abund import Abund
@@ -22,10 +27,6 @@ from pysme.linelist.vald import ValdFile
 from pysme.persistence import save_as_idl
 from pysme.solve import solve
 from pysme.synthesize import synthesize_spectrum
-from scipy.linalg import lstsq, solve_banded
-from scipy.ndimage.filters import gaussian_filter1d, median_filter
-from scipy.optimize import least_squares
-from tqdm import tqdm
 
 
 def get_teff_from_spectral_type(spectral_type):
@@ -406,7 +407,12 @@ def top(
         ff_old = ff
     else:
         fff = middle(
-            f, order, iterations=iterations, eps=eps, weight=weight, lambda2=lambda2
+            f,
+            order,
+            iterations=iterations,
+            eps=eps,
+            weight=weight,
+            lambda2=lambda2,
         )
         fmin = np.min(f) - 1
         fmax = np.max(f) + 1
@@ -455,7 +461,7 @@ def continuum_normalize(
     plot=True,
     plot_title=None,
 ):
-    """ Fit a continuum to a spectrum by slowly approaching it from the top.
+    """Fit a continuum to a spectrum by slowly approaching it from the top.
     We exploit here that the continuum varies only on large wavelength scales, while individual lines act on much smaller scales
 
     TODO automatically find good parameters for smooth_initial and smooth_final
@@ -540,11 +546,21 @@ def continuum_normalize(
             c = ssB / contB
             for _ in range(iterations):
                 _c = top(
-                    c, smooth_initial, eps=par2, weight=weight, lambda2=smooth_final
+                    c,
+                    smooth_initial,
+                    eps=par2,
+                    weight=weight,
+                    lambda2=smooth_final,
                 )
                 c = np.clip(_c, c, None)
             c = (
-                top(c, smooth_initial, eps=par4, weight=weight, lambda2=smooth_final)
+                top(
+                    c,
+                    smooth_initial,
+                    eps=par4,
+                    weight=weight,
+                    lambda2=smooth_final,
+                )
                 * contB
             )
 

@@ -1,30 +1,31 @@
-""" Minimum working example of an SME script 
+""" Minimum working example of an SME script
 """
+import datetime
 import os
-import sys
 import os.path
 import re
-from os.path import dirname, join, realpath, exists, basename
-import datetime
+import sys
+from os.path import basename, dirname, exists, join, realpath
 
 import matplotlib.pyplot as plt
 import numpy as np
 from astropy import constants as const
 from astropy.io import fits
 from data_sources.StellarDB import StellarDB
+from flex.flex import FlexFile
+from scipy.interpolate import interp1d
+from scipy.ndimage.filters import gaussian_filter1d, median_filter
+from scipy.optimize import least_squares
+from tqdm import tqdm
+
 from pysme import sme as SME
 from pysme import util
 from pysme.abund import Abund
+from pysme.continuum_and_radial_velocity import determine_radial_velocity
 from pysme.gui import plot_plotly
 from pysme.iliffe_vector import Iliffe_vector
 from pysme.linelist.vald import ValdFile
 from pysme.solve import solve
-from pysme.continuum_and_radial_velocity import determine_radial_velocity
-from flex.flex import FlexFile
-from scipy.ndimage.filters import gaussian_filter1d, median_filter
-from scipy.optimize import least_squares
-from scipy.interpolate import interp1d
-from tqdm import tqdm
 
 
 def hl_envelopes_idx(s, dmin=1, dmax=1, split=False):
@@ -339,9 +340,7 @@ def fit(sme, segments="all"):
     # For abundances use: 'abund {El}', where El is the element (e.g. 'abund Fe')
     # For linelist use: 'linelist {Nr} {p}', where Nr is the number in the
     # linelist and p is the line parameter (e.g. 'linelist 17 gflog')
-    fitparameters = [
-        ["monh", "teff", "logg", "vmic", "vmac", "vsini"],
-    ]
+    fitparameters = [["monh", "teff", "logg", "vmic", "vmac", "vsini"]]
     sme.cscale_type = "match"
     sme.cscale_flag = "linear"
     sme.vrad_flag = "whole"

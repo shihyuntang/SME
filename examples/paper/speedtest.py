@@ -1,12 +1,13 @@
-""" Minimum working example of an SME script 
+""" Minimum working example of an SME script
 """
 
-import os.path
-from os.path import dirname, join, realpath
-import time
 import gc
+import os.path
+import time
+from os.path import dirname, join, realpath
 
 import numpy as np
+
 from pysme import sme as SME
 from pysme import util
 from pysme.abund import Abund
