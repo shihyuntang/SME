@@ -2,14 +2,15 @@ from os.path import dirname, join
 
 import numpy as np
 import pytest
+from scipy.constants import speed_of_light
+
 from pysme.abund import Abund
 from pysme.linelist.vald import ValdFile
+from pysme.sme import SME_Structure as SME_Struct
+from pysme.synthesize import synthesize_spectrum
 
 # TODO create various kinds of default sme structures
 # then run test on all of the relevant ones
-from pysme.sme import SME_Structure as SME_Struct
-from pysme.synthesize import synthesize_spectrum
-from scipy.constants import speed_of_light
 
 
 @pytest.fixture

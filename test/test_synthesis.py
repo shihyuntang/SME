@@ -1,6 +1,7 @@
 # TODO implement synthesis tests
 import numpy as np
 import pytest
+
 from pysme.iliffe_vector import Iliffe_vector
 from pysme.synthesize import synthesize_spectrum
 

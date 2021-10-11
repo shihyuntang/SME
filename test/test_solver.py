@@ -2,6 +2,7 @@ from os.path import dirname
 
 import numpy as np
 import pytest
+
 from pysme.sme import SME_Structure as SME_Struct
 from pysme.solve import solve
 

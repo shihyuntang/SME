@@ -1,6 +1,7 @@
 # TODO implement atmosphere tests
 import numpy as np
 import pytest
+
 from pysme.atmosphere.atmosphere import Atmosphere
 from pysme.atmosphere.interpolation import AtmosphereInterpolator
 from pysme.atmosphere.savfile import SavFile
