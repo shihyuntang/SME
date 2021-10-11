@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 def this(self, x):
-    """ This just returns the input """
+    """This just returns the input"""
     return x
 
 
@@ -168,11 +168,15 @@ def fset(name, func):
 
 
 def CollectionFactory(cls):
-    """ Decorator that turns Collection _fields into properties """
+    """Decorator that turns Collection _fields into properties"""
 
     # Add properties to the class
     for name, _, setter, getter, doc in cls._fields:
-        setattr(cls, name, property(fget(name, getter), fset(name, setter), None, doc))
+        setattr(
+            cls,
+            name,
+            property(fget(name, getter), fset(name, setter), None, doc),
+        )
     cls._names = [f[0] for f in cls._fields]
 
     return cls
@@ -181,7 +185,13 @@ def CollectionFactory(cls):
 @CollectionFactory
 class Collection(persistence.IPersist):
     _fields = [
-        ("citation_info", "", asstr, this, "str: Bibtex representation of the citation")
+        (
+            "citation_info",
+            "",
+            asstr,
+            this,
+            "str: Bibtex representation of the citation",
+        )
     ]  # [("name", "default", str, this, "doc")]
 
     def __init__(self, **kwargs):

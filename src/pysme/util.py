@@ -318,7 +318,7 @@ def safe_interpolation(x_old, y_old, x_new=None, fill_value=0):
 
 
 def log_version():
-    """ For Debug purposes """
+    """For Debug purposes"""
     dll = SME_DLL()
     logger.debug("----------------------")
     logger.debug("Python version: %s", python_version())

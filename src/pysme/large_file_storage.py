@@ -142,16 +142,16 @@ class LargeFileStorage:
         return url
 
     def clean_cache(self):
-        """ Remove unused cache files (from old versions) """
+        """Remove unused cache files (from old versions)"""
         clear_download_cache(pkgname="pysme")
 
     def delete_file(self, fname):
-        """ Delete a file, including the cache file """
+        """Delete a file, including the cache file"""
         clear_download_cache(fname, pkgname="pysme")
 
     def move_to_cache(self, fname, key=None):
-        """ Move currently used files into cache directory and use symlinks instead,
-        just as if downloaded from a server """
+        """Move currently used files into cache directory and use symlinks instead,
+        just as if downloaded from a server"""
         if key is None:
             key = basename(fname)
         import_file_to_cache(key, fname, pkgname="pysme")
@@ -218,4 +218,3 @@ def get_available_files(pointers, storage):
     ]
     files += files_non_lfs
     return files
-

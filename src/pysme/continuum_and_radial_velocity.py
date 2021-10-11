@@ -207,7 +207,10 @@ class ContinuumNormalizationMCMC(ContinuumNormalizationAbstract):
             segments = [segments]
         nseg = len(segments)
 
-        if sme.cscale_flag in ["none", "fix"] and sme.vrad_flag in ["none", "fix"]:
+        if sme.cscale_flag in ["none", "fix"] and sme.vrad_flag in [
+            "none",
+            "fix",
+        ]:
             vrad, vunc, cscale, cunc = null_result(nseg, sme.cscale_degree)
             if sme.vrad_flag == "fix":
                 vrad = sme.vrad[segments]
@@ -302,7 +305,10 @@ class ContinuumNormalizationMCMC(ContinuumNormalizationAbstract):
             raise ValueError(f"Radial velocity Flag not understood {sme.vrad_flag}")
 
         # Limit shift to half an order
-        x1, x2 = x_obs[:, 0], x_obs[:, [s // 4 for s in x_obs.shape[1]]].ravel()
+        x1, x2 = (
+            x_obs[:, 0],
+            x_obs[:, [s // 4 for s in x_obs.shape[1]]].ravel(),
+        )
         rv_limit = np.abs(c_light * (1 - x2 / x1))
         if sme.vrad_flag == "whole":
             rv_limit = np.min(rv_limit)
@@ -332,7 +338,8 @@ class ContinuumNormalizationMCMC(ContinuumNormalizationAbstract):
                 where |= np.any(cscale[:, :, -1] < 0, axis=1)
                 if ndeg == 1:
                     where |= np.any(
-                        (cscale[:, :, -1] + cscale[:, :, -2] * x_num[:, -1]) < 0, axis=1
+                        (cscale[:, :, -1] + cscale[:, :, -2] * x_num[:, -1]) < 0,
+                        axis=1,
                     )
                 elif ndeg == 2:
                     for i in range(nseg):
@@ -410,7 +417,10 @@ class ContinuumNormalizationMCMC(ContinuumNormalizationAbstract):
         p0 = p0 + np.random.randn(nwalkers, ndim) * scale
         # If the original guess is good then DEMove is much faster, and sometimes just as good
         # However StretchMove is much more robust to the initial starting value
-        moves = [(emcee.moves.DEMove(), 0.8), (emcee.moves.DESnookerMove(), 0.2)]
+        moves = [
+            (emcee.moves.DEMove(), 0.8),
+            (emcee.moves.DESnookerMove(), 0.2),
+        ]
 
         sampler = emcee.EnsembleSampler(
             nwalkers,
@@ -820,7 +830,12 @@ def determine_radial_velocity(
         elif sme.vrad_flag == "whole":
             # All segments
             y_syn = apply_continuum(
-                x_syn, y_syn, sme.wave, cscale, sme.cscale_type, range(len(y_obs))
+                x_syn,
+                y_syn,
+                sme.wave,
+                cscale,
+                sme.cscale_type,
+                range(len(y_obs)),
             )
         else:
             raise ValueError(
@@ -958,7 +973,12 @@ def match_rv_continuum(sme, segments, x_syn, y_syn):
     elif sme.vrad_flag == "whole":
         s = segments
         vrad[s] = radial_velocity(
-            sme, [x_syn[s] for s in s], [y_syn[s] for s in s], s, cscale[s], whole=True
+            sme,
+            [x_syn[s] for s in s],
+            [y_syn[s] for s in s],
+            s,
+            cscale[s],
+            whole=True,
         )
     else:
         raise ValueError

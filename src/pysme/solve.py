@@ -9,13 +9,13 @@ import warnings
 from os.path import splitext
 
 import numpy as np
-from numpy.lib.arraysetops import unique
 from scipy.constants import speed_of_light
 from scipy.optimize import OptimizeWarning, least_squares
 from scipy.stats import norm
 from tqdm import tqdm
 
 from . import __file_ending__
+from ._numdiff import approx_derivative
 from .abund import Abund
 from .atmosphere.atmosphere import AtmosphereError
 from .atmosphere.krzfile import KrzFile
@@ -24,8 +24,6 @@ from .large_file_storage import setup_lfs
 from .nlte import DirectAccessFile
 from .synthesize import Synthesizer
 from .util import print_to_log
-
-from ._numdiff import approx_derivative
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +35,9 @@ class SME_Solver:
     def __init__(self, filename=None, restore=False):
         self.config, self.lfs_atmo, self.lfs_nlte = setup_lfs()
         self.synthesizer = Synthesizer(
-            config=self.config, lfs_atmo=self.lfs_atmo, lfs_nlte=self.lfs_nlte,
+            config=self.config,
+            lfs_atmo=self.lfs_atmo,
+            lfs_nlte=self.lfs_nlte,
         )
 
         # Various parameters to keep track of during solving
@@ -354,7 +354,7 @@ class SME_Solver:
         return scales
 
     def get_default_values(self, sme):
-        """ Default parameter values for each name """
+        """Default parameter values for each name"""
         d = {"teff": 5778, "logg": 4.4, "monh": 0, "vmac": 1, "vmic": 1}
         d.update({f"{el} abund": v for el, v in Abund.solar()().items()})
 
@@ -406,7 +406,7 @@ class SME_Solver:
             return norm.cdf(x, loc=mu, scale=alpha)
 
         def std(mu, alpha):
-            """ 1 sigma (68.27 %) quantile, assuming symmetric distribution """
+            """1 sigma (68.27 %) quantile, assuming symmetric distribution"""
             # interval = gennorm.interval(0.6827, beta, loc=mu, scale=alpha * np.sqrt(2))
             interval = norm.interval(0.6827, loc=mu, scale=alpha)
             sigma = (interval[1] - interval[0]) / 2

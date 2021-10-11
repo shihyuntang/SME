@@ -21,7 +21,11 @@ def download_libsme(loc=None):
         loc = dirname(dirname(get_full_libfile()))
     # Download compiled library from github releases
     print("Downloading and installing the latest libsme version for this system")
-    aliases = {"Linux": "manylinux2014_x86_64", "Windows": "windows", "Darwin": "macos"}
+    aliases = {
+        "Linux": "manylinux2014_x86_64",
+        "Windows": "windows",
+        "Darwin": "macos",
+    }
     system = platform.system()
 
     try:
@@ -49,7 +53,7 @@ def download_libsme(loc=None):
 
 
 def get_lib_name():
-    """ Get the name of the sme C library """
+    """Get the name of the sme C library"""
     system = platform.system().lower()
     arch = platform.machine()
     bits = 64  # platform.architecture()[0][:-3]
@@ -60,7 +64,7 @@ def get_lib_name():
 
 
 def get_full_libfile():
-    """ Get the full path to the sme C library """
+    """Get the full path to the sme C library"""
     localdir = dirname(__file__)
     libfile = get_lib_name()
     # TODO: Or "bin" for Windows

@@ -8,7 +8,7 @@ from .atmosphere import Atmosphere
 
 
 class KrzFile(Atmosphere):
-    """ Read .krz atmosphere files """
+    """Read .krz atmosphere files"""
 
     def __init__(self, filename, source=None):
         super().__init__()

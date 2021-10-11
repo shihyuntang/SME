@@ -263,7 +263,14 @@ def approx_derivative(
 
             groups = np.atleast_1d(groups)
             return _sparse_difference(
-                fun_wrapped, x0, f0, h, use_one_sided, structure, groups, method
+                fun_wrapped,
+                x0,
+                f0,
+                h,
+                use_one_sided,
+                structure,
+                groups,
+                method,
             )
 
 

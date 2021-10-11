@@ -24,8 +24,7 @@ class LineListError(Exception):
 
 
 class LineList(IPersist):
-    """Atomic data for a list of spectral lines
-    """
+    """Atomic data for a list of spectral lines"""
 
     _base_columns = [
         "species",
@@ -123,7 +122,7 @@ class LineList(IPersist):
 
     @classmethod
     def from_IDL_SME(cls, **kwargs):
-        """ extract LineList from IDL SME structure keywords """
+        """extract LineList from IDL SME structure keywords"""
         species = kwargs.pop("species").astype("U")
         atomic = np.asarray(kwargs.pop("atomic"), dtype="<f8")
         lande = np.asarray(kwargs.pop("lande"), dtype="<f8")
@@ -248,7 +247,9 @@ class LineList(IPersist):
         if isinstance(index, (list, str)):
             if len(index) == 0:
                 return LineList(
-                    self._lines.iloc[[]], lineformat=self.lineformat, medium=self.medium
+                    self._lines.iloc[[]],
+                    lineformat=self.lineformat,
+                    medium=self.medium,
                 )
             values = self._lines[index].values
             if index in self.string_columns:
@@ -299,12 +300,12 @@ class LineList(IPersist):
 
     @property
     def species(self):
-        """list(str) of size (nlines,): Species name of each line """
+        """list(str) of size (nlines,): Species name of each line"""
         return self._lines["species"].values.astype("U")
 
     @property
     def lulande(self):
-        """list(float) of size (nlines, 2): Lower and Upper Lande factors """
+        """list(float) of size (nlines, 2): Lower and Upper Lande factors"""
         if self.lineformat == "short":
             raise AttributeError(
                 "Lower and Upper Lande Factors are only available in the long line format"
@@ -316,7 +317,7 @@ class LineList(IPersist):
 
     @property
     def extra(self):
-        """list(float) of size (nlines, 3): additional line level information for NLTE calculation """
+        """list(float) of size (nlines, 3): additional line level information for NLTE calculation"""
         if self.lineformat == "short":
             raise AttributeError("Extra is only available in the long line format")
         names = ["j_lo", "e_upp", "j_up"]
@@ -324,7 +325,7 @@ class LineList(IPersist):
 
     @property
     def atomic(self):
-        """list(float) of size (nlines, 8): Data array passed to C library, should only be used for this purpose """
+        """list(float) of size (nlines, 8): Data array passed to C library, should only be used for this purpose"""
         names = [
             "atom_number",
             "ionization",
@@ -343,7 +344,7 @@ class LineList(IPersist):
     def sort(self, field="wlcent", ascending=True):
         """Sort the linelist
 
-        The underlying datastructure will be replaced, 
+        The underlying datastructure will be replaced,
         i.e. any references will not be sorted or updated
 
         Parameters
@@ -365,7 +366,7 @@ class LineList(IPersist):
     def add(self, species, wlcent, excit, gflog, gamrad, gamqst, gamvw):
         """Add a new line to the existing linelist
 
-        This replaces the underlying datastructure, 
+        This replaces the underlying datastructure,
         i.e. any references (atomic, etc.) will not be updated
 
         Parameters
@@ -463,5 +464,8 @@ class LineList(IPersist):
                 linedata = pd.DataFrame.from_records(linedata)
 
         return LineList(
-            linedata, lineformat=lineformat, medium=medium, citation_info=citation_info
+            linedata,
+            lineformat=lineformat,
+            medium=medium,
+            citation_info=citation_info,
         )

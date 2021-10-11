@@ -114,7 +114,7 @@ class Synthesizer:
 
     @staticmethod
     def new_wavelength_grid(wint):
-        """ Generate new wavelength grid within bounds of wint"""
+        """Generate new wavelength grid within bounds of wint"""
         # Determine step size for a new model wavelength scale, which must be uniform
         # to facilitate convolution with broadening kernels. The uniform step size
         # is the larger of:
@@ -430,11 +430,22 @@ class Synthesizer:
         return flux
 
     def sequential_synthesize_segments(
-        self, sme, segments, wmod, smod, cmod, reuse_wavelength_grid, dll_id=None
+        self,
+        sme,
+        segments,
+        wmod,
+        smod,
+        cmod,
+        reuse_wavelength_grid,
+        dll_id=None,
     ):
         for il in segments:
             wmod[il], smod[il], cmod[il] = self.synthesize_segment(
-                sme, il, reuse_wavelength_grid, il != segments[0], dll_id=dll_id
+                sme,
+                il,
+                reuse_wavelength_grid,
+                il != segments[0],
+                dll_id=dll_id,
             )
         return wmod, smod, cmod
 
@@ -460,7 +471,14 @@ class Synthesizer:
             return dll_id
 
     def parallel_synthesize_segments(
-        self, sme, segments, wmod, smod, cmod, reuse_wavelength_grid, dll_id=None,
+        self,
+        sme,
+        segments,
+        wmod,
+        smod,
+        cmod,
+        reuse_wavelength_grid,
+        dll_id=None,
     ):
         # Make sure the dll is recorded in the global variables
         dll = self.get_dll(dll_id)
@@ -673,11 +691,23 @@ class Synthesizer:
         # for the wavelength range (and opacities) which change within each segment
         if dll.parallel:
             self.parallel_synthesize_segments(
-                sme, segments, wmod, smod, cmod, reuse_wavelength_grid, dll_id=dll
+                sme,
+                segments,
+                wmod,
+                smod,
+                cmod,
+                reuse_wavelength_grid,
+                dll_id=dll,
             )
         else:
             self.sequential_synthesize_segments(
-                sme, segments, wmod, smod, cmod, reuse_wavelength_grid, dll_id=dll
+                sme,
+                segments,
+                wmod,
+                smod,
+                cmod,
+                reuse_wavelength_grid,
+                dll_id=dll,
             )
 
         for il in segments:
@@ -705,7 +735,15 @@ class Synthesizer:
             raise ValueError("Radial Velocity mode not understood")
 
         smod, cmod = self.apply_radial_velocity_and_continuum(
-            wave, sme.spec, wmod, smod, cmod, vrad, cscale, sme.cscale_type, segments
+            wave,
+            sme.spec,
+            wmod,
+            smod,
+            cmod,
+            vrad,
+            cscale,
+            sme.cscale_type,
+            segments,
         )
 
         # Merge all segments

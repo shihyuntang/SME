@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 class SME_DLL:
-    """ Object Oriented interface for the SME C library """
+    """Object Oriented interface for the SME C library"""
 
     def __init__(self, libfile=None, datadir=None, state=None):
         #:LineList: Linelist passed to the library
@@ -169,16 +169,16 @@ class SME_DLL:
         return version
 
     def GetLibraryPath(self):
-        """ Get the data file directory """
+        """Get the data file directory"""
         return self.lib.GetLibraryPath(raise_error=False, state=self.state)
 
     def GetDataFiles(self):
-        """ Get the required data files """
+        """Get the required data files"""
         files = self.lib.GetDataFiles(raise_error=False, state=self.state)
         return files.split(";")
 
     def SetLibraryPath(self, libpath=None):
-        """ Set the path to the library """
+        """Set the path to the library"""
         if libpath is None:
             libpath = get_full_datadir()
         self.lib.SetLibraryPath(libpath, type="string", state=self.state)
@@ -217,7 +217,7 @@ class SME_DLL:
         self.vw_scale = gamma6
 
     def SetH2broad(self, h2_flag=True):
-        """ Set flag for H2 molecule """
+        """Set flag for H2 molecule"""
         if h2_flag:
             self.lib.SetH2broad(state=self.state)
             self.h2broad = True
@@ -225,7 +225,7 @@ class SME_DLL:
             self.ClearH2broad()
 
     def ClearH2broad(self):
-        """ Clear flag for H2 molecule """
+        """Clear flag for H2 molecule"""
         self.lib.ClearH2broad(state=self.state)
         self.h2broad = False
 
@@ -266,7 +266,11 @@ class SME_DLL:
             self.state.contents.free_opacities()
 
         self.lib.InputLineList(
-            nlines, species, atomic, type=("int", "string", "double"), state=self.state
+            nlines,
+            species,
+            atomic,
+            type=("int", "string", "double"),
+            state=self.state,
         )
 
         self.linelist = linelist
@@ -328,7 +332,7 @@ class SME_DLL:
         )
 
     def InputModel(self, teff, grav, vturb, atmo):
-        """ Read in model atmosphere
+        """Read in model atmosphere
 
         Parameters
         ---------
@@ -416,7 +420,7 @@ class SME_DLL:
         self.abund = abund
 
     def Opacity(self, getData=False, motype=1):
-        """ Calculate opacities
+        """Calculate opacities
 
         Parameters
         ---------
@@ -524,7 +528,11 @@ class SME_DLL:
             self.state.contents.free_ionization()
 
         self.lib.Ionization(
-            ion, type="short", raise_error=False, raise_warning=True, state=self.state
+            ion,
+            type="short",
+            raise_error=False,
+            raise_warning=True,
+            state=self.state,
         )
         self.ion = ion
 
@@ -732,7 +740,7 @@ class SME_DLL:
         return lop, cop, scr, tsf, csf
 
     def GetLineRange(self):
-        """ Get the effective wavelength range for each line
+        """Get the effective wavelength range for each line
         i.e. the wavelengths for which the line has significant impact
 
         Parameters
@@ -800,7 +808,7 @@ class SME_DLL:
         )
 
     def GetNLTE(self, line):
-        """ Get the NLTE departure coefficients as stored in the C library
+        """Get the NLTE departure coefficients as stored in the C library
 
         Parameters
         ----------
@@ -821,7 +829,7 @@ class SME_DLL:
         return bmat
 
     def ResetNLTE(self):
-        """ Reset departure coefficients from any previous call, to ensure LTE as default """
+        """Reset departure coefficients from any previous call, to ensure LTE as default"""
         self.lib.ResetDepartureCoefficients(state=self.state)
 
     def GetNLTEflags(self):

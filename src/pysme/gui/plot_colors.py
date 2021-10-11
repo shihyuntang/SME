@@ -4,7 +4,7 @@ Defines the colors to use in plotting
 
 
 class PlotColors:
-    """ Define the colors to use in plotting """
+    """Define the colors to use in plotting"""
 
     def __init__(self):
         self.fmt = {

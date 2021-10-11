@@ -39,7 +39,7 @@ if in_notebook:
 
 
 class FitPlot:
-    """ Plot the sme solve fit, as iterations pass along """
+    """Plot the sme solve fit, as iterations pass along"""
 
     def __init__(self, wave, spec):
         self.fig = go.FigureWidget()
@@ -49,12 +49,12 @@ class FitPlot:
         self.fig.add_scatter(x=wave, y=spec, name="Observation")
 
     def add_synth(self, wave, synth, iteration=0):
-        """ add a scatter plot to the plot """
+        """add a scatter plot to the plot"""
         self.fig.add_scatter(x=wave, y=synth, name=f"Iteration {iteration}")
 
 
 class FinalPlot:
-    """ Big plot that covers everything """
+    """Big plot that covers everything"""
 
     def __init__(self, sme, segment=0, orig=None, labels=None):
         self.sme = sme
@@ -124,7 +124,8 @@ class FinalPlot:
 
             # Add buttons for Mask selection
             self.button_mask = widgets.ToggleButtons(
-                options=["Good", "Bad", "Continuum", "Line"], description="Mask"
+                options=["Good", "Bad", "Continuum", "Line"],
+                description="Mask",
             )
             self.button_mask.observe(self.on_toggle_click, "value")
 
@@ -132,7 +133,7 @@ class FinalPlot:
             display(self.widget)
 
     def save(self, _=None, filename="SME.html", **kwargs):
-        """ save plot to html file """
+        """save plot to html file"""
         # Here we "hack" plotly to use base64 encoded data
         # since we have a lot of data to look at
         # this reduces the file size by about a factor 3
@@ -185,8 +186,8 @@ class FinalPlot:
         self.fig.show()
 
     def shift_mask(self, x, mask):
-        """ shift the edges of the mask to the bottom of the plot,
-        so that the mask creates a shape with straight edges """
+        """shift the edges of the mask to the bottom of the plot,
+        so that the mask creates a shape with straight edges"""
         for i in np.where(mask)[0]:
             try:
                 if mask[i] == mask[i + 1]:
@@ -199,7 +200,7 @@ class FinalPlot:
         return x
 
     def create_mask_points(self, x, y, mask, value):
-        """ Creates the points that define the outer edge of the mask region """
+        """Creates the points that define the outer edge of the mask region"""
         mask = mask != value
         x = np.copy(x)
         y = np.copy(y)
@@ -208,7 +209,7 @@ class FinalPlot:
         return x, y
 
     def create_plot(self, current_segment):
-        """ Generate the plot componentes (lines and masks) and line labels """
+        """Generate the plot componentes (lines and masks) and line labels"""
 
         annotations = {}
         visible = []
@@ -398,7 +399,7 @@ class FinalPlot:
         return data, annotations
 
     def selection_fn(self, trace, points, selector):
-        """ Callback for area selection, changes the mask depending on selected mode """
+        """Callback for area selection, changes the mask depending on selected mode"""
         self.segment = self.fig.layout["sliders"][0].active
         seg = self.segment
 
@@ -445,7 +446,7 @@ class FinalPlot:
                 self.fig.data[m].y = y
 
     def on_toggle_click(self, change):
-        """ Callback for mask mode selector buttons """
+        """Callback for mask mode selector buttons"""
         change = change["new"]
         if change == "Good":
             self.set_mask_good()
@@ -457,28 +458,28 @@ class FinalPlot:
             self.set_mask_line()
 
     def set_mask_good(self, _=None):
-        """ Called by clicking the 'good' mask button """
+        """Called by clicking the 'good' mask button"""
         self.set_mask_type("good")
 
     def set_mask_bad(self, _=None):
-        """ Called by clicking the 'bad' mask button """
+        """Called by clicking the 'bad' mask button"""
         self.set_mask_type("bad")
 
     def set_mask_line(self, _=None):
-        """ Called by clicking the 'line' mask button """
+        """Called by clicking the 'line' mask button"""
         self.set_mask_type("line")
 
     def set_mask_continuum(self, _=None):
-        """ Called by clicking the 'continuum' mask button """
+        """Called by clicking the 'continuum' mask button"""
         self.set_mask_type("cont")
 
     def set_mask_type(self, type):
-        """ Changes the mask change mode and chooses the current interactive tool """
+        """Changes the mask change mode and chooses the current interactive tool"""
         self.mask_type = type
         self.fig.layout["dragmode"] = "select"
 
     def add(self, x, y, label=""):
-        """ adds a scatter plot to the image, and makes the necessary changes in the slider """
+        """adds a scatter plot to the image, and makes the necessary changes in the slider"""
         self.fig.add_scatter(x=x, y=y, name=label, legendgroup=10)
         self.visible += [-1]
 

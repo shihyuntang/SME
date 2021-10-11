@@ -8,7 +8,7 @@ from .atmosphere import AtmosphereGrid
 
 
 class SavFile(AtmosphereGrid):
-    """ IDL savefile atmosphere grid """
+    """IDL savefile atmosphere grid"""
 
     _cache = {}
 

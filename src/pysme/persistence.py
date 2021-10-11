@@ -281,7 +281,7 @@ def loads_v1(file, data, names=None, folder=""):
 
 
 def get_typecode(dtype):
-    """ Get the IDL typecode for a given dtype """
+    """Get the IDL typecode for a given dtype"""
     if dtype.name[:5] == "bytes":
         return "1"
     if dtype.name == "int16":
@@ -347,7 +347,7 @@ def clean_temps():
 
 def write_as_idl(sme):
     """
-    Write SME structure into and idl format 
+    Write SME structure into and idl format
     data arrays are stored in seperate temp files, and only the filename is passed to idl
     """
 

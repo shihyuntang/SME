@@ -16,12 +16,11 @@ logger = logging.getLogger(__name__)
 
 
 class GesError(LineListError):
-    """ Vald Data File Error """
+    """Vald Data File Error"""
 
 
 class GesFile(LineList):
-    """Atomic data for a list of spectral lines.
-    """
+    """Atomic data for a list of spectral lines."""
 
     def __init__(self, filename, medium=None):
         self.filename = filename

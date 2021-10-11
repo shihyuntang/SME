@@ -208,7 +208,7 @@ class GlobalState(ct.Structure):
 
 
 def get_lib_name():
-    """ Get the name of the sme C library """
+    """Get the name of the sme C library"""
     system = platform.system().lower()
     arch = platform.machine()
     bits = 64  # platform.architecture()[0][:-3]
@@ -399,7 +399,11 @@ def idl_call_external(funcname, *args, restype="str", type=None, lib=None, state
     # Load function and define parameters
     func = getattr(lib, funcname)
     if state is not None:
-        func.argtypes = (ct.c_int, ct.POINTER(ct.c_void_p), ct.POINTER(GlobalState))
+        func.argtypes = (
+            ct.c_int,
+            ct.POINTER(ct.c_void_p),
+            ct.POINTER(GlobalState),
+        )
     else:
         func.argtypes = (ct.c_int, ct.POINTER(ct.c_void_p))
 
@@ -626,7 +630,11 @@ class IDL_DLL:
         ct.memmove(new.BNU, state.contents.BNU, ct.sizeof(new.BNU))
         ct.memmove(new.H1FRACT, state.contents.H1FRACT, ct.sizeof(new.H1FRACT))
         ct.memmove(new.HE1FRACT, state.contents.HE1FRACT, ct.sizeof(new.HE1FRACT))
-        ct.memmove(new.H2molFRACT, state.contents.H2molFRACT, ct.sizeof(new.H2molFRACT))
+        ct.memmove(
+            new.H2molFRACT,
+            state.contents.H2molFRACT,
+            ct.sizeof(new.H2molFRACT),
+        )
         ct.memmove(new.COPBLU, state.contents.COPBLU, ct.sizeof(new.COPBLU))
         ct.memmove(new.COPRED, state.contents.COPRED, ct.sizeof(new.COPRED))
         ct.memmove(new.COPSTD, state.contents.COPSTD, ct.sizeof(new.COPSTD))
@@ -654,15 +662,21 @@ class IDL_DLL:
         for i in range(nrhox):
             new.LINEOP[i] = (ct.c_double * nlines)()
             ct.memmove(
-                new.LINEOP[i], state.contents.LINEOP[i], nlines * ct.sizeof(ct.c_double)
+                new.LINEOP[i],
+                state.contents.LINEOP[i],
+                nlines * ct.sizeof(ct.c_double),
             )
             new.AVOIGT[i] = (ct.c_double * nlines)()
             ct.memmove(
-                new.AVOIGT[i], state.contents.AVOIGT[i], nlines * ct.sizeof(ct.c_double)
+                new.AVOIGT[i],
+                state.contents.AVOIGT[i],
+                nlines * ct.sizeof(ct.c_double),
             )
             new.VVOIGT[i] = (ct.c_double * nlines)()
             ct.memmove(
-                new.VVOIGT[i], state.contents.VVOIGT[i], nlines * ct.sizeof(ct.c_double)
+                new.VVOIGT[i],
+                state.contents.VVOIGT[i],
+                nlines * ct.sizeof(ct.c_double),
             )
 
         new.ATOTAL = ct_copy(new, state, "ATOTAL", (nrhox, nsplist), ct.c_double)
