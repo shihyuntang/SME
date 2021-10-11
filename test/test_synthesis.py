@@ -1,9 +1,8 @@
 # TODO implement synthesis tests
-import pytest
 import numpy as np
-
-from pysme.synthesize import synthesize_spectrum
+import pytest
 from pysme.iliffe_vector import Iliffe_vector
+from pysme.synthesize import synthesize_spectrum
 
 
 def test_synthesis_simple(sme_2segments):

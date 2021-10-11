@@ -5,21 +5,20 @@ safe interpolation
 """
 
 import argparse
-import logging
-from functools import wraps
-from platform import python_version
-import sys
 import builtins
 import contextlib
+import logging
 import os
 import subprocess
+import sys
+from functools import wraps
+from platform import python_version
 
 import numpy as np
 from numpy import __version__ as npversion
 from pandas import __version__ as pdversion
 from scipy import __version__ as spversion
 from scipy.interpolate import interp1d
-from tqdm import tqdm
 
 from . import __version__ as smeversion
 from .sme_synth import SME_DLL

@@ -1,14 +1,12 @@
 from os.path import dirname
 
-import pytest
 import numpy as np
-
-from pysme.sme import SME_Structure as SME_Struct
+import pytest
 from pysme.abund import Abund
 from pysme.atmosphere.krzfile import KrzFile
 from pysme.linelist.linelist import LineList
 from pysme.sme_synth import SME_DLL
-from pysme.nlte import nlte
+
 
 # Create Objects to pass to library
 # Their functionality is tested in other test files, so we assume it works

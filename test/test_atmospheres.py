@@ -1,12 +1,11 @@
 # TODO implement atmosphere tests
-import pytest
 import numpy as np
+import pytest
 from pysme.atmosphere.atmosphere import Atmosphere
-from pysme.atmosphere.savfile import SavFile
 from pysme.atmosphere.interpolation import AtmosphereInterpolator
-from pysme.large_file_storage import setup_atmo
+from pysme.atmosphere.savfile import SavFile
 
-from .test_largefilestorage import skipif_lfs, lfs_atmo
+from .test_largefilestorage import lfs_atmo, skipif_lfs
 
 
 @pytest.fixture

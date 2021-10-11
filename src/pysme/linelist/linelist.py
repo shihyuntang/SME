@@ -9,11 +9,9 @@ import json
 import logging
 
 import numpy as np
-from numpy.lib.arraysetops import isin
 import pandas as pd
-from scipy import constants
-
 from flex.extensions.tabledata import JSONTableExtension
+from scipy import constants
 
 from ..persistence import IPersist
 from ..util import air2vac, vac2air

@@ -1,11 +1,10 @@
 from os.path import dirname, join
+
 import numpy as np
 import pytest
-
-from pysme.linelist.linelist import LineList
-from pysme.linelist.vald import ValdFile, ValdError
 from pysme.abund import Abund
-
+from pysme.linelist.linelist import LineList
+from pysme.linelist.vald import ValdError, ValdFile
 
 species = "Fe 1"
 wlcent = 5502.9931

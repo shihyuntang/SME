@@ -5,12 +5,9 @@ Wrapper for IDL style C libary code
 with argv = number of parameters
 and argc = list of pointers to those parameters
 """
-import logging
 import ctypes as ct
-from os import stat
+import logging
 import platform
-import sys
-from pathlib import Path
 import warnings
 
 import numpy as np

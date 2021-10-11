@@ -7,24 +7,22 @@ Pro: Versioning is effectively done by Git
 Con: Need to run server
 """
 
+import gzip
 import json
 import logging
 import os
+from os.path import basename, join
 from pathlib import Path
-from os.path import join, basename
-import gzip
-import shutil
 from tempfile import NamedTemporaryFile
 
-from tqdm.auto import tqdm
-from tqdm.utils import CallbackIOWrapper
-
 from astropy.utils.data import (
-    import_file_to_cache,
-    download_file,
     clear_download_cache,
+    download_file,
+    import_file_to_cache,
     is_url_in_cache,
 )
+from tqdm.auto import tqdm
+from tqdm.utils import CallbackIOWrapper
 
 from .config import Config
 

@@ -3,14 +3,14 @@ import itertools
 import logging
 
 import numpy as np
+from astropy import constants as const
 from scipy.interpolate import interp1d
 from scipy.optimize import curve_fit
 
-from astropy import constants as const
-
-from .atmosphere import Atmosphere as Atmo, AtmosphereError, AtmosphereGrid
-from .savfile import SavFile
 from ..large_file_storage import setup_atmo
+from .atmosphere import Atmosphere as Atmo
+from .atmosphere import AtmosphereError, AtmosphereGrid
+from .savfile import SavFile
 
 logger = logging.getLogger(__name__)
 

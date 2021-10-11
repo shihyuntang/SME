@@ -3,14 +3,15 @@
 # that are relevant to PySME but not the smelib
 # ATM those are related to the location of the library and its download
 
-import logging
-from os.path import dirname, join, exists
-import platform
-import os
-from posixpath import realpath
-import zipfile
-import wget
 import ctypes as ct
+import logging
+import os
+import platform
+import zipfile
+from os.path import dirname, exists, join
+from posixpath import realpath
+
+import wget
 
 logger = logging.getLogger(__name__)
 

@@ -2,10 +2,9 @@ import logging
 from copy import copy
 
 import numpy as np
+import pybtex
 from flex.extensions.bindata import MultipleDataExtension
 from flex.flex import FlexExtension
-import pybtex
-
 
 from . import __file_ending__, __version__, persistence
 from .iliffe_vector import Iliffe_vector

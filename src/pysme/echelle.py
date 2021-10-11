@@ -5,6 +5,7 @@ Mostly for compatibility reasons
 """
 
 import logging
+
 import astropy.io.fits as fits
 import numpy as np
 import scipy.constants

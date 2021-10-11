@@ -1,11 +1,10 @@
 """ Wrapper for sme_synth.so C library """
-import os
 import logging
-from pathlib import Path
+import os
 
 import numpy as np
 
-from .cwrapper import get_lib_name, IDL_DLL
+from .cwrapper import IDL_DLL, get_lib_name
 from .libtools import get_full_datadir
 
 logger = logging.getLogger(__name__)

@@ -1,17 +1,15 @@
-from concurrent import futures
 import numpy as np
 from scipy.optimize._numdiff import (
-    _prepare_bounds,
-    _linear_operator_difference,
-    _eps_for_method,
-    _compute_absolute_step,
     _adjust_scheme_to_bounds,
-    issparse,
-    group_columns,
-    csc_matrix,
+    _compute_absolute_step,
+    _eps_for_method,
+    _linear_operator_difference,
+    _prepare_bounds,
     _sparse_difference,
+    csc_matrix,
+    group_columns,
+    issparse,
 )
-from concurrent.futures import ProcessPoolExecutor, as_completed
 
 
 def approx_derivative(

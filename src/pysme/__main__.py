@@ -1,9 +1,9 @@
 import argparse
 
-from .synthesize import Synthesizer
-from .solve import SME_Solver
-from .sme import SME_Structure
 from .gui import plot_plotly
+from .sme import SME_Structure
+from .solve import SME_Solver
+from .synthesize import Synthesizer
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(

@@ -1,15 +1,12 @@
 # TODO implement continuum and radial velocity tests
 
-from os.path import dirname
-
-import pytest
-import numpy as np
 from itertools import product
 
-from pysme.sme import SME_Structure as SME_Struct
+import numpy as np
+import pytest
 from pysme.continuum_and_radial_velocity import (
-    match_rv_continuum,
     apply_radial_velocity_and_continuum,
+    match_rv_continuum,
 )
 
 

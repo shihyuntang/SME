@@ -9,10 +9,9 @@ import warnings
 import emcee
 import numpy as np
 from scipy.constants import speed_of_light
+from scipy.interpolate import splev, splrep
 from scipy.optimize import least_squares
 from scipy.signal import correlate
-from scipy.interpolate import splrep, splev
-
 from tqdm import tqdm
 
 from .iliffe_vector import Iliffe_vector

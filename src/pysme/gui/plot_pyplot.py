@@ -1,9 +1,7 @@
-import numpy as np
 import matplotlib as mpl
-from matplotlib.widgets import SpanSelector, Button
 import matplotlib.pyplot as plt
-
-
+import numpy as np
+from matplotlib.widgets import Button, SpanSelector
 from scipy.constants import c
 
 clight = c * 1e-3

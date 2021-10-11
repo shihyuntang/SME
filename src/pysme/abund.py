@@ -7,8 +7,8 @@ import logging
 
 import numpy as np
 from flex.extensions.bindata import BinaryDataExtension
-from .persistence import IPersist
 
+from .persistence import IPersist
 
 logger = logging.getLogger(__name__)
 

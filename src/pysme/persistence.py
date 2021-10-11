@@ -1,17 +1,16 @@
 import io
-import os
-import logging
-from zipfile import ZipFile, ZIP_STORED, ZIP_LZMA
 import json
-import tempfile
-import sys
+import logging
+import os
 import subprocess
-
-from flex.flex import FlexExtension, FlexFile
-from numpy.lib.arraysetops import isin
-from . import __version__
+import sys
+import tempfile
+from zipfile import ZIP_LZMA, ZIP_STORED, ZipFile
 
 import numpy as np
+from flex.flex import FlexExtension, FlexFile
+
+from . import __version__
 
 logger = logging.getLogger(__name__)
 

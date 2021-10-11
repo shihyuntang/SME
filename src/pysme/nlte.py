@@ -11,8 +11,10 @@ import numpy as np
 from scipy import interpolate
 from tqdm import tqdm
 
-from .abund import Abund, elements as abund_elem
-from .data_structure import Collection, CollectionFactory, astype, array, this, oneof
+from .abund import Abund
+from .abund import elements as abund_elem
+from .data_structure import (Collection, CollectionFactory, array, astype,
+                             oneof, this)
 
 logger = logging.getLogger(__name__)
 

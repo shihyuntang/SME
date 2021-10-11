@@ -2,22 +2,21 @@
 import logging
 
 import numpy as np
-
 from flex.extensions.bindata import MultipleDataExtension
 
+from ..abund import Abund
 from ..data_structure import (
-    CollectionFactory,
     Collection,
+    CollectionFactory,
     absolute,
-    this,
+    array,
     asfloat,
     asstr,
     lowercase,
-    uppercase,
     oneof,
-    array,
+    this,
+    uppercase,
 )
-from ..abund import Abund
 
 logger = logging.getLogger(__name__)
 

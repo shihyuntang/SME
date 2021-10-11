@@ -1,11 +1,7 @@
 import pytest
-
-from os import listdir
-from os.path import dirname, exists
 import requests
-
-from pysme.large_file_storage import LargeFileStorage, setup_atmo, setup_nlte
 from pysme.config import Config
+from pysme.large_file_storage import setup_atmo, setup_nlte
 
 
 def lfs_available():

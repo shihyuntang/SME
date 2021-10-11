@@ -1,33 +1,24 @@
 """
 Spectral Synthesis Module of SME
 """
-from concurrent import futures
 import logging
-from os import stat
-import warnings
-import time
-
-import numpy as np
-from numpy.lib.arraysetops import unique
-from tqdm import tqdm
-from scipy.constants import speed_of_light
-from scipy.ndimage.filters import convolve, gaussian_filter1d
-from scipy.interpolate import interp1d, UnivariateSpline
-
 import uuid
 
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import numpy as np
+from scipy.constants import speed_of_light
+from scipy.interpolate import interp1d
+from scipy.ndimage.filters import convolve
+from tqdm import tqdm
 
 from . import broadening
 from .atmosphere.interpolation import AtmosphereInterpolator
 from .continuum_and_radial_velocity import (
-    match_rv_continuum,
     apply_radial_velocity_and_continuum,
+    match_rv_continuum,
     null_result,
 )
-from .large_file_storage import setup_lfs
 from .iliffe_vector import Iliffe_vector
-from .nlte import update_nlte_coefficients
+from .large_file_storage import setup_lfs
 from .sme_synth import SME_DLL
 
 logger = logging.getLogger(__name__)

@@ -2,22 +2,20 @@ import logging
 import os.path
 import platform
 import sys
-from copy import copy
 from datetime import datetime as dt
 
 import numpy as np
-from numpy.core.numeric import count_nonzero
-from scipy.io import readsav
 from scipy.constants import speed_of_light
+from scipy.io import readsav
 
 from . import __file_ending__, __version__, echelle, persistence
-from .abund import Abund, elements as abund_elem
+from .abund import Abund
+from .abund import elements as abund_elem
 from .atmosphere.atmosphere import Atmosphere
+from .data_structure import *
 from .iliffe_vector import Iliffe_vector
 from .linelist.linelist import LineList
 from .nlte import NLTE
-
-from .data_structure import *
 
 logger = logging.getLogger(__name__)
 

@@ -1,9 +1,8 @@
-import pytest
+from os import remove
+from os.path import dirname
 
 import numpy as np
-from os.path import dirname
-from os import remove
-
+import pytest
 from pysme.sme import SME_Structure as SME_Struct
 
 

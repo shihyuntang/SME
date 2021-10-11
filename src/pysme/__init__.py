@@ -8,6 +8,7 @@ del get_versions
 
 # Add output to the console
 import logging
+
 import colorlog
 import tqdm
 
@@ -39,6 +40,7 @@ logger.addHandler(console)
 
 # Download library if it does not exist
 import os.path
+
 from . import libtools
 
 if not os.path.exists(libtools.get_full_libfile()):

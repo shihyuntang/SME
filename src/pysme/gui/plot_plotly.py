@@ -2,15 +2,16 @@
 Provide Plotting utility for Jupyter Notebook using Plot.ly
 Can also be used just for Plot.ly, which will then generated html files
 """
-from base64 import b64encode
-import numpy as np
 import json
 import logging
-import plotly.offline as py
-import plotly.graph_objs as go
-from plotly.io import write_image
+from base64 import b64encode
 
+import numpy as np
+import plotly.graph_objs as go
+import plotly.offline as py
+from plotly.io import write_image
 from scipy.constants import speed_of_light
+
 from .plot_colors import PlotColors
 
 try:

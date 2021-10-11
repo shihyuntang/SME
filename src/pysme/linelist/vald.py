@@ -10,12 +10,11 @@ from os.path import dirname, join
 
 import numpy as np
 import pandas as pd
-from astropy import units as u
 import pybtex.database
-
+from astropy import units as u
 
 from ..abund import Abund
-from .linelist import LineListError, LineList
+from .linelist import LineList, LineListError
 
 logger = logging.getLogger(__name__)
 
