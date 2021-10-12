@@ -720,14 +720,14 @@ def cross_correlate_segment(x_obs, y_obs, x_syn, y_syn, mask, rv_bounds):
 
     # Normalize both spectra
     y_obs_tmp = y_obs - np.min(y_obs)
-    y_obs_tmp /= np.max(y_obs_tmp)
-    y_obs_tmp -= np.nanpercentile(y_obs_tmp, 95)
+    y_obs_tmp /= np.nanpercentile(y_obs_tmp, 95)
+    y_obs_tmp -= 1
     y_tmp_tmp = y_tmp - np.min(y_tmp)
-    y_tmp_tmp /= np.max(y_tmp_tmp)
-    y_tmp_tmp -= np.nanpercentile(y_tmp_tmp, 95)
+    y_tmp_tmp /= np.nanpercentile(y_tmp_tmp, 95)
+    y_tmp_tmp -= 1
 
     # Perform cross correaltion between normalized spectra
-    corr = correlate(y_obs_tmp, y_tmp_tmp, mode="same", method="direct")
+    corr = correlate(y_obs_tmp, y_tmp_tmp, mode="same")
 
     # Determine the radial velocity offset
     # and only retain the area within the bounds
