@@ -1,6 +1,7 @@
-import numpy as np
 import json
 from os.path import dirname, join
+
+import numpy as np
 
 from pysme.sme import SME_Structure
 

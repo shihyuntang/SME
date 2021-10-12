@@ -16,7 +16,6 @@ from scipy.stats import norm
 from tqdm import tqdm
 
 from . import __file_ending__
-from ._numdiff import approx_derivative
 from .abund import Abund
 from .atmosphere.atmosphere import AtmosphereError
 from .atmosphere.krzfile import KrzFile

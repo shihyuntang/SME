@@ -1,17 +1,17 @@
-""" Minimum working example of an SME script 
+""" Minimum working example of an SME script
 """
 
-from os.path import dirname, join, realpath
+import logging
 import sys
-
+from os.path import dirname, join, realpath
 
 import numpy as np
+
 from pysme import sme as SME
 from pysme import util
-from pysme.solve import solve
-from pysme.nso import load_solar_spectrum
 from pysme.linelist.vald import ValdFile
-import logging
+from pysme.nso import load_solar_spectrum
+from pysme.solve import solve
 
 logger = logging.getLogger("pysme")
 # logger.setLevel(logging.CRITICAL)
@@ -83,4 +83,3 @@ if __name__ == "__main__":
     print(f"{param[0]}, {param[1]}, {param[2]}, {sme.teff}, {sme.logg}, {sme.monh}")
     # except Exception as ex:
     #     print(f"{param[0]}, {param[1]}, {param[2]}, nan, nan, nan")
-

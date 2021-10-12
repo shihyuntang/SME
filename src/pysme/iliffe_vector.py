@@ -1,7 +1,7 @@
 import io
 import logging
-from numbers import Integral
 from collections.abc import Iterable
+from numbers import Integral
 
 import numpy as np
 import numpy.lib.mixins
