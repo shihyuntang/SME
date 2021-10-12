@@ -1,8 +1,9 @@
 import io
 import logging
-import numpy as np
 from numbers import Integral
+from collections.abc import Iterable
 
+import numpy as np
 import numpy.lib.mixins
 from flex.flex import FlexExtension
 from flex.extensions.bindata import MultipleDataExtension
@@ -52,32 +53,24 @@ class Iliffe_vector(numpy.lib.mixins.NDArrayOperatorsMixin, MultipleDataExtensio
     def __getitem__(self, key):
         if isinstance(key, Integral):
             return self.__getsegment__(key)
-        if isinstance(key, slice):
-            key = range(self.nseg)[key]
-            values = [self.__getsegment__(k) for k in key]
-            return self.__class__(values)
-        if isinstance(key, (list, range)):
+        if isinstance(key, (slice, Iterable)):
+            if isinstance(key, slice):
+                key = range(self.nseg)[key]
             values = [self.__getsegment__(k) for k in key]
             return self.__class__(values)
         if isinstance(key, tuple):
             if isinstance(key[0], Integral):
                 return self[key[0]][key[1]]
-            if isinstance(key[0], (list, range)):
-                values = [self.__getsegment__(k) for k in key[0]]
-                values = [v[key[1]] for v in values]
-                if isinstance(key[1], Integral):
-                    return np.array(values)
-                if isinstance(key[1], slice):
-                    return self.__class__(values)
-            if isinstance(key[0], slice):
-                key0 = range(self.nseg)[key[0]]
+            if isinstance(key[0], (slice, Iterable)):
+                if isinstance(key[0], slice):
+                    key0 = range(self.nseg)[key[0]]
+                else:
+                    key0 = key[0]
                 values = [self.__getsegment__(k) for k in key0]
                 values = [v[key[1]] for v in values]
                 if isinstance(key[1], Integral):
                     return np.array(values)
-                if isinstance(key[1], slice):
-                    return self.__class__(values)
-                if isinstance(key[1], list):
+                if isinstance(key[1], (slice, Iterable)):
                     return self.__class__(values)
         if isinstance(key, Iliffe_vector):
             data = [w[m] for w, m in zip(self.segments, key.segments)]
@@ -90,8 +83,9 @@ class Iliffe_vector(numpy.lib.mixins.NDArrayOperatorsMixin, MultipleDataExtensio
             value = np.asarray(value)
         if isinstance(key, Integral):
             return self.__setsegment__(key, value)
-        if isinstance(key, slice):
-            key = range(self.nseg)[key]
+        if isinstance(key, (slice, Iterable)):
+            if isinstance(key, slice):
+                key = range(self.nseg)[key]
             if isscalar or (value.ndim == 1 and value.dtype != "O"):
                 for k in key:
                     self.__setsegment__(k, value)
@@ -104,8 +98,11 @@ class Iliffe_vector(numpy.lib.mixins.NDArrayOperatorsMixin, MultipleDataExtensio
                 data = self.__getsegment__(key[0])
                 data[key[1]] = value
                 return
-            if isinstance(key[0], slice):
-                key0 = range(self.nseg)[key[0]]
+            if isinstance(key[0], (slice, Iterable)):
+                if isinstance(key[0], slice):
+                    key0 = range(self.nseg)[key[0]]
+                else:
+                    key0 = key[0]
                 if isscalar or (value.ndim == 1 and value.dtype != "O"):
                     for k in key0:
                         data = self.__getsegment__(k)
@@ -134,7 +131,7 @@ class Iliffe_vector(numpy.lib.mixins.NDArrayOperatorsMixin, MultipleDataExtensio
         if seg > self.nseg - 1:
             raise IndexError
         low, upp = self.offsets[seg : seg + 2]
-        if value.size == upp - low:
+        if np.isscalar(value) or value.size == upp - low:
             # Keep using the existing memory
             self.data[low:upp] = value
         else:
