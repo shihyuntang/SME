@@ -439,7 +439,7 @@ class Synthesizer:
         reuse_wavelength_grid,
         dll_id=None,
     ):
-        for il in segments:
+        for il in tqdm(segments, desc="Segments", leave=False):
             wmod[il], smod[il], cmod[il] = self.synthesize_segment(
                 sme,
                 il,
