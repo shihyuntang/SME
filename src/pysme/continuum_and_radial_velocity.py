@@ -540,11 +540,16 @@ class ContinuumNormalizationMatch(ContinuumNormalizationAbstract):
             tell = sme.telluric[segments][m]
             yp *= tell
 
+        # TODO: what should this be?
+        u = u + 10000 * np.nanmedian(u) * (np.nanpercentile(y, 95) - y) ** 2
+
         deg = sme.cscale_degree
         p0 = sme.cscale[segments]
         func = lambda p: (yp * np.polyval(p, xs) - y) / u
         try:
-            res = least_squares(func, x0=p0, loss="soft_l1", method="trf", xtol=None)
+            res = least_squares(
+                func, x0=p0, loss="soft_l1", method="trf", xtol=None, x_scale="jac"
+            )
             popt = res.x
         except RuntimeError as ex:
             logger.warning("Could not determine the continuum")
