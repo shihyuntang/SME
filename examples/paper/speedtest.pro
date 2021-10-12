@@ -11,7 +11,7 @@ print, "Runtime: ", runtime
 
 totaltime = 0
 times = []
-for i = 1,10 do begin
+for i = 1,1000 do begin
     starttime = SYSTIME(/SECONDS)
     sme_main, sme
     endtime = SYSTIME(/SECONDS)
@@ -21,8 +21,10 @@ for i = 1,10 do begin
     times = [runtime, times]
 endfor
 
-totaltime = totaltime / 10
+totaltime = totaltime / 1000
 print, "Runtime: ", totaltime, " s +- ", stddev(times)
+print, "Runtime: ", min(times)
+
 
 save, sme, file='/home/ansgar/Documents/Python/sme/examples/paper/speedtest.out'
 end
