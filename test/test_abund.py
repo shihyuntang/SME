@@ -2,6 +2,7 @@ from collections import OrderedDict
 
 import numpy as np
 import pytest
+
 from pysme.abund import Abund
 
 pattern_names = ["Asplund2009", "Grevesse2007", "Empty"]
@@ -9,8 +10,7 @@ types = ["H=12", "n/nH", "n/nTot", "SME"]
 
 
 def test_init_with_too_few_args():
-    """Test that __init__ raise an error if too few arguments are passed.
-    """
+    """Test that __init__ raise an error if too few arguments are passed."""
     Abund()
     Abund(monh=0)
     Abund(pattern="asplund2009")
@@ -18,8 +18,7 @@ def test_init_with_too_few_args():
 
 
 def test_init_using_pattern_names():
-    """Test handling of abundance pattern name passed to __init__().
-    """
+    """Test handling of abundance pattern name passed to __init__()."""
     # Each abundance pattern name yields an Abund object.
     for pattern_name in pattern_names:
         assert isinstance(Abund(pattern=pattern_name, monh=0), Abund)
@@ -53,8 +52,7 @@ def test_getitem_returns_abund_values():
 
 
 def test_monh_property_set_and_get():
-    """Test setting and getting monh property. Set converts input to float.
-    """
+    """Test setting and getting monh property. Set converts input to float."""
     # Input str convertable to float yields a float with the specified value.
     abund = Abund(pattern=pattern_names[0], monh="-6e-1")
     assert isinstance(abund.monh, float)
@@ -80,8 +78,7 @@ def test_monh_property_set_and_get():
 
 
 def test_pattern_property_set_and_get():
-    """Test setting and getting pattern property. Set is not allowed.
-    """
+    """Test setting and getting pattern property. Set is not allowed."""
     # Raise error is user tries to set pattern
     abund = Abund(pattern="Empty", monh=0)
     with pytest.raises(AttributeError):

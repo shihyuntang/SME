@@ -1,19 +1,19 @@
-""" Minimum working example of an SME script 
+""" Minimum working example of an SME script
 """
 import os.path
-import numpy as np
+
 import matplotlib.pyplot as plt
+import numpy as np
 from scipy.io import readsav
 
-from pysme.gui import plot_plotly
 from pysme import sme as SME
 from pysme import util
-from pysme.solve import solve
-from pysme.synthesize import synthesize_spectrum
-
 from pysme.abund import Abund
+from pysme.gui import plot_plotly
 from pysme.linelist.vald import ValdFile
 from pysme.persistence import save_as_idl
+from pysme.solve import solve
+from pysme.synthesize import synthesize_spectrum
 
 if __name__ == "__main__":
 
@@ -46,6 +46,8 @@ if __name__ == "__main__":
     sme.save(out_file)
 
     # Plot results
-    fig = plot_plotly.FinalPlot(sme, orig=idl.synth, labels={"synth": "PySME", "orig": "IDL SME"})
+    fig = plot_plotly.FinalPlot(
+        sme, orig=idl.synth, labels={"synth": "PySME", "orig": "IDL SME"}
+    )
     fig.save(filename=plot_file)
     pass

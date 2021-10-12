@@ -10,23 +10,21 @@ from os.path import dirname, join
 
 import numpy as np
 import pandas as pd
-from astropy import units as u
 import pybtex.database
-
+from astropy import units as u
 
 from ..abund import Abund
-from .linelist import LineListError, LineList
+from .linelist import LineList, LineListError
 
 logger = logging.getLogger(__name__)
 
 
 class ValdError(LineListError):
-    """ Vald Data File Error """
+    """Vald Data File Error"""
 
 
 class ValdFile(LineList):
-    """Atomic data for a list of spectral lines.
-    """
+    """Atomic data for a list of spectral lines."""
 
     citation_info = r"""
     @ARTICLE{2015PhyS...90e4005R,
@@ -415,7 +413,8 @@ class ValdFile(LineList):
             # extract error data
             error = np.array([s[:10].strip() for s in comment])
             error = LineList.parse_line_error(
-                error, linelist["depth"] if valdtype == "extract_stellar" else None
+                error,
+                linelist["depth"] if valdtype == "extract_stellar" else None,
             )
             linelist["error"] = error
 

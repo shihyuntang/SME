@@ -1,10 +1,10 @@
-import pytest
 from os.path import dirname
 
 import numpy as np
+import pytest
 
-from pysme.solve import solve
 from pysme.sme import SME_Structure as SME_Struct
+from pysme.solve import solve
 
 cwd = dirname(__file__)
 filename = "{}/testcase1.inp".format((cwd))

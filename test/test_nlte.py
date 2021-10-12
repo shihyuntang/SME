@@ -1,21 +1,20 @@
 # TODO implement NLTE tests
 
-import pytest
-
 import os
-from os.path import dirname
 import tempfile
+from os.path import dirname
 
 import numpy as np
+import pytest
 
-from pysme.sme import SME_Structure as SME_Struct
-from pysme.linelist.vald import ValdFile
-from pysme.sme_synth import SME_DLL
-from pysme.nlte import nlte, DirectAccessFile
-from pysme.synthesize import Synthesizer, synthesize_spectrum
 from pysme.abund import Abund
+from pysme.linelist.vald import ValdFile
+from pysme.nlte import DirectAccessFile, nlte
+from pysme.sme import SME_Structure as SME_Struct
+from pysme.sme_synth import SME_DLL
+from pysme.synthesize import Synthesizer, synthesize_spectrum
 
-from .test_largefilestorage import skipif_lfs, lfs_nlte, lfs_atmo
+from .test_largefilestorage import lfs_atmo, lfs_nlte, skipif_lfs
 
 cwd = dirname(__file__)
 

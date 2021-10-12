@@ -3,14 +3,14 @@ import itertools
 import logging
 
 import numpy as np
+from astropy import constants as const
 from scipy.interpolate import interp1d
 from scipy.optimize import curve_fit
 
-from astropy import constants as const
-
-from .atmosphere import Atmosphere as Atmo, AtmosphereError, AtmosphereGrid
-from .savfile import SavFile
 from ..large_file_storage import setup_atmo
+from .atmosphere import Atmosphere as Atmo
+from .atmosphere import AtmosphereError, AtmosphereGrid
+from .savfile import SavFile
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +104,9 @@ class AtmosphereInterpolator:
                 )
             else:
                 logger.info(
-                    "Input ATMO.GEOM='%s' overrides '%s' from grid.", self.geom, geom,
+                    "Input ATMO.GEOM='%s' overrides '%s' from grid.",
+                    self.geom,
+                    geom,
                 )
 
         # Add standard ATMO input fields, if they are missing from ATMO_IN.
@@ -645,7 +647,11 @@ class AtmosphereInterpolator:
             # Trace diagnostics.
             if self.verbose >= 5:
                 logger.info(
-                    "log(g) at [M/H]=%.3f: %.3f < %.3f < %.3f", mb[i], glo, logg, gup
+                    "log(g) at [M/H]=%.3f: %.3f < %.3f < %.3f",
+                    mb[i],
+                    glo,
+                    logg,
+                    gup,
                 )
 
         # End of loop through [M/H] bracket values.

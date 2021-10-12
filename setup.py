@@ -78,7 +78,6 @@ setup(
         "astropy",
         "pandas",
         "wget",
-        "requests",
         "tqdm",
         "colorlog",
         "emcee",

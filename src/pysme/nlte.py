@@ -11,8 +11,9 @@ import numpy as np
 from scipy import interpolate
 from tqdm import tqdm
 
-from .abund import Abund, elements as abund_elem
-from .data_structure import Collection, CollectionFactory, astype, array, this, oneof
+from .abund import Abund
+from .abund import elements as abund_elem
+from .data_structure import Collection, CollectionFactory, array, astype, oneof, this
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +56,7 @@ class DirectAccessFile:
         return value
 
     def get(self, key: str, alt=None) -> np.memmap:
-        """ get field from file """
+        """get field from file"""
         idx = np.where(self.key == key)[0]
 
         if idx.size == 0:
@@ -134,14 +135,14 @@ class DirectAccessFile:
         major, minor = version
         if major == 1 and minor == 00:
             header_dtype = np.dtype(
-                [("nblocks", "<u2"), ("dir_length", "<u2"), ("ndir", "<u2"),]
+                [("nblocks", "<u2"), ("dir_length", "<u2"), ("ndir", "<u2")]
             )
             dir_dtype = np.dtype(
                 [("key", "S256"), ("size", "<i4", 23), ("pointer", "<i8")]
             )
         elif major == 1 and minor >= 10:
             header_dtype = np.dtype(
-                [("nblocks", "<u8"), ("dir_length", "<i2"), ("ndir", "<u8"),]
+                [("nblocks", "<u8"), ("dir_length", "<i2"), ("ndir", "<u8")]
             )
             dir_dtype = np.dtype(
                 [("key", "S256"), ("size", "<i4", 23), ("pointer", "<i8")]
@@ -161,7 +162,7 @@ class DirectAccessFile:
 
     @classmethod
     def read_header(cls, fname: str):
-        """ parse Header data """
+        """parse Header data"""
         with open(fname, "rb") as file:
             version_dtype = "S64"
             version = np.fromfile(file, version_dtype, count=1)
@@ -177,7 +178,8 @@ class DirectAccessFile:
         # Get relevant info from size parameter
         # ndim, n1, n2, ..., typecode, size
         dtype = np.array(
-            [cls.idl_typecode(d[1 + d[0]]) for d in directory["size"]], dtype="U5",
+            [cls.idl_typecode(d[1 + d[0]]) for d in directory["size"]],
+            dtype="U5",
         )
         shape = np.empty(ndir, dtype=object)
         shape[:] = [tuple(d[1 : d[0] + 1]) for d in directory["size"]]
@@ -248,8 +250,7 @@ class DirectAccessFile:
 
 
 class Grid:
-    """NLTE Grid class that handles all NLTE data reading and interpolation
-    """
+    """NLTE Grid class that handles all NLTE data reading and interpolation"""
 
     def __init__(
         self,
@@ -380,7 +381,7 @@ class Grid:
             )
 
     def solar_rel_abund(self, abund, elem):
-        """ Get the abundance of elem relative to H, i.e. [X/H] """
+        """Get the abundance of elem relative to H, i.e. [X/H]"""
         if self.abund_format == "H=12":
             # Its a bit more efficient, to simply use the values as is, instead of converting everything
             # just to end up back here
@@ -398,7 +399,7 @@ class Grid:
         return rabund
 
     def scaled_rel_abund(self, abund):
-        """ Get the abundance of self.elem relative to Fe, i.e. [X/Fe] """
+        """Get the abundance of self.elem relative to Fe, i.e. [X/Fe]"""
         sel = self.solar_rel_abund(abund, self.elem)
         sfe = self.solar_rel_abund(abund, "Fe")
         rabund = sel - sfe
@@ -418,7 +419,7 @@ class Grid:
         return self.interpolate(rabund, teff, logg, monh, atmo)
 
     def read_grid(self, rabund, teff, logg, monh):
-        """ Read the NLTE coefficients from the nlte_grid files for the given element
+        """Read the NLTE coefficients from the nlte_grid files for the given element
         The class will cache subgrid_size points around the target values as well
 
         Parameters
@@ -488,7 +489,12 @@ class Grid:
         else:
             self.bgrid = self.bgrid[False]
 
-        self._points = (self._xfe[x], self._teff[t], self._grav[g], self._feh[f])
+        self._points = (
+            self._xfe[x],
+            self._teff[t],
+            self._grav[g],
+            self._feh[f],
+        )
         self.limits = {
             "teff": self._points[1][[0, -1]],
             "grav": self._points[2][[0, -1]],
@@ -572,10 +578,12 @@ class Grid:
         ]
         level_labels = np.rec.fromarrays((species, conf, term, rotnum), dtype=dtype)
         line_label_low = np.rec.fromarrays(
-            (sme_species, parts_low[:, 0], parts_low[:, 1], extra[:, 0]), dtype=dtype
+            (sme_species, parts_low[:, 0], parts_low[:, 1], extra[:, 0]),
+            dtype=dtype,
         )
         line_label_upp = np.rec.fromarrays(
-            (sme_species, parts_upp[:, 0], parts_upp[:, 1], extra[:, 1]), dtype=dtype
+            (sme_species, parts_upp[:, 0], parts_upp[:, 1], extra[:, 1]),
+            dtype=dtype,
         )
 
         # Prepare arrays
@@ -787,7 +795,12 @@ class Grid:
             self._points[2][ilogg : ilogg + 2],
             self._points[3][imonh : imonh + 2],
         )
-        npoints = (points[0].size, points[1].size, points[2].size, points[3].size)
+        npoints = (
+            points[0].size,
+            points[1].size,
+            points[2].size,
+            points[3].size,
+        )
 
         grid = np.empty((*npoints, ntarget, ndepths), float)
         for l, x, t, g, f in np.ndindex(ndepths, *npoints):
@@ -795,7 +808,11 @@ class Grid:
             yp = self.bgrid[l, :, iabund + x, iteff + t, ilogg + g, imonh + f]
             xp = np.log10(xp)
             grid[x, t, g, f, :, l] = interpolate.interp1d(
-                xp, yp, bounds_error=False, fill_value="extrapolate", kind="cubic",
+                xp,
+                yp,
+                bounds_error=False,
+                fill_value="extrapolate",
+                kind="cubic",
             )(target_depth)
 
         # Check if we need to extrapolate
@@ -830,7 +847,11 @@ class Grid:
         elif method == "order":
             for p, t in zip(points, target):
                 grid = interpolate.interp1d(
-                    p, grid, axis=0, bounds_error=False, fill_value="extrapolate",
+                    p,
+                    grid,
+                    axis=0,
+                    bounds_error=False,
+                    fill_value="extrapolate",
                 )(t)
             subgrid = grid
         return subgrid
@@ -968,7 +989,7 @@ class NLTE(Collection):
         pass
 
     def update_coefficients(self, sme, dll, lfs_nlte):
-        """ pass departure coefficients to C library """
+        """pass departure coefficients to C library"""
 
         # Only print "Running in NLTE" message on the first run each time
         if np.all(self.grids == "") or np.size(self.elements) == 0:
@@ -1007,7 +1028,8 @@ class NLTE(Collection):
                 # No lines are found for this element
                 # remove it from the elements after this loop
                 logger.warning(
-                    "No %s NLTE lines found, removing it from NLTE calculations", elem
+                    "No %s NLTE lines found, removing it from NLTE calculations",
+                    elem,
                 )
                 marked_for_removal += [elem]
             else:
@@ -1026,7 +1048,7 @@ class NLTE(Collection):
         return sme
 
     def get_grid(self, sme, elem, lfs_nlte):
-        """ Read and interpolate the NLTE grid for the current element and parameters """
+        """Read and interpolate the NLTE grid for the current element and parameters"""
         if self.grids[elem] is None:
             raise ValueError(f"Element {elem} has not been prepared for NLTE")
 
@@ -1050,12 +1072,12 @@ class NLTE(Collection):
 
 # These are kept here for compatibility, but it is recommended to use the functions of sme.nlte
 def nlte(sme, dll, elem, lfs_nlte):
-    """ Read and interpolate the NLTE grid for the current element and parameters """
+    """Read and interpolate the NLTE grid for the current element and parameters"""
     grid = sme.nlte.get_grid(sme, elem, lfs_nlte)
     subgrid = grid.get(sme.abund, sme.teff, sme.logg, sme.monh, sme.atmo)
     return subgrid, grid.linerefs, grid.lineindices
 
 
 def update_nlte_coefficients(sme, dll, lfs_nlte):
-    """ pass departure coefficients to C library """
+    """pass departure coefficients to C library"""
     return sme.nlte.update_coefficients(sme, dll, lfs_nlte)

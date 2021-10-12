@@ -2,9 +2,9 @@
 Handle the Json configuration file
 At the moment it is only used for the LargeFileStorage
 """
-import logging
-from os.path import expanduser, exists, dirname, join
 import json
+import logging
+from os.path import dirname, exists, expanduser, join
 
 logger = logging.getLogger(__name__)
 

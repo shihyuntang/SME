@@ -7,24 +7,22 @@ Pro: Versioning is effectively done by Git
 Con: Need to run server
 """
 
+import gzip
 import json
 import logging
 import os
+from os.path import basename
 from pathlib import Path
-from os.path import join, basename
-import gzip
-import shutil
 from tempfile import NamedTemporaryFile
 
-from tqdm.auto import tqdm
-from tqdm.utils import CallbackIOWrapper
-
 from astropy.utils.data import (
-    import_file_to_cache,
-    download_file,
     clear_download_cache,
+    download_file,
+    import_file_to_cache,
     is_url_in_cache,
 )
+from tqdm.auto import tqdm
+from tqdm.utils import CallbackIOWrapper
 
 from .config import Config
 
@@ -104,24 +102,34 @@ class LargeFileStorage:
     def _unpack(self, fname, key, url):
         logger.debug("Unpacking data file %s", key)
 
-        with gzip.open(fname, "rb") as f_in:
-            with NamedTemporaryFile("wb") as f_out:
-                with tqdm(
-                    # total=f_in.size,
-                    desc="Unpack",
-                    unit="B",
-                    unit_scale=True,
-                    unit_divisor=1024,
-                ) as t:
-                    fobj = CallbackIOWrapper(t.update, f_in, "read")
-                    while True:
-                        chunk = fobj.read(1024)
-                        if not chunk:
-                            break
-                        f_out.write(chunk)
-                    f_out.flush()
-                    t.reset()
-                import_file_to_cache(url, f_out.name, pkgname="pysme")
+        # We have to use a try except block, as this will crash with
+        # permissions denied on windows, when trying to copy an open file
+        # here the temporary file
+        # Therefore we close the file, after copying and then delete it manually
+        try:
+            with gzip.open(fname, "rb") as f_in:
+                with NamedTemporaryFile("wb", delete=False) as f_out:
+                    with tqdm(
+                        # total=f_in.size,
+                        desc="Unpack",
+                        unit="B",
+                        unit_scale=True,
+                        unit_divisor=1024,
+                    ) as t:
+                        fobj = CallbackIOWrapper(t.update, f_in, "read")
+                        while True:
+                            chunk = fobj.read(1024)
+                            if not chunk:
+                                break
+                            f_out.write(chunk)
+                        f_out.flush()
+                        t.reset()
+            import_file_to_cache(url, f_out.name, pkgname="pysme")
+        finally:
+            try:
+                os.remove(f_out.name)
+            except:
+                pass
 
     def get_url(self, key):
         key = str(key)
@@ -134,26 +142,26 @@ class LargeFileStorage:
                         f"File {key} does not exist and is not tracked by the Large File system"
                     )
                 else:
-                    return str(key)
+                    return Path(key).as_uri()
             else:
-                return str(self.current / key)
+                return (self.current / key).as_uri()
 
         # Otherwise get it from the cache or online if necessary
         newest = self.pointers[key]
-        url = join(self.server, newest)
+        url = self.server + "/" + newest
         return url
 
     def clean_cache(self):
-        """ Remove unused cache files (from old versions) """
+        """Remove unused cache files (from old versions)"""
         clear_download_cache(pkgname="pysme")
 
     def delete_file(self, fname):
-        """ Delete a file, including the cache file """
+        """Delete a file, including the cache file"""
         clear_download_cache(fname, pkgname="pysme")
 
     def move_to_cache(self, fname, key=None):
-        """ Move currently used files into cache directory and use symlinks instead,
-        just as if downloaded from a server """
+        """Move currently used files into cache directory and use symlinks instead,
+        just as if downloaded from a server"""
         if key is None:
             key = basename(fname)
         import_file_to_cache(key, fname, pkgname="pysme")
@@ -220,4 +228,3 @@ def get_available_files(pointers, storage):
     ]
     files += files_non_lfs
     return files
-

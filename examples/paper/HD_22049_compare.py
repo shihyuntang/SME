@@ -1,12 +1,10 @@
-""" Minimum working example of an SME script 
+""" Minimum working example of an SME script
 """
+import datetime
 import os
 import os.path
 import re
 from os.path import dirname, join, realpath
-import datetime
-
-from scipy.io import readsav
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -15,6 +13,12 @@ from astropy import coordinates as coord
 from astropy.io import fits
 from astropy.time import Time
 from data_sources.StellarDB import StellarDB
+from scipy.io import readsav
+from scipy.linalg import lstsq, solve_banded
+from scipy.ndimage.filters import gaussian_filter1d, median_filter
+from scipy.optimize import least_squares
+from tqdm import tqdm
+
 from pysme import sme as SME
 from pysme import util
 from pysme.abund import Abund
@@ -24,11 +28,6 @@ from pysme.linelist.vald import ValdFile
 from pysme.persistence import save_as_idl
 from pysme.solve import solve
 from pysme.synthesize import synthesize_spectrum
-from scipy.linalg import lstsq, solve_banded
-from scipy.ndimage.filters import gaussian_filter1d, median_filter
-from scipy.optimize import least_squares
-from tqdm import tqdm
-
 
 if __name__ == "__main__":
     # Define the location of all your files

@@ -1,36 +1,40 @@
-""" Minimum working example of an SME script 
+""" Minimum working example of an SME script
 """
 import os.path
-import time
 import pickle
-import numpy as np
-import matplotlib.pyplot as plt
-
-from pysme.gui import plot_plotly
-from pysme import sme as SME
-from pysme import util
-from pysme.solve import solve
-from pysme.synthesize import synthesize_spectrum
-
-from pysme.abund import Abund
-from pysme.linelist.vald import ValdFile
-from pysme.persistence import save_as_idl
-
-from sklearn.neural_network import MLPRegressor, MLPClassifier
-from sklearn.datasets import make_regression, make_friedman1
-from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split
-from sklearn.ensemble import ExtraTreesRegressor
-from sklearn.cross_decomposition import PLSRegression
-from sklearn.svm import SVR
-from sklearn.multioutput import MultiOutputRegressor
+import time
 
 import keras
-from keras.models import Sequential, Input, Model, load_model
-from keras.layers import Dense, Dropout, Flatten, BatchNormalization
-from keras.layers import MaxPooling1D, Conv1D
-from keras.layers.advanced_activations import LeakyReLU
+import matplotlib.pyplot as plt
+import numpy as np
 from keras.constraints import max_norm, unit_norm
+from keras.layers import (
+    BatchNormalization,
+    Conv1D,
+    Dense,
+    Dropout,
+    Flatten,
+    MaxPooling1D,
+)
+from keras.layers.advanced_activations import LeakyReLU
+from keras.models import Input, Model, Sequential, load_model
+from sklearn.cross_decomposition import PLSRegression
+from sklearn.datasets import make_friedman1, make_regression
+from sklearn.ensemble import ExtraTreesRegressor
+from sklearn.model_selection import train_test_split
+from sklearn.multioutput import MultiOutputRegressor
+from sklearn.neural_network import MLPClassifier, MLPRegressor
+from sklearn.preprocessing import StandardScaler
+from sklearn.svm import SVR
+
+from pysme import sme as SME
+from pysme import util
+from pysme.abund import Abund
+from pysme.gui import plot_plotly
+from pysme.linelist.vald import ValdFile
+from pysme.persistence import save_as_idl
+from pysme.solve import solve
+from pysme.synthesize import synthesize_spectrum
 
 
 def create_sme_structure(teff=5770, logg=4.4):
@@ -145,7 +149,7 @@ class ContinuumModel:
         )
         # self.model.add(Conv1D(32, 8, activation=self.activation))
         self.model.add(Flatten())
-        self.model.add(Dense(32, activation=self.activation,))
+        self.model.add(Dense(32, activation=self.activation))
         self.model.add(Dropout(0.5))
         self.model.add(Dense(16, activation=self.activation))
         self.model.add(Dropout(0.5))
@@ -157,7 +161,7 @@ class ContinuumModel:
     def fit(self, X, y, validation_data=None):
         self.create_model(X.shape, y.shape)
         self.model.compile(
-            loss=self.loss, optimizer=self.optimizer, metrics=[self.loss],
+            loss=self.loss, optimizer=self.optimizer, metrics=[self.loss]
         )
 
         X = self.scaler.fit_transform(X)
@@ -294,7 +298,10 @@ if __name__ == "__main__":
         plt.plot(x, X_test[i] / yp_test, label="expected")
         plt.plot(x, X_test[i] / yp_predict, label="predicted")
         plt.plot(
-            x[mask_test], (X_test[i] / yp_test)[mask_test], "+", label="mask expected"
+            x[mask_test],
+            (X_test[i] / yp_test)[mask_test],
+            "+",
+            label="mask expected",
         )
         plt.plot(
             x[mask_predict],

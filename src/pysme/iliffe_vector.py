@@ -5,8 +5,8 @@ from collections.abc import Iterable
 
 import numpy as np
 import numpy.lib.mixins
-from flex.flex import FlexExtension
 from flex.extensions.bindata import MultipleDataExtension
+from flex.flex import FlexExtension
 
 logger = logging.getLogger(__name__)
 

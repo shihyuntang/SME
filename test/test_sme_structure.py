@@ -1,8 +1,8 @@
-import pytest
+from os import remove
+from os.path import dirname
 
 import numpy as np
-from os.path import dirname
-from os import remove
+import pytest
 
 from pysme.sme import SME_Structure as SME_Struct
 
@@ -23,7 +23,7 @@ def filename(cwd):
 
 
 def test_empty_structure():
-    """ Test that all properties behave well when nothing is set """
+    """Test that all properties behave well when nothing is set"""
     empty = SME_Struct()
 
     assert isinstance(empty.version, str)

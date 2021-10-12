@@ -3,24 +3,29 @@
 # that are relevant to PySME but not the smelib
 # ATM those are related to the location of the library and its download
 
-import logging
-from os.path import dirname, join, exists
-import platform
-import os
-from posixpath import realpath
-import zipfile
-import wget
 import ctypes as ct
+import logging
+import os
+import platform
+import zipfile
+from os.path import dirname, exists, join
+from posixpath import realpath
+
+import wget
 
 logger = logging.getLogger(__name__)
 
 
 def download_libsme(loc=None):
     if loc is None:
-        loc = dirname(__file__)
+        loc = dirname(dirname(get_full_libfile()))
     # Download compiled library from github releases
     print("Downloading and installing the latest libsme version for this system")
-    aliases = {"Linux": "manylinux2014_x86_64", "Windows": "windows", "Darwin": "macos"}
+    aliases = {
+        "Linux": "manylinux2014_x86_64",
+        "Windows": "windows",
+        "Darwin": "macos",
+    }
     system = platform.system()
 
     try:
@@ -48,7 +53,7 @@ def download_libsme(loc=None):
 
 
 def get_lib_name():
-    """ Get the name of the sme C library """
+    """Get the name of the sme C library"""
     system = platform.system().lower()
     arch = platform.machine()
     bits = 64  # platform.architecture()[0][:-3]
@@ -59,12 +64,13 @@ def get_lib_name():
 
 
 def get_full_libfile():
-    """ Get the full path to the sme C library """
+    """Get the full path to the sme C library"""
     localdir = dirname(__file__)
     libfile = get_lib_name()
     # TODO: Or "bin" for Windows
     if platform.system() in ["Windows"]:
         dirpath = "bin"
+        libfile = "libsme-5.dll"
     else:
         dirpath = "lib"
     libfile = join(localdir, dirpath, libfile)
@@ -85,6 +91,6 @@ def load_library(libfile=None):
 
 
 def get_full_datadir():
-    localdir = realpath(dirname(__file__))
+    localdir = dirname(__file__)
     datadir = join(localdir, "share/libsme/")
     return datadir

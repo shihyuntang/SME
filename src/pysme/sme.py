@@ -2,22 +2,20 @@ import logging
 import os.path
 import platform
 import sys
-from copy import copy
 from datetime import datetime as dt
 
 import numpy as np
-from numpy.core.numeric import count_nonzero
-from scipy.io import readsav
 from scipy.constants import speed_of_light
+from scipy.io import readsav
 
 from . import __file_ending__, __version__, echelle, persistence
-from .abund import Abund, elements as abund_elem
+from .abund import Abund
+from .abund import elements as abund_elem
 from .atmosphere.atmosphere import Atmosphere
+from .data_structure import *
 from .iliffe_vector import Iliffe_vector
 from .linelist.linelist import LineList
 from .nlte import NLTE
-
-from .data_structure import *
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +89,7 @@ class Version(Collection):
         super().__init__(**kwargs)
 
     def update(self):
-        """ Update version info with current machine data """
+        """Update version info with current machine data"""
         self.arch = platform.machine()
         self.os = sys.platform
         self.os_family = platform.system()
@@ -120,7 +118,7 @@ class Fitresults(Collection):
     # fmt: on
 
     def clear(self):
-        """ Reset all values to None """
+        """Reset all values to None"""
         for name in self._names:
             default = [f[1] for f in self._fields if f[0] == name][0]
             setattr(self, name, default)
@@ -194,7 +192,7 @@ class SME_Structure(Parameters):
             "Iliffe_vector of shape (nseg, ...): observed spectrum"),
         ("uncs", None, vector, this,
             "Iliffe_vector of shape (nseg, ...): uncertainties of the observed spectrum"),
-        ("telluric", None, vector, this, 
+        ("telluric", None, vector, this,
             "Illife_vector of shape (nseg, ...): telluric spectrum that is multiplied with synth during the fit"),
         ("mask", None, vector, this,
             "Iliffe_vector of shape (nseg, ...): mask defining good and bad points for the fit"),
@@ -267,7 +265,7 @@ class SME_Structure(Parameters):
         atmo_monh = atmo.pop(
             "monh", atmo.pop("feh", kwargs.get("monh", kwargs.get("feh", 0)))
         )
-        self.atmo = Atmosphere(**atmo, abund=atmo_abund, monh=atmo_monh,)
+        self.atmo = Atmosphere(**atmo, abund=atmo_abund, monh=atmo_monh)
         self.nlte = NLTE(**nlte)
 
         self.citation_info = r"""
@@ -515,7 +513,7 @@ class SME_Structure(Parameters):
     # Additional properties
     @property
     def nseg(self):
-        """int: Number of wavelength segments """
+        """int: Number of wavelength segments"""
         if self.wran is None:
             return 0
         else:
@@ -555,7 +553,7 @@ class SME_Structure(Parameters):
 
     @property
     def cscale_degree(self):
-        """int: Polynomial degree of the continuum as determined by cscale_flag """
+        """int: Polynomial degree of the continuum as determined by cscale_flag"""
         if self.cscale_type in ["spline", "spline+mask"]:
             return self.wave.shape[1]
         else:
@@ -585,14 +583,14 @@ class SME_Structure(Parameters):
     @property
     def atomic(self):
         """array of size (nlines, 8): Atomic linelist data, usually passed to the C library
-        Use sme.linelist instead for other purposes """
+        Use sme.linelist instead for other purposes"""
         if self.linelist is None:
             return None
         return self.linelist.atomic
 
     @property
     def species(self):
-        """array of size (nlines,): Names of the species of each spectral line """
+        """array of size (nlines,): Names of the species of each spectral line"""
         if self.linelist is None:
             return None
         return self.linelist.species
@@ -630,7 +628,7 @@ class SME_Structure(Parameters):
         ----------
         other : SME_Structure
             the sme structure to import the mask from
-        
+
         Returns
         -------
         self : SME_Structure

@@ -28,7 +28,7 @@ Here are the fields
 Uncertainties
 -------------
 
-As mentioned above we estimate the uncertainties using a special metric. 
+As mentioned above we estimate the uncertainties using a special metric.
 This metric is based on the destribution of the derivatives for each fitparameter.
 We estimate the cumulative distribution function of the **generalized** normal distribution with:
 

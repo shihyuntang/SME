@@ -2,28 +2,27 @@
 import logging
 
 import numpy as np
-
 from flex.extensions.bindata import MultipleDataExtension
 
+from ..abund import Abund
 from ..data_structure import (
-    CollectionFactory,
     Collection,
+    CollectionFactory,
     absolute,
-    this,
+    array,
     asfloat,
     asstr,
     lowercase,
-    uppercase,
     oneof,
-    array,
+    this,
+    uppercase,
 )
-from ..abund import Abund
 
 logger = logging.getLogger(__name__)
 
 
 class AtmosphereError(RuntimeError):
-    """ Something went wrong with the atmosphere interpolation """
+    """Something went wrong with the atmosphere interpolation"""
 
 
 @CollectionFactory
@@ -247,9 +246,9 @@ class AtmosphereGrid(np.recarray):
         super(AtmosphereGrid, self).__setstate__(state[0:-8])
 
     def __getitem__(self, key):
-        """ Overwrite the getitem routine, so we keep additional
+        """Overwrite the getitem routine, so we keep additional
         properties and/or return an atmosphere object, when only
-        one record is returned """
+        one record is returned"""
         cls = self.__class__
         value = super().__getitem__(key)
         if isinstance(value, cls) and value.size == 1:
@@ -280,7 +279,7 @@ class AtmosphereGrid(np.recarray):
         return self.shape[1]
 
     def save(self, filename):
-        """ Save the Atmopshere grid to a file using a numpy save format """
+        """Save the Atmopshere grid to a file using a numpy save format"""
         header = {
             "interp": self.interp,
             "depth": self.depth,
@@ -299,7 +298,7 @@ class AtmosphereGrid(np.recarray):
 
     @classmethod
     def load(cls, filename):
-        """ Load the atmosphere grid data from disk """
+        """Load the atmosphere grid data from disk"""
         data = np.load(filename)
         self = data["data"].view(cls)
         header = data["header"]

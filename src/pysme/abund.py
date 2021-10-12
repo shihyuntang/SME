@@ -7,8 +7,8 @@ import logging
 
 import numpy as np
 from flex.extensions.bindata import BinaryDataExtension
-from .persistence import IPersist
 
+from .persistence import IPersist
 
 logger = logging.getLogger(__name__)
 
@@ -411,7 +411,7 @@ class Abund(IPersist):
 
     @property
     def elem_dict(self):
-        """ Return the position of each element in the raw array """
+        """Return the position of each element in the raw array"""
         return elements_dict
 
     @property
@@ -515,8 +515,7 @@ class Abund(IPersist):
         return pattern[i]
 
     def empty_pattern(self):
-        """Return an abundance pattern with value None for all elements.
-        """
+        """Return an abundance pattern with value None for all elements."""
         pattern = np.full(len(elements), np.nan)
         pattern[0] = 0
         return pattern
@@ -545,12 +544,16 @@ class Abund(IPersist):
         return abund
 
     def _save_v1(self, file, folder="abund"):
-        """ Save the data to a file handler """
+        """Save the data to a file handler"""
         if folder != "" or folder[-1] != "/":
             folder += "/"
 
         monh = float(self.monh) if self.monh is not None else None
-        info = {"format": self.type, "monh": monh, "citation_info": self.citation_info}
+        info = {
+            "format": self.type,
+            "monh": monh,
+            "citation_info": self.citation_info,
+        }
         file.writestr(f"{folder}info.json", json.dumps(info))
 
         b = io.BytesIO()
@@ -559,7 +562,7 @@ class Abund(IPersist):
 
     @staticmethod
     def _load_v1(file, names, folder=""):
-        """ Load the data from a file handler """
+        """Load the data from a file handler"""
         for name in names:
             if name.endswith("info.json"):
                 info = file.read(name)
@@ -574,11 +577,14 @@ class Abund(IPersist):
                 pattern = np.load(b)
 
         return Abund(
-            monh=monh, pattern=pattern, type=abund_format, citation_info=citation_info
+            monh=monh,
+            pattern=pattern,
+            type=abund_format,
+            citation_info=citation_info,
         )
 
     @staticmethod
     def solar():
-        """ Return solar abundances of asplund 2009 """
+        """Return solar abundances of asplund 2009"""
         solar = Abund(pattern="solar", monh=0)
         return solar

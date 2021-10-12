@@ -1,17 +1,16 @@
 import io
-import os
-import logging
-from zipfile import ZipFile, ZIP_STORED, ZIP_LZMA
 import json
-import tempfile
-import sys
+import logging
+import os
 import subprocess
-
-from flex.flex import FlexExtension, FlexFile
-from numpy.lib.arraysetops import isin
-from . import __version__
+import sys
+import tempfile
+from zipfile import ZIP_LZMA, ZIP_STORED, ZipFile
 
 import numpy as np
+from flex.flex import FlexExtension, FlexFile
+
+from . import __version__
 
 logger = logging.getLogger(__name__)
 
@@ -282,7 +281,7 @@ def loads_v1(file, data, names=None, folder=""):
 
 
 def get_typecode(dtype):
-    """ Get the IDL typecode for a given dtype """
+    """Get the IDL typecode for a given dtype"""
     if dtype.name[:5] == "bytes":
         return "1"
     if dtype.name == "int16":
@@ -348,7 +347,7 @@ def clean_temps():
 
 def write_as_idl(sme):
     """
-    Write SME structure into and idl format 
+    Write SME structure into and idl format
     data arrays are stored in seperate temp files, and only the filename is passed to idl
     """
 

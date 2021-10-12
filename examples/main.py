@@ -7,13 +7,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.stats import norm
 
-from pysme.gui import plot_plotly, plot_pyplot
 from pysme import sme as SME
 from pysme import util
 from pysme.abund import Abund
-from pysme.solve import SME_Solver
 from pysme.continuum_and_radial_velocity import match_rv_continuum
+from pysme.gui import plot_plotly, plot_pyplot
 from pysme.linelist.vald import ValdFile
+from pysme.solve import SME_Solver
 from pysme.synthesize import synthesize_spectrum
 
 if __name__ == "__main__":
@@ -78,7 +78,10 @@ if __name__ == "__main__":
         # Calculate stellar age based on abundances
         solar = Abund.solar()
         y, mg = sme.abund["Y"], sme.abund["Mg"]
-        sy, smg = sme.fitresults.punc["Y abund"], sme.fitresults.punc["Mg abund"]
+        sy, smg = (
+            sme.fitresults.punc["Y abund"],
+            sme.fitresults.punc["Mg abund"],
+        )
         x = y - mg - (solar["Y"] - solar["Mg"])
         sx = np.sqrt(sy ** 2 + smg ** 2)
 

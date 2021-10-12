@@ -1,7 +1,8 @@
-from os.path import join, dirname
-import numpy as np
-import matplotlib.pyplot as plt
 import json
+from os.path import dirname, join
+
+import matplotlib.pyplot as plt
+import numpy as np
 from scipy.optimize import curve_fit
 
 from pysme.sme import SME_Structure

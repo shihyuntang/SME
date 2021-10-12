@@ -1,9 +1,7 @@
-import numpy as np
 import matplotlib as mpl
-from matplotlib.widgets import SpanSelector, Button
 import matplotlib.pyplot as plt
-
-
+import numpy as np
+from matplotlib.widgets import Button, SpanSelector
 from scipy.constants import c
 
 clight = c * 1e-3
@@ -16,7 +14,7 @@ fmt = PlotColors()
 
 
 class MaskPlot:
-    """ A plot that can be used to define the mask """
+    """A plot that can be used to define the mask"""
 
     # Controls:
     # a, d keys: Switch between segments
@@ -219,11 +217,15 @@ class MaskPlot:
                     )
                     if self.spec is not None:
                         depth = np.interp(
-                            wl, self.wave[self.segment], self.spec[self.segment]
+                            wl,
+                            self.wave[self.segment],
+                            self.spec[self.segment],
                         )
                     else:
                         depth = np.interp(
-                            wl, self.wave[self.segment], self.smod[self.segment]
+                            wl,
+                            self.wave[self.segment],
+                            self.smod[self.segment],
                         )
                     self.line_plot[i][1] = self.im.vlines(
                         wl, ymin=depth, ymax=1.1, alpha=importance[i]
@@ -275,4 +277,3 @@ class MaskPlot:
 
     def previous_segment(self, _=None):
         self.goto_segment(self.segment - 1)
-

@@ -1,15 +1,17 @@
-from os.path import join, dirname
+from os.path import dirname, join
 from re import I
+
 import numpy as np
-from pysme.sme import SME_Structure
-from pysme.nso import load_solar_spectrum
+
 from pysme.abund import Abund
-from pysme.linelist.vald import ValdFile
-from pysme.synthesize import synthesize_spectrum
 from pysme.gui import plot_plotly
-from pysme.solve import solve
-from pysme.util import start_logging
+from pysme.linelist.vald import ValdFile
+from pysme.nso import load_solar_spectrum
 from pysme.persistence import save_as_idl
+from pysme.sme import SME_Structure
+from pysme.solve import solve
+from pysme.synthesize import synthesize_spectrum
+from pysme.util import start_logging
 
 if __name__ == "__main__":
     # wave, spec = load_solar_spectrum(ravel=False)

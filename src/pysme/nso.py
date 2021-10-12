@@ -1,5 +1,6 @@
 # Get and read the NSO spectrum
 import numpy as np
+
 from . import large_file_storage as lfs
 
 
@@ -9,7 +10,7 @@ def load_solar_spectrum(ravel=True):
 
     The data is from the National Solar Observatory Atlas #1, which is an
     optical, full-disk, FTS spectrum of a relatively inactive Sun.
-    Automatically retrieves the data from the SME Large File Server 
+    Automatically retrieves the data from the SME Large File Server
     and stores it for local use.
 
     Returns
@@ -28,10 +29,7 @@ def load_solar_spectrum(ravel=True):
     pts = 1024
     # the data is split into wavelength and flux
     # as defined here
-    dtype = [
-        ("wave", f"({pts},)>f4"),
-        ("flux", f"({pts},)>i2"),
-    ]
+    dtype = [("wave", f"({pts},)>f4"), ("flux", f"({pts},)>i2")]
 
     with open(fname, "rb") as f:
         # Read the wavelength of each segment from the header

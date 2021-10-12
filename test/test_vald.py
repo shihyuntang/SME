@@ -1,11 +1,11 @@
 from os.path import dirname, join
+
 import numpy as np
 import pytest
 
-from pysme.linelist.linelist import LineList
-from pysme.linelist.vald import ValdFile, ValdError
 from pysme.abund import Abund
-
+from pysme.linelist.linelist import LineList
+from pysme.linelist.vald import ValdFile
 
 species = "Fe 1"
 wlcent = 5502.9931
@@ -18,8 +18,7 @@ linedata = [species, wlcent, excit, gflog, gamrad, gamqst, gamvw]
 
 
 def test_line_init():
-    """Test that property values equal line data passed to __init__().
-    """
+    """Test that property values equal line data passed to __init__()."""
     line = LineList(linedata)
     assert isinstance(line, LineList)
     assert line.species[0] == species
@@ -32,8 +31,7 @@ def test_line_init():
 
 
 def test_linelist_add_and_len():
-    """Test that len() returns the number of lines (including 0) in list.
-    """
+    """Test that len() returns the number of lines (including 0) in list."""
     linelist = LineList()
     assert isinstance(linelist, LineList)
     assert len(linelist) == 0
@@ -67,8 +65,7 @@ def test_linelist_properties():
 
 
 def test_valdfile():
-    """Test class to read a VALD line data file.
-    """
+    """Test class to read a VALD line data file."""
     testdir = dirname(__file__)
     linelist = ValdFile(join(testdir, "testcase1.lin"))
 
@@ -78,12 +75,11 @@ def test_valdfile():
     assert linelist[0].species == "V 1"
 
     with pytest.raises(IOError):
-        vf = ValdFile(join(testdir, "testcase1.npy"))
+        ValdFile(join(testdir, "testcase1.npy"))
 
 
 def test_medium():
-    """Test class to read a VALD line data file.
-    """
+    """Test class to read a VALD line data file."""
     testdir = dirname(__file__)
     vf = ValdFile(join(testdir, "testcase1.lin"), medium="vac")
 

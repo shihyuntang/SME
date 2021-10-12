@@ -1,33 +1,24 @@
 """
 Spectral Synthesis Module of SME
 """
-from concurrent import futures
 import logging
-from os import stat
-import warnings
-import time
-
-import numpy as np
-from numpy.lib.arraysetops import unique
-from tqdm import tqdm
-from scipy.constants import speed_of_light
-from scipy.ndimage.filters import convolve, gaussian_filter1d
-from scipy.interpolate import interp1d, UnivariateSpline
-
 import uuid
 
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import numpy as np
+from scipy.constants import speed_of_light
+from scipy.interpolate import interp1d
+from scipy.ndimage.filters import convolve
+from tqdm import tqdm
 
 from . import broadening
 from .atmosphere.interpolation import AtmosphereInterpolator
 from .continuum_and_radial_velocity import (
-    match_rv_continuum,
     apply_radial_velocity_and_continuum,
+    match_rv_continuum,
     null_result,
 )
-from .large_file_storage import setup_lfs
 from .iliffe_vector import Iliffe_vector
-from .nlte import update_nlte_coefficients
+from .large_file_storage import setup_lfs
 from .sme_synth import SME_DLL
 
 logger = logging.getLogger(__name__)
@@ -123,7 +114,7 @@ class Synthesizer:
 
     @staticmethod
     def new_wavelength_grid(wint):
-        """ Generate new wavelength grid within bounds of wint"""
+        """Generate new wavelength grid within bounds of wint"""
         # Determine step size for a new model wavelength scale, which must be uniform
         # to facilitate convolution with broadening kernels. The uniform step size
         # is the larger of:
@@ -439,11 +430,22 @@ class Synthesizer:
         return flux
 
     def sequential_synthesize_segments(
-        self, sme, segments, wmod, smod, cmod, reuse_wavelength_grid, dll_id=None
+        self,
+        sme,
+        segments,
+        wmod,
+        smod,
+        cmod,
+        reuse_wavelength_grid,
+        dll_id=None,
     ):
         for il in segments:
             wmod[il], smod[il], cmod[il] = self.synthesize_segment(
-                sme, il, reuse_wavelength_grid, il != segments[0], dll_id=dll_id
+                sme,
+                il,
+                reuse_wavelength_grid,
+                il != segments[0],
+                dll_id=dll_id,
             )
         return wmod, smod, cmod
 
@@ -469,7 +471,14 @@ class Synthesizer:
             return dll_id
 
     def parallel_synthesize_segments(
-        self, sme, segments, wmod, smod, cmod, reuse_wavelength_grid, dll_id=None,
+        self,
+        sme,
+        segments,
+        wmod,
+        smod,
+        cmod,
+        reuse_wavelength_grid,
+        dll_id=None,
     ):
         # Make sure the dll is recorded in the global variables
         dll = self.get_dll(dll_id)
@@ -682,11 +691,23 @@ class Synthesizer:
         # for the wavelength range (and opacities) which change within each segment
         if dll.parallel:
             self.parallel_synthesize_segments(
-                sme, segments, wmod, smod, cmod, reuse_wavelength_grid, dll_id=dll
+                sme,
+                segments,
+                wmod,
+                smod,
+                cmod,
+                reuse_wavelength_grid,
+                dll_id=dll,
             )
         else:
             self.sequential_synthesize_segments(
-                sme, segments, wmod, smod, cmod, reuse_wavelength_grid, dll_id=dll
+                sme,
+                segments,
+                wmod,
+                smod,
+                cmod,
+                reuse_wavelength_grid,
+                dll_id=dll,
             )
 
         for il in segments:
@@ -714,7 +735,15 @@ class Synthesizer:
             raise ValueError("Radial Velocity mode not understood")
 
         smod, cmod = self.apply_radial_velocity_and_continuum(
-            wave, sme.spec, wmod, smod, cmod, vrad, cscale, sme.cscale_type, segments
+            wave,
+            sme.spec,
+            wmod,
+            smod,
+            cmod,
+            vrad,
+            cscale,
+            sme.cscale_type,
+            segments,
         )
 
         # Merge all segments

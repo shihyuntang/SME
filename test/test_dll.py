@@ -1,14 +1,13 @@
 from os.path import dirname
 
-import pytest
 import numpy as np
+import pytest
 
-from pysme.sme import SME_Structure as SME_Struct
 from pysme.abund import Abund
 from pysme.atmosphere.krzfile import KrzFile
 from pysme.linelist.linelist import LineList
 from pysme.sme_synth import SME_DLL
-from pysme.nlte import nlte
+
 
 # Create Objects to pass to library
 # Their functionality is tested in other test files, so we assume it works
@@ -87,13 +86,19 @@ def abund():
 
 
 def test_basic(libsme, wfirst, wlast, vw_scale):
-    """ Test instantiation of library object and some basic functions """
+    """Test instantiation of library object and some basic functions"""
     print(libsme.SMELibraryVersion())
     libsme.InputWaveRange(wfirst, wlast)
     libsme.SetVWscale(vw_scale)
     libsme.SetH2broad()
 
-    print(libsme.file, libsme.wfirst, libsme.wlast, libsme.vw_scale, libsme.h2broad)
+    print(
+        libsme.file,
+        libsme.wfirst,
+        libsme.wlast,
+        libsme.vw_scale,
+        libsme.h2broad,
+    )
 
     # assert libsme.file
     assert libsme.wfirst == wfirst
@@ -103,7 +108,7 @@ def test_basic(libsme, wfirst, wlast, vw_scale):
 
 
 def test_linelist(libsme, linelist):
-    """ Test linelist behaviour """
+    """Test linelist behaviour"""
     libsme.InputLineList(linelist)
     outlist = libsme.OutputLineList()
 
@@ -122,7 +127,7 @@ def test_linelist(libsme, linelist):
 
 
 def test_atmosphere(libsme, atmo, teff, grav, vturb):
-    """ Test atmosphere behaviour """
+    """Test atmosphere behaviour"""
 
     libsme.InputModel(teff, grav, vturb, atmo)
 
@@ -144,7 +149,7 @@ def test_atmosphere(libsme, atmo, teff, grav, vturb):
 
 
 def test_abund(libsme, abund):
-    """ Test abundance behaviour """
+    """Test abundance behaviour"""
     libsme.InputAbund(abund)
 
     # TODO: What should be the expected behaviour?
@@ -171,7 +176,7 @@ def test_transf(
     accrt,
     accwt,
 ):
-    """ Test radiative transfer """
+    """Test radiative transfer"""
     libsme.SetLibraryPath()
 
     libsme.InputLineList(linelist)

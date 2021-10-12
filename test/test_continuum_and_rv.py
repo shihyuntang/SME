@@ -1,15 +1,13 @@
 # TODO implement continuum and radial velocity tests
 
-from os.path import dirname
-
-import pytest
-import numpy as np
 from itertools import product
 
-from pysme.sme import SME_Structure as SME_Struct
+import numpy as np
+import pytest
+
 from pysme.continuum_and_radial_velocity import (
-    match_rv_continuum,
     apply_radial_velocity_and_continuum,
+    match_rv_continuum,
 )
 
 
@@ -21,7 +19,14 @@ def test_match_both(testcase1):
 
     vrad_options = ["none", "fix", "each", "whole"]
     cscale_options = ["none", "fix", "constant", "linear"]  # quadratic
-    cscale_types = ["mask", "match", "match+mask", "mcmc", "spline", "spline+mask"]
+    cscale_types = [
+        "mask",
+        "match",
+        "match+mask",
+        "mcmc",
+        "spline",
+        "spline+mask",
+    ]
 
     # vrad_options = ["whole"]
     # cscale_options = ["linear"]  # quadratic
@@ -113,4 +118,3 @@ def test_match_both(testcase1):
 #     sme.mask = 0
 #     with pytest.warns(UserWarning):
 #         rvel, vunc, cscale, cunc = match_rv_continuum(sme, 0, x_syn, y_syn)
-

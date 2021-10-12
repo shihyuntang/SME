@@ -4,32 +4,23 @@ Module for handling linelist data from the VALD3 database (http://vald.astro.uu.
 
 """
 import logging
-import re
-from io import StringIO
-from os.path import dirname, join
 import sys
 
 import numpy as np
 import pandas as pd
-from astropy import units as u
-import pybtex.database
-
 from astropy.io import fits
 
-
-from ..abund import Abund
-from .linelist import LineListError, LineList
+from .linelist import LineList, LineListError
 
 logger = logging.getLogger(__name__)
 
 
 class GesError(LineListError):
-    """ Vald Data File Error """
+    """Vald Data File Error"""
 
 
 class GesFile(LineList):
-    """Atomic data for a list of spectral lines.
-    """
+    """Atomic data for a list of spectral lines."""
 
     def __init__(self, filename, medium=None):
         self.filename = filename
