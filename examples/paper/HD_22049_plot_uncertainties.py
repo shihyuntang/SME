@@ -138,21 +138,24 @@ if __name__ == "__main__":
     segments = np.arange(6, 31)
     mask = sme.mask_good[segments]
     resid = sme.fitresults.residuals
-    # unc = np.concatenate(sme.uncs[segments][mask])
-    s = np.concatenate(sme.spec[segments][mask])
-    unc = np.sqrt(s)
-    # unc = np.ones(resid.size)
+    unc = np.concatenate(sme.uncs[segments][mask])
+    # s = np.concatenate(sme.spec[segments][mask])
+    # unc = np.sqrt(s)
+    # unc = np.full(resid.size, 1)
 
     for i, param in enumerate(sme.fitresults.parameters):
         pder = sme.fitresults.derivative[:, i]
 
         idx = pder != 0
-        idx &= np.abs(resid) < 5 * unc
+        # The original rule used in the paper
+        # idx &= np.abs(pder) > np.median(np.abs(pder))
+        # idx &= np.abs(resid) < 5 * unc
+        # idx &= np.abs(pder) < 5 * np.median(np.abs(resid))
         # Fit which cutoff makes the curve most gaussian
-        # res = minimize(fit, [80], method="Nelder-Mead")
-        # plimit = res.x[0]
-        # gradlim = np.nanpercentile(np.abs(pder), plimit)
-        # idx &= np.abs(pder) < gradlim
+        res = minimize(fit, [80], method="Nelder-Mead")
+        plimit = res.x[0]
+        gradlim = np.nanpercentile(np.abs(pder), plimit)
+        idx &= np.abs(pder) < gradlim
         # Only use the center part of ch_x
         # This does not affect the results
         # ch_x = resid / pder
@@ -162,9 +165,9 @@ if __name__ == "__main__":
         # Only use derivatives around the center
         # this is roughly equivalent to the above cutoff
         # due to the percentile
-        med = np.median(np.abs(pder))
-        mad = np.median(np.abs(np.abs(pder) - med))
-        idx &= np.abs(pder) < med + 20 * mad
+        # med = np.median(np.abs(pder))
+        # mad = np.median(np.abs(np.abs(pder) - med))
+        # idx &= np.abs(pder) < med + 20 * mad
 
         percentage_points = np.count_nonzero(idx) / idx.size * 100
         print(f"Using {percentage_points:.2}% points for the derivative")

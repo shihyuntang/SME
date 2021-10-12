@@ -100,16 +100,23 @@ def load_fname(star, data_dir):
 def load_tellurics():
     # Get tellurics from Tapas
     examples_dir = dirname(realpath(__file__))
-    ftapas = join(examples_dir, "data/tapas.ipac")
-    dtapas = np.genfromtxt(ftapas, comments="\\", skip_header=36)
-    wtapas, ftapas = dtapas[:, 0], dtapas[:, 1]
-    # convert to angstrom
-    wtapas *= 10
-    # Normalize
-    ftapas -= ftapas.min()
-    ftapas /= ftapas.max()
-    wtapas = wtapas[::-1]
-    ftapas = ftapas[::-1]
+    fname = join(examples_dir, "data/tapas.npz")
+    try:
+        data = np.load(fname)
+        wtapas = data["wave"]
+        ftapas = data["flux"]
+    except:
+        ftapas = join(examples_dir, "data/tapas.ipac")
+        dtapas = np.genfromtxt(ftapas, comments="\\", skip_header=36)
+        wtapas, ftapas = dtapas[:, 0], dtapas[:, 1]
+        # convert to angstrom
+        wtapas *= 10
+        # Normalize
+        ftapas -= ftapas.min()
+        ftapas /= ftapas.max()
+        wtapas = wtapas[::-1]
+        ftapas = ftapas[::-1]
+        np.savez(fname, wave=wtapas, flux=ftapas)
     return wtapas, ftapas
 
 
@@ -333,7 +340,7 @@ def run_again(target, segments="all"):
     return sme
 
 
-def fit(sme, segments="all"):
+def fit(sme, target, segments="all"):
     examples_dir = dirname(realpath(__file__))
     # Define any fitparameters you want
     # For abundances use: 'abund {El}', where El is the element (e.g. 'abund Fe')
@@ -499,6 +506,7 @@ if __name__ == "__main__":
     def parallel(target):
         print(f"Starting {target}")
         segments = range(6, 31)
+        # segments = [10]
 
         # Start the logging to the file
         examples_dir = dirname(realpath(__file__))
@@ -519,12 +527,12 @@ if __name__ == "__main__":
 
         # Finally fit it to the data
         sme.meta["object"] = target
-        sme = fit(sme, segments=segments)
+        sme = fit(sme, target, segments=segments)
         return sme
 
     if len(sys.argv) == 1:
-        for target in tqdm(targets):
-            parallel(target)
+        # for target in tqdm(targets):
+        parallel("WASP-18")
     else:
         target = sys.argv[1]
         parallel(target)

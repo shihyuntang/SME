@@ -11,13 +11,13 @@ if __name__ == "__main__":
     targets = [
         "au_mic.json",
         "eps_eri.json",
-        "cnc_55.json",
+        "55_cnc.json",
         "hd_102195.json",
         "hd_130322.json",
         "hd_179949.json",
         "hd_189733.json",
         "hn_peg.json",
-        "wasp18.json",
+        "wasp-18.json",
     ]
     names = np.array(
         [
