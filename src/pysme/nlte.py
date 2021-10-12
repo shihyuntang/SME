@@ -611,8 +611,8 @@ class Grid:
         sme_species = self.species[lineindices]
 
         # Extract data from linelist
-        term_low = self.linelist["term_lower"][lineindices]
-        term_upp = self.linelist["term_upper"][lineindices]
+        term_low = self.linelist["term_lower"][lineindices].astype(str)
+        term_upp = self.linelist["term_upper"][lineindices].astype(str)
         # Remove quotation marks (if any are there)
         term_low = np.char.replace(term_low, "'", "")
         term_upp = np.char.replace(term_upp, "'", "")
