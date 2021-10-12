@@ -53,7 +53,7 @@ class Iliffe_vector(numpy.lib.mixins.NDArrayOperatorsMixin, MultipleDataExtensio
     def __getitem__(self, key):
         if isinstance(key, Integral):
             return self.__getsegment__(key)
-        if isinstance(key, (slice, Iterable)):
+        if isinstance(key, (slice, Iterable)) and not isinstance(key, tuple):
             if isinstance(key, slice):
                 key = range(self.nseg)[key]
             values = [self.__getsegment__(k) for k in key]
@@ -83,7 +83,7 @@ class Iliffe_vector(numpy.lib.mixins.NDArrayOperatorsMixin, MultipleDataExtensio
             value = np.asarray(value)
         if isinstance(key, Integral):
             return self.__setsegment__(key, value)
-        if isinstance(key, (slice, Iterable)):
+        if isinstance(key, (slice, Iterable)) and not isinstance(key, tuple):
             if isinstance(key, slice):
                 key = range(self.nseg)[key]
             if isscalar or (value.ndim == 1 and value.dtype != "O"):
