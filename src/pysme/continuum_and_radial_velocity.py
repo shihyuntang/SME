@@ -852,15 +852,7 @@ def determine_radial_velocity(
         else:
             mask = mask == sme.mask_values["line"]
             mask |= mask == sme.mask_values["continuum"]
-
-        # x_obs = x_obs[mask]
-        # y_obs = y_obs[mask]
-        # u_obs = u_obs[mask]
-        # y_tmp = np.interp(x_obs, x_syn, y_syn)
-        # if sme.telluric is not None:
-        #     tell = tell[mask]
-        # else:
-        #     tell = 1
+        mask &= u_obs != 0
 
         # Get a first rough estimate from cross correlation
         if sme.vrad_flag == "each":
@@ -884,18 +876,26 @@ def determine_radial_velocity(
             corrs_interp = np.array(corrs_interp)
             corr = np.sum(corrs_interp, axis=0)
 
+            # Concatenate the segments for the last step
             mask = np.concatenate(mask)
-            x_obs = np.concatenate(x_obs)[mask]
-            y_obs = np.concatenate(y_obs)[mask]
-            u_obs = np.concatenate(u_obs)[mask]
+            x_obs = np.concatenate(x_obs)
+            y_obs = np.concatenate(y_obs)
+            u_obs = np.concatenate(u_obs)
             x_syn = np.concatenate(x_syn)
             y_syn = np.concatenate(y_syn)
             if sme.telluric is not None:
-                tell = np.concatenate(tell)[mask]
+                tell = np.concatenate(tell)
 
         # Retrieve the initial cross correlation guess
         offset = np.argmax(corr)
         rvel = x_shift[offset]
+
+        # Apply mask
+        x_obs = x_obs[mask]
+        y_obs = y_obs[mask]
+        u_obs = u_obs[mask]
+        if sme.telluric is not None:
+            tell = tell[mask]
 
         # Then minimize the least squares for a better fit
         # as cross correlation can only find
