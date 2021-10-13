@@ -51,8 +51,8 @@ class Parameters(Collection):
             self.__abund = value
         else:
             logger.warning(
-                "Abundance set using just a pattern, assuming that"
-                f"it has format {self.__abund.type}."
+                "Abundance set using just a pattern, assuming that "
+                f"it has format {self.__abund.type}. "
                 "If that is incorrect, try changing the format first."
             )
             self.__abund = Abund(monh=self.monh, pattern=value, type=self.__abund.type)
