@@ -86,7 +86,7 @@ class SME_Solver:
         except:
             pass
 
-    def __residuals(
+    def _residuals(
         self, param, sme, spec, uncs, mask, segments="all", isJacobian=False, **_
     ):
         """
@@ -149,7 +149,7 @@ class SME_Solver:
             # Something went wrong (left the grid? Don't go there)
             # If returned value is not finite, the fit algorithm will not go there
             logger.debug(ae)
-            return np.inf
+            return np.full(spec.size, np.inf)
 
         segments = Synthesizer.check_segments(sme, segments)
 
@@ -163,10 +163,7 @@ class SME_Solver:
             tell = tell[mask] if mask is not None else tell
             synth = synth * tell
 
-        # TODO: update based on lineranges
-        uncs_linelist = 0
-
-        resid = (synth - spec) / (uncs + uncs_linelist)
+        resid = (synth - spec) / (uncs)
         resid = resid.ravel()
         resid = np.nan_to_num(resid, copy=False)
 
@@ -190,7 +187,7 @@ class SME_Solver:
 
         return resid
 
-    def __jacobian(self, param, *args, bounds=None, segments="all", **_):
+    def _jacobian(self, param, *args, bounds=None, segments="all", **_):
         """
         Approximate the jacobian numerically
         The calculation is the same as "3-point"
@@ -201,9 +198,9 @@ class SME_Solver:
         # Here we replace the scipy version of approx_derivative with our own
         # The only difference being that we use Multiprocessing for the jacobian
         g = approx_derivative(
-            self.__residuals,
+            self._residuals,
             param,
-            method="2-point",
+            method="3-point",
             # This feels pretty bad, passing the latest synthetic spectrum
             # by reference as a parameter of the residuals function object
             f0=self._latest_residual,
@@ -219,8 +216,6 @@ class SME_Solver:
                 "Final uncertainties will be inaccurate. "
                 "You might be running into the boundary of the grid"
             )
-
-        self._last_jac = np.copy(g)
 
         return g
 
@@ -243,7 +238,8 @@ class SME_Solver:
         Raises
         ------
         IOError
-            If the atmosphere file can't be read, allowed types are IDL savefiles (.sav), and .krz files
+            If the atmosphere file can't be read, allowed types
+            are IDL savefiles (.sav), and .krz files
 
         Returns
         -------
@@ -515,11 +511,17 @@ class SME_Solver:
             # Errors based on covariance matrix
             sme.fitresults.fit_uncertainties[i] = sig[i]
 
-        mask = sme.mask_good[segments]
-        unc = sme.uncs[segments][mask].ravel()
-        sme.fitresults.uncertainties = self.estimate_uncertainties(
-            unc, result.fun, result.jac
-        )
+        try:
+            mask = sme.mask_good[segments]
+            unc = sme.uncs[segments]
+            unc = unc[mask] if mask is not None else unc
+            unc = unc.ravel()
+            sme.fitresults.uncertainties = self.estimate_uncertainties(
+                unc, result.fun, result.jac
+            )
+        except:
+            sme.fitresults.uncertainties = sme.fitresults.fit_uncertainties
+        # sme.fitresults.uncertainties = sme.fitresults.fit_uncertainties
 
         return sme
 
@@ -667,31 +669,33 @@ class SME_Solver:
             self.progressbar_jacobian = tqdm(desc="Jacobian", total=len(p0))
             with print_to_log():
                 res = least_squares(
-                    self.__residuals,
+                    self._residuals,
+                    jac=self._jacobian,
                     x0=p0,
-                    jac=self.__jacobian,
                     bounds=bounds,
-                    x_scale="jac",
-                    loss="soft_l1",
+                    loss="linear",
                     method="trf",
+                    x_scale="jac",
+                    xtol=np.finfo(float).eps * 10,
                     verbose=2,
-                    max_nfev=sme.fitresults.maxiter,
                     args=(sme, spec, uncs, mask),
                     kwargs={"bounds": bounds, "segments": segments},
                 )
+
             self.progressbar.close()
             self.progressbar_jacobian.close()
-            # The returned jacobian is "scaled for robust loss function"
-            res.jac = self._last_jac
             for i, name in enumerate(self.parameter_names):
                 sme[name] = res.x[i]
             sme = self.update_fitresults(sme, res, segments)
             logger.debug("Reduced chi square: %.3f", sme.fitresults.chisq)
-            for name, value, unc in zip(
-                self.parameter_names, res.x, sme.fitresults.uncertainties
-            ):
-                logger.info("%s\t%.5f +- %.5g", name.ljust(10), value, unc)
-            logger.info("%s\t%s +- %s", "v_rad".ljust(10), sme.vrad, sme.vrad_unc)
+            try:
+                for name, value, unc in zip(
+                    self.parameter_names, res.x, sme.fitresults.uncertainties
+                ):
+                    logger.info("%s\t%.5f +- %.5g", name.ljust(10), value, unc)
+                logger.info("%s\t%s +- %s", "v_rad".ljust(10), sme.vrad, sme.vrad_unc)
+            except:
+                pass
         elif len(param_names) > 0:
             # This happens when vrad and/or cscale are given as parameters but nothing else
             # We could try to reuse the already calculated synthetic spectrum (if it already exists)
