@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import io
 import logging
 from collections.abc import Iterable

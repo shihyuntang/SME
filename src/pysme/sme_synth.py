@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """ Wrapper for sme_synth.so C library """
 import logging
 import os
@@ -642,7 +643,7 @@ class SME_DLL:
         # Prepare data:
         sint_seg = np.zeros((nwmax, nmu))  # line+continuum intensities
         cint_seg = np.zeros((nwmax, nmu))  # all continuum intensities
-        cintr_seg = np.zeros((nmu))  # red continuum intensity
+        cintr_seg = np.zeros(nmu)  # red continuum intensity
 
         type = "sdddiiddddss"  # s: short, d:double, i:int, u:unicode (string)
 

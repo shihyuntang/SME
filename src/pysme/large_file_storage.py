@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 System to store large data files on a server
 Load them whem required by the user

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Contains functions to read and modify echelle structures, just as in reduce
 

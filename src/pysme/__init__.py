@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 __file_ending__ = ".sme"
 
 # Load correct version string

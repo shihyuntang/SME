@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Elemental abundance data handling module
 """
@@ -100,16 +101,16 @@ elements = (
 # index of each element in the pattern data array
 elements_dict = {el:i for i, el in enumerate(elements)}
 
-""" Array of atomic weights
-From Loss, R. D. 2003, Pure Appl. Chem., 75, 1107, "Atomic Weights
-of the Elements 2001". The isotopic composition of the Sun and stars
-may differ from the terrestrial values listed here!
-For radionuclides that appear only in Table 3, we have adopted the
-atomic mass of the longest lived isotope, rounding to at most two
-digits after the decimal point. These elements are: 43_Tc_98,
-61_Pm_145, 85_At_210, 86_Rn_222, 87_Fr_223, 88_Ra_226, 89_Ac_227,
-93_Np_237, 94_Pu_244, 95_Am_243, 96_Cm_247, 97_Bk_247, 98_Cf_251,
-99_Es_252 """
+# Array of atomic weights
+# From Loss, R. D. 2003, Pure Appl. Chem., 75, 1107, "Atomic Weights
+# of the Elements 2001". The isotopic composition of the Sun and stars
+# may differ from the terrestrial values listed here!
+# For radionuclides that appear only in Table 3, we have adopted the
+# atomic mass of the longest lived isotope, rounding to at most two
+# digits after the decimal point. These elements are: 43_Tc_98,
+# 61_Pm_145, 85_At_210, 86_Rn_222, 87_Fr_223, 88_Ra_226, 89_Ac_227,
+# 93_Np_237, 94_Pu_244, 95_Am_243, 96_Cm_247, 97_Bk_247, 98_Cf_251,
+# 99_Es_252
 
 _atom_weight = (
     1.00794, 4.002602,
@@ -127,9 +128,8 @@ _atom_weight = (
     232.0381, 231.03588, 238.02891, 237.05, 244.06, 243.06, 247.07, 247.07,
     251.08, 252.08,)
 
-"""Asplund, Grevesse, Sauval, Scott (2009,  Annual Review of Astronomy
-and Astrophysics, 47, 481)
-"""
+# Asplund, Grevesse, Sauval, Scott (2009,  Annual Review of Astronomy
+# and Astrophysics, 47, 481)
 _asplund2009 = (
     12.00, 10.93,
     1.05, 1.38, 2.70, 8.43, 7.83, 8.69, 4.56,  7.93,
@@ -146,8 +146,7 @@ _asplund2009 = (
     None,  -0.54,  None,  None,  None,  None,  None,  None,
     None,)
 
-"""Grevesse, Asplund, Sauval (2007, Space Science Review, 130, 105)
-"""
+# Grevesse, Asplund, Sauval (2007, Space Science Review, 130, 105)
 _grevesse2007 = (
     12.00, 10.93,
     1.05, 1.38, 2.70, 8.39, 7.78, 8.66, 4.56, 7.84,
@@ -164,7 +163,7 @@ _grevesse2007 = (
     None, -0.52, None, None, None, None, None, None,
     None,)
 
-""" Lodders 2003 (ApJ, 591, 1220) """
+# Lodders 2003 (ApJ, 591, 1220)
 _lodders2003 = (
     12, 10.899,
     3.28, 1.41, 2.78, 8.39, 7.83, 8.69, 4.46, 7.87,

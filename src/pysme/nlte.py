@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 NLTE module of SME
 reads and interpolates departure coefficients from library files

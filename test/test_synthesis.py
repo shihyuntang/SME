@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # TODO implement synthesis tests
 import numpy as np
 import pytest

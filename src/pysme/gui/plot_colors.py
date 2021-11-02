@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Defines the colors to use in plotting
 """

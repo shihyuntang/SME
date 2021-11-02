@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Determine continuum based on continuum mask
 and fit best radial velocity to observation
@@ -870,7 +871,7 @@ def determine_radial_velocity(
                     x_obs[i], y_obs[i], x_syn[i], y_syn[i], mask[i], rv_bounds
                 )
 
-            n_min = min([len(s) for s in shift])
+            n_min = min(len(s) for s in shift)
             x_shift = np.linspace(rv_bounds[0], rv_bounds[1], n_min)
             corrs_interp = [np.interp(x_shift, s, c) for s, c in zip(shift, corr)]
             corrs_interp = np.array(corrs_interp)

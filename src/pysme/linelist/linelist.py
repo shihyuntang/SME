@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Handles abstract LineList data
 Implementation of a specific source (e.g. Vald) should be in its own file

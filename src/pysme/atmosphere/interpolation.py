@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """ Handles reading and interpolation of atmopshere (grid) data """
 import itertools
 import logging
@@ -500,7 +501,7 @@ class AtmosphereInterpolator:
             )
         if depth.lower() not in gtags:
             raise AtmosphereError(
-                "ATMO.DEPTH='%s', but ATMO. %s does not exist" % (depth, depth)
+                "ATMO.DEPTH='{}', but ATMO. {} does not exist".format(depth, depth)
             )
         return depth
 
@@ -551,7 +552,7 @@ class AtmosphereInterpolator:
             )
         if interp.lower() not in gtags:
             raise AtmosphereError(
-                "ATMO.INTERP='%s', but ATMO. %s does not exist" % (interp, interp)
+                "ATMO.INTERP='{}', but ATMO. {} does not exist".format(interp, interp)
             )
         return interp
 

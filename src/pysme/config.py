@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Handle the Json configuration file
 At the moment it is only used for the LargeFileStorage

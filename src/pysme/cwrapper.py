@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 r"""
 Wrapper for IDL style C libary code
 ``{return_type} {func_name}(int argv, void *argc[]);``

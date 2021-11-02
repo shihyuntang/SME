@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # TODO implement NLTE tests
 
 import os
@@ -27,7 +28,7 @@ def make_minimum_structure():
     sme.vmac = 1
     sme.vsini = 1
     sme.abund = Abund.solar()
-    sme.linelist = ValdFile("{}/testcase3.lin".format((cwd)))
+    sme.linelist = ValdFile("{}/testcase3.lin".format(cwd))
     sme.atmo.source = "marcs2012p_t2.0.sav"
     sme.atmo.method = "grid"
 

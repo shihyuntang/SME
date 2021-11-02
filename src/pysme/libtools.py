@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # This file is complementary to cwrapper.py, but since we simply want to
 # copy cwrapper from the smelib, this has all the additional methods in it
 # that are relevant to PySME but not the smelib

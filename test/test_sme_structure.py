@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from os import remove
 from os.path import dirname
 
@@ -14,7 +15,7 @@ def cwd():
 
 @pytest.fixture
 def filename(cwd):
-    fname = "{}/__test.sme".format((cwd))
+    fname = "{}/__test.sme".format(cwd)
     yield fname
     try:
         remove(fname)
@@ -103,7 +104,7 @@ def test_save_and_load_structure(filename):
 
 
 def test_load_idl_savefile(cwd):
-    filename = "{}/testcase1.inp".format((cwd))
+    filename = "{}/testcase1.inp".format(cwd)
     sme = SME_Struct.load(filename)
 
     assert sme.teff == 5770

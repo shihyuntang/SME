@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Calculates the spectrum, based on a set of stellar parameters
 And also determines the best fit parameters
@@ -63,7 +64,7 @@ class SME_Solver:
             with open(fname) as f:
                 data = json.load(f)
             # The keys are string, but we want the max in int, so we need to convert back and forth
-            iteration = str(max([int(i) for i in data.keys()]))
+            iteration = str(max(int(i) for i in data.keys()))
             for fp in self.parameter_names:
                 sme[fp] = data[iteration].get(fp, sme[fp])
             logger.warning(f"Restoring existing backup data from {fname}")
