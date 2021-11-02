@@ -690,7 +690,7 @@ class Synthesizer:
         # This requires changes in the C code however, since SME uses global parameters
         # for the wavelength range (and opacities) which change within each segment
         if dll.parallel:
-            self.parallel_synthesize_segments(
+            wmod, smod, cmod = self.parallel_synthesize_segments(
                 sme,
                 segments,
                 wmod,
@@ -700,7 +700,7 @@ class Synthesizer:
                 dll_id=dll,
             )
         else:
-            self.sequential_synthesize_segments(
+            wmod, smod, cmod = self.sequential_synthesize_segments(
                 sme,
                 segments,
                 wmod,
@@ -763,12 +763,14 @@ class Synthesizer:
                 sme.cont[s] = cmod[s]
 
             if sme.cscale_type in ["spline", "spline+mask"]:
-                sme.cscale = cscale
-                sme.cscale_unc = cscale_unc
+                sme.cscale = np.asarray(cscale)
+                sme.cscale_unc = np.asarray(cscale_unc)
             elif sme.cscale_flag not in ["fix", "none"]:
-                for s in segments:
-                    sme.cscale[s] = cscale[s]
-                sme.cscale_unc = cscale_unc
+                for s in np.arange(sme.nseg):
+                    if s not in segments:
+                        cscale[s] = sme.cscale[s]
+                sme.cscale = np.asarray(cscale)
+                sme.cscale_unc = np.asarray(cscale_unc)
 
             sme.vrad = np.asarray(vrad)
             sme.vrad_unc = np.asarray(vrad_unc)
@@ -845,6 +847,7 @@ class Synthesizer:
             keep_lineop=keep_line_opacity,
             wave=wint_seg,
         )
+
         # Store the adaptive wavelength grid for the future
         # if it was newly created
         if wint_seg is None:
