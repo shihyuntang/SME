@@ -147,17 +147,9 @@ pysme.util module
     :undoc-members:
     :show-inheritance:
 
-pysme.vald module
----------------------
-
-.. automodule:: pysme.vald
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 
 Module contents
----------------
+----------------
 
 .. automodule:: pysme
     :members:

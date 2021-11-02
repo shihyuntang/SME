@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Handles abstract LineList data
 Implementation of a specific source (e.g. Vald) should be in its own file
@@ -406,7 +407,9 @@ class LineList(IPersist):
             wave_max *= np.sqrt((1 + rvel / c_light) / (1 - rvel / c_light))
         selection = self._lines["wlcent"] > wave_min
         selection &= self._lines["wlcent"] < wave_max
-        return LineList(self._lines[selection])
+        return LineList(
+            self._lines[selection], lineformat=self.lineformat, medium=self.medium
+        )
 
     def _save(self):
         header = {

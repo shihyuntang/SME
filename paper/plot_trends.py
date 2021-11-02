@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import json
 from os.path import dirname, join
 
@@ -78,15 +79,20 @@ if __name__ == "__main__":
             method="trf",
             loss="soft_l1",
         )
+        err = np.sqrt(np.diag(pcov))
         f = np.polyval(popt, xf)
+        # fup = np.polyval(popt+err, xf)
+        # flo = np.polyval(popt-err, xf)
         # Plot 1
         plt.plot(x, y, "o")
         plt.plot(xf, f, "--")
+        # plt.plot(xf, fup, "r-.")
+        # plt.plot(xf, flo, "r-.")
 
         for i in range(len(targets)):
             plt.text(x[i], y[i], names[i])
         plt.xlabel("$T_{eff}$ [K]")
-        plt.ylabel(f"$\sigma${p} [{u}]")
+        plt.ylabel(fr"$\sigma${p} [{u}]")
 
         plt.savefig(f"trend_{p}.png")
         # plt.show()
@@ -122,7 +128,7 @@ if __name__ == "__main__":
                     plt.text(x[i], delta[i], names[i])
 
             plt.legend(loc="upper left")
-            plt.ylabel(f"$\Delta${p} [{u}]")
+            plt.ylabel(fr"$\Delta${p} [{u}]")
             plt.xlabel("$T_{eff}$ [K]")
             plt.savefig(f"delta_{p}.png")
             # plt.show()
@@ -138,10 +144,16 @@ if __name__ == "__main__":
                 method="trf",
                 loss="soft_l1",
             )
+            err = np.sqrt(np.diag(pcov))
             f = np.polyval(popt, xf)
+            # fup = np.polyval(popt + err, xf)
+            # flo = np.polyval(popt - err, xf)
 
             plt.plot(x, y, "o")
             plt.plot(xf, f, "--")
+            # plt.plot(xf, fup, "r-.")
+            # plt.plot(xf, flo, "r-.")
+
             for i in range(len(targets)):
                 plt.text(x[i], y[i], names[i])
             plt.xlabel("$T_{eff}$ [K]")

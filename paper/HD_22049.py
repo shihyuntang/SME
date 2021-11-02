@@ -1,22 +1,22 @@
-""" Minimum working example of an SME script
+# -*- coding: utf-8 -*-
+"""
+Prepare and fit a number of similar spectra for a list of targets
 """
 import datetime
 import os
 import os.path
 import re
 import sys
-from os.path import basename, dirname, exists, join, realpath
+from os.path import dirname, join, realpath
 
 import matplotlib.pyplot as plt
 import numpy as np
 from astropy import constants as const
 from astropy.io import fits
 from data_sources.StellarDB import StellarDB
-from flex.flex import FlexFile
 from scipy.interpolate import interp1d
 from scipy.ndimage.filters import gaussian_filter1d, median_filter
 from scipy.optimize import least_squares
-from tqdm import tqdm
 
 from pysme import sme as SME
 from pysme import util
@@ -142,8 +142,8 @@ def vel_shift(rv, wave):
 
 
 def get_rv_tell(wave, flux, wtell, ftell):
-    sme = SME.SME_Structure(wave=[wave], sob=[flux])
-    sme.mask = np.where(sme.wave > 6866, 1, 0)
+    mask = wave > 6866
+    sme = SME.SME_Structure(wave=[wave[mask]], sob=[flux[mask]])
     sme.vrad_flag = "each"
     sme.cscale_flag = "none"
     rv_tell = determine_radial_velocity(sme, wtell, ftell, 0, rv_bounds=(-200, 200))
@@ -183,7 +183,7 @@ def split_into_segments(wave, flux, ftell):
     return wave, flux, ftell
 
 
-def run(target, mask=None, linelist="harps.lin", segments="all"):
+def init(target, mask=None, linelist="harps.lin", segments="all"):
     examples_dir = dirname(realpath(__file__))
     data_dir = join(examples_dir, "data")
     # /home/ansgar/Documents/Python/sme/examples/paper/data/ADP.2019-11-16T01 15 37.789.fits
@@ -195,7 +195,6 @@ def run(target, mask=None, linelist="harps.lin", segments="all"):
     in_file = load_fname(star, data_dir)
     vald_file = join(examples_dir, f"data/{linelist}")
     mid_file = join(examples_dir, f"results/{target}_inp.sme")
-    plot_file = join(examples_dir, f"results/{target}.html")
 
     # Load data from fits file
     hdu = fits.open(in_file)
@@ -225,9 +224,9 @@ def run(target, mask=None, linelist="harps.lin", segments="all"):
     # Create the SME structure
     sme = SME.SME_Structure(wave=wave, sob=flux)
     sme.meta["object"] = target
-    sme.mu = np.geomspace(0.1, 1, num=7)
+    sme.nmu = 7
     # Use simple shot noise assumption for uncertainties
-    sme.uncs = [np.sqrt(spec) ** 2 for spec in sme.spec]
+    sme.uncs = np.sqrt(sme.spec)
     # Add telluric data (without rayleigh scattering)
     sme.telluric = Iliffe_vector(values=ftapas)
     # Create first mask by removing the telluric offset
@@ -241,8 +240,8 @@ def run(target, mask=None, linelist="harps.lin", segments="all"):
     sme.logg = get_value(star, "logg", 1)
     monh = get_value(star, "metallicity", 1, 0)
     sme.abund = Abund(monh, "asplund2009")
-    # There is no reference for these
-    sme.vmic = 1  # get_value(star, "velocity_turbulence", "km/s", 1)
+    # There is no reference for these, use solar values instead
+    sme.vmic = 1
     sme.vmac = 2
     sme.vsini = get_value(star, "velocity_rotation", "km/s", 2)
 
@@ -254,7 +253,7 @@ def run(target, mask=None, linelist="harps.lin", segments="all"):
     sme.linelist = sme.linelist.trim(wmin, wmax, rvel=100)
 
     # Set the atmosphere grid
-    sme.atmo.source = "marcs2014.sav"
+    sme.atmo.source = "marcs2012.sav"
     sme.atmo.geom = "PP"
     sme.atmo.depth = "RHOX"
     sme.atmo.interp = "TAU"
@@ -282,97 +281,40 @@ def run(target, mask=None, linelist="harps.lin", segments="all"):
     sme.cscale_type = "match"
     sme.vrad = 0
 
-    # Determine the radial velocity offsets
-    # sme = synthesize_spectrum(sme, segments=segments)
+    # Harps instrumental broadening
+    sme.iptype = "gauss"
+    sme.ipres = 105_000
 
     # Save and Plot
     sme.save(mid_file)
-    fig = plot_plotly.FinalPlot(sme)
-    fig.save(filename=plot_file)
-
-    return sme
-
-
-def run_again(target, segments="all"):
-    examples_dir = dirname(realpath(__file__))
-    mid_mask_file = join(examples_dir, f"results/{target}_inp_mask.sme")
-    mid_file = join(examples_dir, f"results/{target}_inp.sme")
-
-    mask_file = join(
-        examples_dir,
-        "results_spline/HD_22049_mask_new_out_monh_teff_logg_vmic_vmac_vsini.sme",
-    )
-
-    try:
-        # ff = FlexFile.read(mid_mask_file)
-        # ff.header["cscale_type"] = "match"
-        # ff.header["cscale_flag"] = "linear"
-        # ff.write(mid_mask_file)
-        sme = SME.SME_Structure.load(mid_mask_file)
-        mid_file = mid_mask_file
-    except FileNotFoundError:
-        # ff = FlexFile.read(mid_file)
-        # ff.header["cscale_type"] = "match"
-        # ff.header["cscale_flag"] = "linear"
-        # ff.write(mid_file)
-        sme = SME.SME_Structure.load(mid_file)
-
-    # # We fix broken save files
-    # try:
-    #     if isinstance(sme.cscale._values, Iliffe_vector):
-    #         sme.cscale = [sme.cscale._values.data[str(i)] for i in range(sme.nseg)]
-    #         sme.save(mid_file)
-    #         sme = SME.SME_Structure.load(mid_file)
-    # except:
-    #     pass
-    # sme.save(mid_file)
-    # sme = SME.SME_Structure.load(mid_file)
-
-    # Import manual mask
-    # we needed to run sme once to get the correct radial velocities
-    sme_mask = SME.SME_Structure.load(mask_file)
-    sme = sme.import_mask(sme_mask, keep_bpm=True)
-
-    # sme = synthesize_spectrum(sme, segments=segments)
-    # Save and Plot
-    sme.save(mid_file)
-    # fig = plot_plotly.FinalPlot(sme)
-    # fig.save(filename=plot_file)
     return sme
 
 
 def fit(sme, target, segments="all"):
     examples_dir = dirname(realpath(__file__))
-    # Define any fitparameters you want
-    # For abundances use: 'abund {El}', where El is the element (e.g. 'abund Fe')
-    # For linelist use: 'linelist {Nr} {p}', where Nr is the number in the
-    # linelist and p is the line parameter (e.g. 'linelist 17 gflog')
-    fitparameters = [["monh", "teff", "logg", "vmic", "vmac", "vsini"]]
+
+    # Define all parameters to be extra sure they are correct
+    fitparameters = ["monh", "teff", "logg", "vmic", "vmac", "vsini"]
     sme.cscale_type = "match"
     sme.cscale_flag = "linear"
     sme.vrad_flag = "whole"
     sme.vrad = None
     sme.cscale = None
 
-    for fp in fitparameters:
-        tmp = os.path.join(examples_dir, f"results/{target}.json")
-        sme = solve(sme, fp, segments=segments, filename=tmp)
-        fname = f"{target}_{'_'.join(fp)}"
-        out_file = os.path.join(examples_dir, "results", fname + ".sme")
-        sme.save(out_file)
-
-        plot_file = os.path.join(examples_dir, "results", fname + ".html")
-        fig = plot_plotly.FinalPlot(sme)
-        fig.save(filename=plot_file, auto_open=False)
+    # Run least squares fit
+    tmp = os.path.join(examples_dir, f"results/{target}.json")
+    sme = solve(sme, fitparameters, segments=segments, filename=tmp)
 
     # Save results
-    out_file = join(examples_dir, f"results/{target}_out.sme")
+    fname = f"{target}_{'_'.join(fitparameters)}"
+    out_file = os.path.join(examples_dir, "results", fname + ".sme")
     sme.save(out_file)
-    print(sme.citation())
 
-    # Plot results
+    # plot
+    plot_file = os.path.join(examples_dir, "results", fname + ".html")
     fig = plot_plotly.FinalPlot(sme)
     fig.save(filename=plot_file, auto_open=False)
+
     print(f"Finished: {target}")
     return sme
 
@@ -400,6 +342,8 @@ if __name__ == "__main__":
         "55_Cnc": {"star": 0, "tell": -82},
         "WASP-18": {"star": 0, "tell": -98},
     }
+    # These areas contain bad pixels, that disturb our initial rough
+    # continuum normalization, and are therefore removed even before that
     masked = {
         "AU_Mic": [
             (4982, 5527),
@@ -491,49 +435,39 @@ if __name__ == "__main__":
         ],
     }
     linelist = {
-        "AU_Mic": "au_mic.lin",
-        "HN_Peg": "hn_peg.lin",
-        "Eps_Eri": "eps_eri.lin",
-        "HD_102195": "hd_102195.lin",
-        "HD_130322": "hd_130322.lin",
-        "HD_179949": "hd_179949.lin",
-        "HD_189733": "hd_189733.lin",
-        "55_Cnc": "55_cnc.lin",
-        "WASP-18": "wasp_18.lin",
+        # "AU_Mic": "au_mic.lin",
+        # "HN_Peg": "hn_peg.lin",
+        # "Eps_Eri": "eps_eri.lin",
+        # "HD_102195": "hd_102195.lin",
+        # "HD_130322": "hd_130322.lin",
+        # "HD_179949": "hd_179949.lin",
+        # "HD_189733": "hd_189733.lin",
+        # "55_Cnc": "55_cnc.lin",
+        # "WASP-18": "wasp_18.lin",
     }
 
     def parallel(target):
         print(f"Starting {target}")
         segments = range(6, 31)
-        # segments = [10]
+        # segments = [6]
 
         # Start the logging to the file
         examples_dir = dirname(realpath(__file__))
         date_string = datetime.datetime.now().isoformat().replace(":", ".")
         log_file = os.path.join(examples_dir, f"logs/{target}_{date_string}.log")
         util.start_logging(log_file)
+
         # Create the first synthethic spectrum to use for manual masking
         mask = masked.get(target)
         ll = linelist.get(target, "harps.lin")
-        sme = run(target, mask=mask, linelist=ll, segments=segments)
-        # Add the mask
-        mask_file = join(
-            examples_dir,
-            "results_spline/HD_22049_mask_new_out_monh_teff_logg_vmic_vmac_vsini.sme",
-        )
-        sme_mask = SME.SME_Structure.load(mask_file)
-        sme = sme.import_mask(sme_mask, keep_bpm=True)
+        sme = init(target, mask=mask, linelist=ll, segments=segments)
 
         # Finally fit it to the data
-        sme.meta["object"] = target
         sme = fit(sme, target, segments=segments)
         return sme
 
-    if len(sys.argv) == 1:
-        # for target in tqdm(targets):
-        parallel("WASP-18")
-    else:
-        target = sys.argv[1]
-        parallel(target)
+    # Parse the cmd arguments
+    target = sys.argv[1] if len(sys.argv) != 1 else "HN_Peg"
 
+    parallel(target)
     pass

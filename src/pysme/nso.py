@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Get and read the NSO spectrum
 import numpy as np
 

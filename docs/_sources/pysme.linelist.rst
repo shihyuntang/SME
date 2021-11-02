@@ -22,3 +22,11 @@ pysme.linelist.vald module
     :members:
     :undoc-members:
     :show-inheritance:
+
+pysme.linelist.ges module
+---------------------------
+
+.. automodule:: pysme.linelist.ges
+    :members:
+    :undoc-members:
+    :show-inheritance:

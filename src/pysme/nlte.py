@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 NLTE module of SME
 reads and interpolates departure coefficients from library files
@@ -344,6 +345,8 @@ class Grid:
 
         #:str: citations in bibtex format, if known
         self.citation_info = ""
+
+        self.first_warning = True
 
         conf = self.directory["conf"].astype("U")
         term = self.directory["term"].astype("U")
@@ -780,10 +783,15 @@ class Grid:
         target_depth = np.log10(target_depth)
         ntarget = len(target_depth)
 
-        iabund = np.digitize(rabund, self._points[0]) - 1
-        iteff = np.digitize(teff, self._points[1]) - 1
-        ilogg = np.digitize(logg, self._points[2]) - 1
-        imonh = np.digitize(monh, self._points[3]) - 1
+        param = [rabund, teff, logg, monh]
+        right = [
+            (self._points[i][-1] == p) and len(self._points[i] > 1)
+            for i, p in enumerate(param)
+        ]
+        iabund = np.digitize(rabund, self._points[0], right=right[0]) - 1
+        iteff = np.digitize(teff, self._points[1], right=right[1]) - 1
+        ilogg = np.digitize(logg, self._points[2], right=right[2]) - 1
+        imonh = np.digitize(monh, self._points[3], right=right[3]) - 1
 
         # Interpolate on the grid
         # We only interpolate on the 2**4 points around the requested values
@@ -816,10 +824,14 @@ class Grid:
             )(target_depth)
 
         # Check if we need to extrapolate
-        if any([t < min(p) or t > max(p) for t, p in zip(target, points)]):
-            logger.warning(
-                f"Extrapolate on the {self.elem} NLTE grid. Requested values of {target} on grid {points}"
-            )
+        if any(
+            [t < min(p) or t > max(p) for t, p in zip(target, points) if len(p) > 0]
+        ):
+            if self.first_warning:
+                logger.warning(
+                    f"Extrapolate on the {self.elem} NLTE grid. Requested values of {target} on grid {points}"
+                )
+                self.first_warning = False
 
         # Some grids have only one value in that direction
         # Usually in abundance. Then we need to remove that dimension
@@ -1022,9 +1034,7 @@ class NLTE(Collection):
             # Call function to retrieve interpolated NLTE departure coefficients
             # the abundances for NLTE are handled in the H-12 format
             grid = self.get_grid(sme, elem, lfs_nlte)
-            bmat = grid.get(sme.abund, sme.teff, sme.logg, sme.monh, sme.atmo)
-
-            if bmat is None or grid.linerefs.size == 0:
+            if not np.any(grid.iused):
                 # No lines are found for this element
                 # remove it from the elements after this loop
                 logger.warning(
@@ -1032,6 +1042,15 @@ class NLTE(Collection):
                     elem,
                 )
                 marked_for_removal += [elem]
+                continue
+            bmat = grid.get(sme.abund, sme.teff, sme.logg, sme.monh, sme.atmo)
+            if bmat is None or grid.linerefs.size == 0:
+                logger.warning(
+                    "No %s NLTE lines found, removing it from NLTE calculations",
+                    elem,
+                )
+                marked_for_removal += [elem]
+                continue
             else:
                 # Put corrections into the nlte_b matrix, don't cache the data
                 for lr, li in zip(grid.linerefs, grid.lineindices):

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # TODO implement continuum and radial velocity tests
 
 from itertools import product

@@ -41,13 +41,13 @@ NLTE grids:
 
   - recommended:
 
-    - marcs2012_Fe2016.grd `(Amarsi et al. 2016) <https://ui.adsabs.harvard.edu/abs/2016MNRAS.463.1518A>`_
+    - marcs2012_Fe2016.grd `(Amarsi et al. 2016a) <https://ui.adsabs.harvard.edu/abs/2016MNRAS.463.1518A>`_
     - marcs2012_Li.grd `(Lind et al. 2009) <https://ui.adsabs.harvard.edu/abs/2009A%26A...503..541L>`_
     - marcs2012_Li2009.grd `(Lind et al. 2009) <https://ui.adsabs.harvard.edu/abs/2009A%26A...503..541L>`_
     - marcs2012_Mg2016.grd `(Osorio et al. 2016) <https://ui.adsabs.harvard.edu/abs/2016A%26A...586A.120O>`_
     - marcs2012_Na.grd `(Lind et al. 2011) <https://ui.adsabs.harvard.edu/abs/2011A%26A...528A.103L>`_
     - marcs2012_Na2011.grd `(Lind et al. 2011) <https://ui.adsabs.harvard.edu/abs/2011A%26A...528A.103L>`_
-    - marcs2012_O2015.grd `(Amarsi et al. 2016) <https://ui.adsabs.harvard.edu/abs/2016MNRAS.455.3735A>`_
+    - marcs2012_O2015.grd `(Amarsi et al. 2016b) <https://ui.adsabs.harvard.edu/abs/2016MNRAS.455.3735A>`_
     - marcs2012_Si2016.grd `(Amarsi & Asplund 2017) <https://ui.adsabs.harvard.edu/abs/2017MNRAS.464..264A>`_
     - marcs2012p_t1.0_Ba.grd `(Mashonkina et al. 1999) <https://ui.adsabs.harvard.edu/abs/1999A%26A...343..519M>`_
     - marcs2012p_t1.0_Ca.grd `(Mashonkina et al. 2017) <https://ui.adsabs.harvard.edu/abs/2007A%26A...461..261M>`_

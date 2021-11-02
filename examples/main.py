@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """ Main entry point for an SME script """
 import logging
 import os

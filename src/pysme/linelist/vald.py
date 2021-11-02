@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Module for handling linelist data from the VALD3 database (http://vald.astro.uu.se/).
 

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """ Handles reading and interpolation of atmopshere (grid) data """
 import logging
 

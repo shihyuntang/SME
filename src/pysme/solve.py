@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Calculates the spectrum, based on a set of stellar parameters
 And also determines the best fit parameters
@@ -63,7 +64,7 @@ class SME_Solver:
             with open(fname) as f:
                 data = json.load(f)
             # The keys are string, but we want the max in int, so we need to convert back and forth
-            iteration = str(max([int(i) for i in data.keys()]))
+            iteration = str(max(int(i) for i in data.keys()))
             for fp in self.parameter_names:
                 sme[fp] = data[iteration].get(fp, sme[fp])
             logger.warning(f"Restoring existing backup data from {fname}")
@@ -86,7 +87,7 @@ class SME_Solver:
         except:
             pass
 
-    def __residuals(
+    def _residuals(
         self, param, sme, spec, uncs, mask, segments="all", isJacobian=False, **_
     ):
         """
@@ -149,7 +150,7 @@ class SME_Solver:
             # Something went wrong (left the grid? Don't go there)
             # If returned value is not finite, the fit algorithm will not go there
             logger.debug(ae)
-            return np.inf
+            return np.full(spec.size, np.inf)
 
         segments = Synthesizer.check_segments(sme, segments)
 
@@ -163,10 +164,7 @@ class SME_Solver:
             tell = tell[mask] if mask is not None else tell
             synth = synth * tell
 
-        # TODO: update based on lineranges
-        uncs_linelist = 0
-
-        resid = (synth - spec) / (uncs + uncs_linelist)
+        resid = (synth - spec) / (uncs)
         resid = resid.ravel()
         resid = np.nan_to_num(resid, copy=False)
 
@@ -190,7 +188,9 @@ class SME_Solver:
 
         return resid
 
-    def __jacobian(self, param, *args, bounds=None, segments="all", **_):
+    def _jacobian(
+        self, param, *args, bounds=None, segments="all", step_sizes=None, **_
+    ):
         """
         Approximate the jacobian numerically
         The calculation is the same as "3-point"
@@ -201,12 +201,13 @@ class SME_Solver:
         # Here we replace the scipy version of approx_derivative with our own
         # The only difference being that we use Multiprocessing for the jacobian
         g = approx_derivative(
-            self.__residuals,
+            self._residuals,
             param,
             method="2-point",
             # This feels pretty bad, passing the latest synthetic spectrum
             # by reference as a parameter of the residuals function object
             f0=self._latest_residual,
+            abs_step=step_sizes,
             bounds=bounds,
             args=args,
             kwargs={"isJacobian": True, "segments": segments},
@@ -219,8 +220,6 @@ class SME_Solver:
                 "Final uncertainties will be inaccurate. "
                 "You might be running into the boundary of the grid"
             )
-
-        self._last_jac = np.copy(g)
 
         return g
 
@@ -243,7 +242,8 @@ class SME_Solver:
         Raises
         ------
         IOError
-            If the atmosphere file can't be read, allowed types are IDL savefiles (.sav), and .krz files
+            If the atmosphere file can't be read, allowed types
+            are IDL savefiles (.sav), and .krz files
 
         Returns
         -------
@@ -353,6 +353,31 @@ class SME_Solver:
         ]
         return scales
 
+    def get_step_sizes(self, parameter_names):
+        steps = {
+            "teff": 10,
+            "logg": 0.01,
+            "monh": 0.01,
+            "vmic": 0.01,
+            "vmac": 0.1,
+            "vsini": 0.05,
+            "vrad": 0.05,
+            "gam6": 0.02,
+            "ipres": 1000,
+        }
+        step_sizes = []
+        for param in parameter_names:
+            if param in steps.keys():
+                step_sizes += [steps[param]]
+            elif param.startswith("Abund"):
+                step_sizes += [0.01]
+            elif param.startswith("linelist"):
+                step_sizes += [0.02]
+            else:
+                step_sizes += [0.001]
+        step_sizes = np.asarray(step_sizes)
+        return step_sizes
+
     def get_default_values(self, sme):
         """Default parameter values for each name"""
         d = {"teff": 5778, "logg": 4.4, "monh": 0, "vmac": 1, "vmic": 1}
@@ -393,6 +418,8 @@ class SME_Solver:
         nparameters = len(freep_name)
         freep_unc = np.zeros(nparameters)
 
+        chi2 = np.sum(resid ** 2) / (resid.size - nparameters)
+
         # Cumulative distribution function of the normal distribution
         # cdf = lambda x, mu, sig: 0.5 * (1 + erf((x - mu) / (np.sqrt(2) * sig)))
         # std = lambda mu, sig: sig
@@ -413,7 +440,7 @@ class SME_Solver:
             return sigma
 
         for i, pname in enumerate(freep_name):
-            pder = deriv[:, i]
+            pder = deriv[:, i] / np.sqrt(chi2)
             idx = pder != 0
             # idx &= np.abs(resid) < 5 * unc / unc_median
 
@@ -509,17 +536,24 @@ class SME_Solver:
         sme.fitresults.chisq = (
             result.cost * 2 / (sme.spec.size - len(self.parameter_names))
         )
+        sme.fitresults.iterations = self.iteration
 
         sme.fitresults.fit_uncertainties = [np.nan for _ in self.parameter_names]
         for i in range(len(self.parameter_names)):
             # Errors based on covariance matrix
             sme.fitresults.fit_uncertainties[i] = sig[i]
 
-        mask = sme.mask_good[segments]
-        unc = sme.uncs[segments][mask].ravel()
-        sme.fitresults.uncertainties = self.estimate_uncertainties(
-            unc, result.fun, result.jac
-        )
+        try:
+            mask = sme.mask_good[segments]
+            unc = sme.uncs[segments]
+            unc = unc[mask] if mask is not None else unc
+            unc = unc.ravel()
+            sme.fitresults.uncertainties = self.estimate_uncertainties(
+                unc, result.fun, result.jac
+            )
+        except:
+            sme.fitresults.uncertainties = sme.fitresults.fit_uncertainties
+        # sme.fitresults.uncertainties = sme.fitresults.fit_uncertainties
 
         return sme
 
@@ -619,7 +653,8 @@ class SME_Solver:
         # Create appropiate bounds
         if bounds is None:
             bounds = self.get_bounds(sme)
-        scales = self.get_scale()
+        # scales = self.get_scale()
+        step_sizes = self.get_step_sizes(self.parameter_names)
         # Starting values
         p0 = self.get_default_values(sme)
         if np.any((p0 < bounds[0]) | (p0 > bounds[1])):
@@ -667,31 +702,40 @@ class SME_Solver:
             self.progressbar_jacobian = tqdm(desc="Jacobian", total=len(p0))
             with print_to_log():
                 res = least_squares(
-                    self.__residuals,
+                    self._residuals,
+                    jac=self._jacobian,
                     x0=p0,
-                    jac=self.__jacobian,
                     bounds=bounds,
-                    x_scale="jac",
-                    loss="soft_l1",
-                    method="trf",
+                    loss="linear",
+                    method="dogbox",
+                    # x_scale="jac",
+                    # These control the tolerance, for early termination
+                    # since each iteration is quite expensive
+                    xtol=sme.accxt,
+                    ftol=sme.accft,
                     verbose=2,
-                    max_nfev=sme.fitresults.maxiter,
                     args=(sme, spec, uncs, mask),
-                    kwargs={"bounds": bounds, "segments": segments},
+                    kwargs={
+                        "bounds": bounds,
+                        "segments": segments,
+                        "step_sizes": step_sizes,
+                    },
                 )
+
             self.progressbar.close()
             self.progressbar_jacobian.close()
-            # The returned jacobian is "scaled for robust loss function"
-            res.jac = self._last_jac
             for i, name in enumerate(self.parameter_names):
                 sme[name] = res.x[i]
             sme = self.update_fitresults(sme, res, segments)
             logger.debug("Reduced chi square: %.3f", sme.fitresults.chisq)
-            for name, value, unc in zip(
-                self.parameter_names, res.x, sme.fitresults.uncertainties
-            ):
-                logger.info("%s\t%.5f +- %.5g", name.ljust(10), value, unc)
-            logger.info("%s\t%s +- %s", "v_rad".ljust(10), sme.vrad, sme.vrad_unc)
+            try:
+                for name, value, unc in zip(
+                    self.parameter_names, res.x, sme.fitresults.uncertainties
+                ):
+                    logger.info("%s\t%.5f +- %.5g", name.ljust(10), value, unc)
+                logger.info("%s\t%s +- %s", "v_rad".ljust(10), sme.vrad, sme.vrad_unc)
+            except:
+                pass
         elif len(param_names) > 0:
             # This happens when vrad and/or cscale are given as parameters but nothing else
             # We could try to reuse the already calculated synthetic spectrum (if it already exists)

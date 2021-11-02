@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import logging
 import os.path
 import platform
@@ -51,9 +52,10 @@ class Parameters(Collection):
             self.__abund = value
         else:
             logger.warning(
-                "Abundance set using just a pattern, assuming that"
-                f"it has format {self.__abund.type}."
-                "If that is incorrect, try changing the format first."
+                "Abundance set using just a pattern, assuming that "
+                "it has format %s. "
+                "If that is incorrect, try changing the format first.",
+                self.__abund.type,
             )
             self.__abund = Abund(monh=self.monh, pattern=value, type=self.__abund.type)
 
@@ -104,7 +106,7 @@ class Version(Collection):
 class Fitresults(Collection):
     # fmt: off
     _fields = Collection._fields + [
-        ("maxiter", None, astype(int, allow_None=True), this, "int: maximum number of iterations in the solver"),
+        ("iterations", None, astype(int, allow_None=True), this, "int: maximum number of iterations in the solver"),
         ("chisq", None, this, this, "float: reduced chi-square of the solution"),
         ("parameters", None, this, this, "list: parameter names"),
         ("values", None, array(None, float), this, "array: best fit values for the fit parameters"),
@@ -174,6 +176,10 @@ class SME_Structure(Parameters):
             "float: minimum accuracy for linear spectrum interpolation vs. wavelength."),
         ("accrt", 1e-4, asfloat, this,
             "float: minimum accuracy for synthethized spectrum at wavelength grid points in sme.wint."),
+        ("accxt", 1e-4, asfloat, this,
+            "float: minimum accuracy of the parameters in the fitting procedure"),
+        ("accft", 1e-4, asfloat, this,
+            "float: minimum accuracy of the best fit cost"),
         ("iptype", None, lowercase(oneof(None, "gauss", "sinc", "table")), this, "str: instrumental broadening type"),
         ("ipres", 0, array(None, float), this, "float, array: Instrumental resolution for instrumental broadening"),
         ("ip_x", None, this, this, "array: Instrumental broadening table in x direction"),
@@ -252,7 +258,7 @@ class SME_Structure(Parameters):
         self.fitparameters = np.unique(fitparameters)
 
         self.fitresults = Fitresults(
-            maxiter=kwargs.get("maxiter", None),
+            iterations=kwargs.get("maxiter", None),
             chisq=kwargs.get("chisq", 0),
             uncertainties=kwargs.get("punc", None),
             covariance=kwargs.get("covar", None),

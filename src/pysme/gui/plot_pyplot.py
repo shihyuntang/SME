@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
@@ -124,7 +125,7 @@ class MaskPlot:
         self.section_select(min, max, mask_type)
 
     def section_select(self, min, max, mask_type):
-        print("%s %.3f - %.3f" % (mask_type, min, max))
+        print("{} {:.3f} - {:.3f}".format(mask_type, min, max))
         # find points
         idx = (self.wave[self.segment] <= max) & (self.wave[self.segment] >= min)
 

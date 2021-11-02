@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """ Minimum working example of an SME script
 """
 import datetime
@@ -641,21 +642,24 @@ def get_mask_from_neural_network(sme):
 if __name__ == "__main__":
     # Define the location of all your files
     # this will put everything into the example dir
-    target = "55_Cnc"
-    star = StellarDB().load(target)
+    target = "L_98-59"
+    sdb = StellarDB()
+    # sdb.auto_fill(target)
+    star = sdb.load(target)
     alias = [re.sub(r"[-_ ]", "", s).lower() for s in star["id"]]
 
     examples_dir = dirname(realpath(__file__))
     data_dir = join(examples_dir, "data")
 
     # Find the correct data file for this target
-    fname = "ADP.2014-09-26T16:51:14.897.fits"
-    in_file = os.path.join(data_dir, fname)
+    # fname = "ADP.2019-01-30T01:13:58.172.fits"
+    fname = "L_98-59_mask.sme"
+    in_file = os.path.join(examples_dir, "results", fname)
     # in_file = os.path.join(examples_dir, f"results/{target}_mask.sme")
 
     vald_file = os.path.join(examples_dir, f"data/hd22049.lin")
 
-    out_file = os.path.join(examples_dir, f"results/{target}.sme")
+    out_file = os.path.join(examples_dir, f"results/{target}_mask_out.sme")
     plot_file = os.path.join(examples_dir, f"results/{target}.html")
     date_string = datetime.datetime.now().isoformat().replace(":", ".")
     log_file = os.path.join(examples_dir, f"results/{target}_{date_string}.log")
@@ -663,93 +667,35 @@ if __name__ == "__main__":
     # Start the logging to the file
     util.start_logging(log_file)
 
-    # Load data from fits file
-    hdu = fits.open(in_file)
-    wave = hdu[1].data["WAVE"][0]
-    flux = hdu[1].data["FLUX"][0]
-
-    # Normalize using the maximum
-    # This is important for the residuals later
-    flux /= np.nanpercentile(flux, 95)
-
-    # Get first guess from upper envelope
-    # median = median_filter(flux, 10)
-    # mad = median_filter(np.abs(flux - median), 10)
-    # mask = np.abs(flux - median) < 5 * mad
-
-    _, high_idx = hl_envelopes_idx(flux, dmin=300, dmax=300)
-    cont = np.interp(wave, wave[high_idx], flux[high_idx])
-
-    # Then fit the envelope, by limiting the residuals
-    deg = 20
-    x = np.linspace(-1, 1, len(flux))
-    p0 = np.polyfit(x, cont, deg)
-    cont = np.polyval(p0, x)
-
-    flux /= cont
-
-    # Split the spectrum into arbitrary chunks
-    # (This makes the progress bar more useful)
-    nsteps = 10000
-    wave = [
-        wave[nsteps * i : nsteps * (i + 1)]
-        for i in range(int(np.ceil(len(wave) / nsteps)))
-    ]
-    flux = [
-        flux[nsteps * i : nsteps * (i + 1)]
-        for i in range(int(np.ceil(len(flux) / nsteps)))
-    ]
-
-    # # Get tellurics from Tapas
-    ftapas = join(examples_dir, "data/tapas.ipac")
-    dtapas = np.genfromtxt(ftapas, comments="\\", skip_header=36)
-    wtapas, ftapas = dtapas[:, 0], dtapas[:, 1]
-    # convert to angstrom
-    wtapas *= 10
-    # Normalize
-    ftapas -= ftapas.min()
-    ftapas /= ftapas.max()
-    wtapas = wtapas[::-1]
-    ftapas = ftapas[::-1]
-
-    # # plt.plot(wtapas, ftapas)
-    # # plt.show()
-
-    # Transform to earth restframe
-    rv = -83
-    c_light = const.c.to_value("km/s")
-    rv_factor = np.sqrt((1 - rv / c_light) / (1 + rv / c_light))
-    wave = [w * rv_factor for w in wave]
-
     # err = hdu[1].data["ERR"]
-    # sme = SME.SME_Structure.load(in_file)
-    sme = SME.SME_Structure(wave=wave, sob=flux)
+    sme = SME.SME_Structure.load(in_file)
     sme.mu = np.geomspace(0.1, 1, num=7)
 
-    sme.uncs = [
-        np.nan_to_num(1 / np.sqrt(np.abs(spec)) ** 2, nan=1) for spec in sme.spec
-    ]
-    # sme.mask = get_mask_from_neural_network(sme)
-    # sme.mask = sme.mask_values["line"]
-    # for i in range(sme.nseg):
-    #     sme.mask[i][sme.mask[i] == 0] = sme.mask_values["bad"]
+    # sme.uncs = [
+    #     np.nan_to_num(1 / np.sqrt(np.abs(spec)) ** 2, nan=1) for spec in sme.spec
+    # ]
+    # # sme.mask = get_mask_from_neural_network(sme)
+    # # sme.mask = sme.mask_values["line"]
+    # # for i in range(sme.nseg):
+    # #     sme.mask[i][sme.mask[i] == 0] = sme.mask_values["bad"]
 
-    # Add telluric data (without rayleigh scattering)
-    ftapas = [np.interp(w, wtapas, ftapas) for w in wave]
-    sme.telluric = Iliffe_vector(values=ftapas)
+    # # Add telluric data (without rayleigh scattering)
+    # ftapas = [np.interp(w, wtapas, ftapas) for w in wave]
+    # sme.telluric = Iliffe_vector(values=ftapas)
 
     # Get first guess from literature values
-    sme.teff = star["t_eff"].to_value("K") if "t_eff" in star else 6000
-    sme.logg = star["logg"].to_value(1) if "logg" in star else 4
-    monh = star["metallicity"].to_value(1) if "metallicity" in star else 0
+    sme.teff = 3429  # star["t_eff"].to_value("K") if "t_eff" in star else 6000
+    sme.logg = 4.9  # star["logg"].to_value(1) if "logg" in star else 4.9
+    monh = -0.5  # star["metallicity"].to_value(1) if "metallicity" in star else 0
     sme.abund = Abund(monh, "asplund2009")
-    sme.vmic = (
-        star["velocity_turbulence"].to_value("km/s")
-        if "velocity_turbulence" in star
-        else 3
-    )
+    # sme.vmic = (
+    #     star["velocity_turbulence"].to_value("km/s")
+    #     if "velocity_turbulence" in star
+    #     else 3
+    # )
     # Test this
-    sme.vmic = 0
+    sme.vmic = 1
+    sme.vmac = 2
     sme.vsini = 0
 
     # load the linelist
@@ -775,92 +721,64 @@ if __name__ == "__main__":
     sme.nlte.set_nlte("Si", "nlte_Si_ama51_pysme.grd")
     sme.nlte.set_nlte("Fe", "marcs2012_Fe2016.grd")
 
-    # Barycentric correction
-    obstime = Time(hdu[0].header["DATE-OBS"])
-    obs_long = hdu[0].header["HIERARCH ESO TEL GEOLON"]
-    obs_lat = hdu[0].header["HIERARCH ESO TEL GEOLAT"]
-    obs_alt = hdu[0].header["HIERARCH ESO TEL GEOELEV"]
-    observatory = coord.EarthLocation.from_geodetic(obs_long, obs_lat, height=obs_alt)
-    sky_location = star["coordinates"]
-    sky_location.obstime = obstime
-    sky_location.location = observatory
-    correction = sky_location.radial_velocity_correction().to_value("km/s")
+    # # Barycentric correction
+    # obstime = Time(hdu[0].header["DATE-OBS"])
+    # obs_long = hdu[0].header["HIERARCH ESO TEL GEOLON"]
+    # obs_lat = hdu[0].header["HIERARCH ESO TEL GEOLAT"]
+    # obs_alt = hdu[0].header["HIERARCH ESO TEL GEOELEV"]
+    # observatory = coord.EarthLocation.from_geodetic(obs_long, obs_lat, height=obs_alt)
+    # sky_location = star["coordinates"]
+    # sky_location.obstime = obstime
+    # sky_location.location = observatory
+    # correction = sky_location.radial_velocity_correction().to_value("km/s")
 
     # Set radial velocity and continuum settings
+    # Set RV and Continuum flags
+    sme.vrad_flag = "fix"
+    sme.cscale_flag = 3
+    sme.cscale_type = "match"
 
     # sme.vrad = (
     #     star["radial_velocity"].to_value("km/s") if "radial_velocity" in star else 0
     # )
     # sme.vrad -= correction
     # checked manually
-    sme.vrad = 26.3
+    sme.vrad = -14
 
     # Define any fitparameters you want
     # For abundances use: 'abund {El}', where El is the element (e.g. 'abund Fe')
     # For linelist use: 'linelist {Nr} {p}', where Nr is the number in the
     # linelist and p is the line parameter (e.g. 'linelist 17 gflog')
-    fitparameters = ["teff", "logg", "monh", "vmic"]
+    fitparameters = [
+        ["monh"],
+        ["teff"],
+        ["teff", "logg", "monh", "vmic", "vmac", "vsini"],
+    ]
 
     # Restrict the linelist to relevant lines
     # for this segment
-    s = 18
-    wmin, wmax = sme.wran[s]
-    sme.linelist = sme.linelist.trim(wmin, wmax, rvel=100)
+    # rvel = 100
+    # wmin, wmax = sme.wran[6]
+    # wmin *= 1 - rvel / 3e5
+    # wmax *= 1 + rvel / 3e5
+    # sme.linelist = sme.linelist.trim(wmin, wmax)
 
-    # Set radial velocity and continuum settings
-    cscale = {}
-    x = sme.wave[s] - sme.wave[s][0]
+    # Start SME solver
+    # sme = synthesize_spectrum(sme)
+    # sme.cscale_flag = "fix"
 
-    sme.vrad_flag = "each"
-    sme.cscale_type = "match"
-    sme.cscale_flag = "cubic"
-    sme = synthesize_spectrum(sme, segments=[s])
-    cscale["match+cubic"] = np.polyval(sme.cscale[s], x)
+    # sme.save(out_file)
+    # save_as_idl(sme, "l_98_59.inp")
 
-    sme.vrad_flag = "each"
-    sme.cscale_type = "spline"
-    sme.cscale_flag = 3
-    sme.cscale = None
-    sme.vrad = None
-    sme = synthesize_spectrum(sme, segments=[s])
-    cscale["spline+3"] = np.copy(sme.cscale[s])
+    for fp in fitparameters:
+        sme = solve(sme, fp, segments=np.arange(2, 31))
+        fname = f"{target}_mask_new_out_{'_'.join(fp)}"
+        out_file = os.path.join(examples_dir, "results", fname + ".sme")
+        sme.save(out_file)
 
-    sme.vrad_flag = "each"
-    sme.cscale_flag = "none"
-    sme = synthesize_spectrum(sme, segments=[s])
-
-    plot_file = join(dirname(__file__), "images/cont_55cnc.png")
-    plt.plot(sme.wave[s], sme.spec[s], label="Observation")
-    plt.plot(sme.wave[s], sme.synth[s], label="Synthetic")
-
-    for k, cs in cscale.items():
-        plt.plot(sme.wave[s], cs, label=k)
-    plt.legend()
-    plt.xlabel("Wavelength [Å]")
-    plt.ylabel("Flux [A.U.]")
-    # plt.xlim(4023, 4031)
-    # plt.ylim(0, 1.2)
-
-    plt.savefig(plot_file)
-    plt.show()
-    plt.clf()
-
-    plot_file = join(dirname(__file__), "images/cont_55cnc_2.png")
-    plt.plot(sme.wave[s], sme.spec[s], label="Observation")
-    plt.plot(sme.wave[s], sme.synth[s], label="Synthetic")
-
-    for k, cs in cscale.items():
-        plt.plot(sme.wave[s], cs * sme.synth[s], label=k)
-    plt.legend()
-    plt.xlabel("Wavelength [Å]")
-    plt.ylabel("Flux [A.U.]")
-    # plt.xlim(4023, 4031)
-    # plt.ylim(0, 1.2)
-
-    plt.savefig(plot_file)
-    plt.show()
-
-    # sme = solve(sme, fitparameters, segments=np.arange(2, 31))
+        plot_file = os.path.join(examples_dir, "results", fname + ".html")
+        fig = plot_plotly.FinalPlot(sme)
+        fig.save(filename=plot_file)
 
     print(sme.citation())
 
@@ -868,5 +786,7 @@ if __name__ == "__main__":
     sme.save(out_file)
 
     # Plot results
+    sme.synth *= sme.telluric
     fig = plot_plotly.FinalPlot(sme)
     fig.save(filename=plot_file)
+    print(f"Finished: {target}")

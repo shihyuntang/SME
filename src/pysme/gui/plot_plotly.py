@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Provide Plotting utility for Jupyter Notebook using Plot.ly
 Can also be used just for Plot.ly, which will then generated html files
