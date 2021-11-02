@@ -9,5 +9,5 @@ emcee==3.1.1
 pybtex==0.24.0
 flex-format==0.2.15
 # Development Requirements
-pre-commit=2.15
+pre-commit==2.15
 sphinx==4.2
