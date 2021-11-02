@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """ Minimum working example of an SME script
 """
 import datetime
@@ -20,7 +21,6 @@ from scipy.linalg import lstsq, solve_banded
 from scipy.ndimage.filters import gaussian_filter1d, median_filter
 from scipy.optimize import least_squares, minimize
 from scipy.optimize.minpack import curve_fit
-from scipy.special import owens_t
 from scipy.stats import exponnorm, gennorm, norm, skewnorm
 from tqdm import tqdm
 
@@ -132,7 +132,7 @@ if __name__ == "__main__":
     os.makedirs(image_dir, exist_ok=True)
 
     in_file = os.path.join(
-        examples_dir, f"results/Eps_Eri_monh_teff_logg_vmic_vmac_vsini.sme"
+        examples_dir, f"results/HN_Peg_monh_teff_logg_vmic_vmac_vsini.sme"
     )
     sme = SME.SME_Structure.load(in_file)
 
@@ -144,23 +144,49 @@ if __name__ == "__main__":
     # unc = np.sqrt(s)
     # unc = np.full(resid.size, 1)
 
+    values = sme.fitresults.values
+    residuals = sme.fitresults.residuals
+    derivative = sme.fitresults.derivative
+
+    # For monh
+    ratio = np.abs(derivative / values)
+    median = np.median(ratio, axis=0)
+    idx_param = (ratio > median)[:, 0]
+    chi2_param = np.nanmean((residuals[idx_param] / unc[idx_param]) ** 2)
+
+    limit = np.median(np.abs(derivative / values))
+    chi2 = np.sum(residuals ** 2) / (residuals.size - len(values))
+    # unc *= np.sqrt(chi2)
+
+    jac = derivative / np.sqrt(chi2)
+    _, s, VT = np.linalg.svd(jac, full_matrices=False)
+    threshold = np.finfo(float).eps * max(jac.shape) * s[0]
+    s = s[s > threshold]
+    VT = VT[: s.size]
+    pcov = np.dot(VT.T / s ** 2, VT)
+    uncertainties = np.sqrt(np.diag(pcov))
+
     for i, param in enumerate(sme.fitresults.parameters):
-        pder = sme.fitresults.derivative[:, i]
+        pder = sme.fitresults.derivative[:, i] / np.sqrt(chi2)
+        pval = sme.fitresults.values[i]
 
         idx = pder != 0
         # The original rule used in the paper
-        # idx &= np.abs(pder) > np.median(np.abs(pder))
+        # idx &= np.abs(pder) < np.percentile(np.abs(pder), 84)
+        # idx &= np.abs(pder) > np.percentile(np.abs(pder), 16)
+        # idx &= np.abs(residuals) < 5 * np.std(residuals)
+
         # idx &= np.abs(resid) < 5 * unc
+        # idx &= np.abs(pder) < limit * np.abs(pval)
         # idx &= np.abs(pder) < 5 * np.median(np.abs(resid))
         # Fit which cutoff makes the curve most gaussian
-        res = minimize(fit, [80], method="Nelder-Mead")
-        plimit = res.x[0]
-        gradlim = np.nanpercentile(np.abs(pder), plimit)
-        idx &= np.abs(pder) < gradlim
+        # res = minimize(fit, [80], method="Nelder-Mead")
+        # plimit = res.x[0]
+        # gradlim = np.nanpercentile(np.abs(pder), plimit)
+        # idx &= np.abs(pder) < gradlim
         # Only use the center part of ch_x
-        # This does not affect the results
         # ch_x = resid / pder
-        # plimit = np.nanpercentile(ch_x, [2.5, 97.5])
+        # plimit = np.nanpercentile(ch_x, [45, 55])
         # idx &= (ch_x > plimit[0]) & (ch_x < plimit[1])
 
         # Only use derivatives around the center
@@ -171,14 +197,14 @@ if __name__ == "__main__":
         # idx &= np.abs(pder) < med + 20 * mad
 
         percentage_points = np.count_nonzero(idx) / idx.size * 100
-        print(f"Using {percentage_points:.2}% points for the derivative")
+        print(f"Using {percentage_points:.2f}% points for the derivative")
 
         # Sort pixels according to the change of the i
         # parameter needed to match the observations
         idx_sort = np.argsort(resid[idx] / pder[idx])
         ch_x = resid[idx][idx_sort] / pder[idx][idx_sort]
         # Weights of the individual pixels also sorted
-        ch_y = np.abs(pder[idx][idx_sort]) / unc[idx][idx_sort]
+        ch_y = np.abs(pder[idx][idx_sort])  # / unc[idx][idx_sort]
         # Cumulative weights
         ch_y = np.cumsum(ch_y)
         # Normalized cumulative weights
@@ -216,7 +242,7 @@ if __name__ == "__main__":
         plt.hlines([0.16, 0.84], r[0], r[1], linestyles=["dashdot"])
         plt.vlines(interval, -0.1, 1.1, linestyles=["dashdot"])
 
-        plt.xlabel(f"$\Delta${param}")
+        plt.xlabel(fr"$\Delta${param}")
         plt.ylabel("cumulative probability")
         plt.title(f"Cumulative Probability: {param}")
         plt.xlim(r[0], r[1])
@@ -248,7 +274,7 @@ if __name__ == "__main__":
         plt.vlines(b[:-1][where][0], 0, h[where][0], linestyles="dashdot")
         plt.vlines(b[:-1][where][-1], 0, h[where][-1], linestyles="dashdot")
 
-        plt.xlabel(f"$\Delta${param}")
+        plt.xlabel(fr"$\Delta${param}")
         plt.ylabel("probability")
         plt.xlim(r)
         plt.title(f"Probability Density: {param}")

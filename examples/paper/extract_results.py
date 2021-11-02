@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import json
 from os.path import dirname, join
 
@@ -30,8 +31,8 @@ for target in targets:
     for param in ["teff", "logg", "monh", "vmic", "vmac", "vsini"]:
         idx = [i for i, p in enumerate(sme.fitresults.parameters) if p == param][0]
         data[param] = sme.fitresults.values[idx]
-        data[f"unc_{param}"] = sme.fitresults.uncertainties[idx]
-        # data[f"unc_{param}"] = sme.fitresults.fit_uncertainties[idx]
+        # data[f"unc_{param}"] = sme.fitresults.uncertainties[idx]
+        data[f"unc_{param}"] = sme.fitresults.fit_uncertainties[idx]
 
     with open(jname, "w") as f:
         json.dump(data, f)

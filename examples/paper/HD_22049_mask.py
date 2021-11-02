@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """ Minimum working example of an SME script
 """
 import datetime
