@@ -187,7 +187,9 @@ class SME_Solver:
 
         return resid
 
-    def _jacobian(self, param, *args, bounds=None, segments="all", **_):
+    def _jacobian(
+        self, param, *args, bounds=None, segments="all", step_sizes=None, **_
+    ):
         """
         Approximate the jacobian numerically
         The calculation is the same as "3-point"
@@ -200,10 +202,11 @@ class SME_Solver:
         g = approx_derivative(
             self._residuals,
             param,
-            method="3-point",
+            method="2-point",
             # This feels pretty bad, passing the latest synthetic spectrum
             # by reference as a parameter of the residuals function object
             f0=self._latest_residual,
+            abs_step=step_sizes,
             bounds=bounds,
             args=args,
             kwargs={"isJacobian": True, "segments": segments},
@@ -349,6 +352,31 @@ class SME_Solver:
         ]
         return scales
 
+    def get_step_sizes(self, parameter_names):
+        steps = {
+            "teff": 10,
+            "logg": 0.01,
+            "monh": 0.01,
+            "vmic": 0.01,
+            "vmac": 0.1,
+            "vsini": 0.05,
+            "vrad": 0.05,
+            "gam6": 0.02,
+            "ipres": 1000,
+        }
+        step_sizes = []
+        for param in parameter_names:
+            if param in steps.keys():
+                step_sizes += [steps[param]]
+            elif param.startswith("Abund"):
+                step_sizes += [0.01]
+            elif param.startswith("linelist"):
+                step_sizes += [0.02]
+            else:
+                step_sizes += [0.001]
+        step_sizes = np.asarray(step_sizes)
+        return step_sizes
+
     def get_default_values(self, sme):
         """Default parameter values for each name"""
         d = {"teff": 5778, "logg": 4.4, "monh": 0, "vmac": 1, "vmic": 1}
@@ -389,6 +417,8 @@ class SME_Solver:
         nparameters = len(freep_name)
         freep_unc = np.zeros(nparameters)
 
+        chi2 = np.sum(resid ** 2) / (resid.size - nparameters)
+
         # Cumulative distribution function of the normal distribution
         # cdf = lambda x, mu, sig: 0.5 * (1 + erf((x - mu) / (np.sqrt(2) * sig)))
         # std = lambda mu, sig: sig
@@ -409,7 +439,7 @@ class SME_Solver:
             return sigma
 
         for i, pname in enumerate(freep_name):
-            pder = deriv[:, i]
+            pder = deriv[:, i] / np.sqrt(chi2)
             idx = pder != 0
             # idx &= np.abs(resid) < 5 * unc / unc_median
 
@@ -505,6 +535,7 @@ class SME_Solver:
         sme.fitresults.chisq = (
             result.cost * 2 / (sme.spec.size - len(self.parameter_names))
         )
+        sme.fitresults.iterations = self.iteration
 
         sme.fitresults.fit_uncertainties = [np.nan for _ in self.parameter_names]
         for i in range(len(self.parameter_names)):
@@ -621,7 +652,8 @@ class SME_Solver:
         # Create appropiate bounds
         if bounds is None:
             bounds = self.get_bounds(sme)
-        scales = self.get_scale()
+        # scales = self.get_scale()
+        step_sizes = self.get_step_sizes(self.parameter_names)
         # Starting values
         p0 = self.get_default_values(sme)
         if np.any((p0 < bounds[0]) | (p0 > bounds[1])):
@@ -674,12 +706,19 @@ class SME_Solver:
                     x0=p0,
                     bounds=bounds,
                     loss="linear",
-                    method="trf",
-                    x_scale="jac",
-                    xtol=np.finfo(float).eps * 10,
+                    method="dogbox",
+                    # x_scale="jac",
+                    # These control the tolerance, for early termination
+                    # since each iteration is quite expensive
+                    xtol=sme.accxt,
+                    ftol=sme.accft,
                     verbose=2,
                     args=(sme, spec, uncs, mask),
-                    kwargs={"bounds": bounds, "segments": segments},
+                    kwargs={
+                        "bounds": bounds,
+                        "segments": segments,
+                        "step_sizes": step_sizes,
+                    },
                 )
 
             self.progressbar.close()
