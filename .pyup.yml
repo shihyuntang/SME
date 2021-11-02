@@ -5,4 +5,3 @@ schedule: every month
 
 requirements:
   - requirements.txt
-  - test-requirements.txt
