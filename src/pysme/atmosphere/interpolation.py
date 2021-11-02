@@ -126,7 +126,8 @@ class AtmosphereInterpolator:
         the mass column density or optical depth scale.
 
         How it works:
-        1) The second atmosphere is fitted onto the first, individually for
+
+        1. The second atmosphere is fitted onto the first, individually for
         each of the four atmospheric quantitites: T, xne, xna, rho.
         The fitting uses a linear shift in both the (log) depth parameter and
         in the (log) atmospheric quantity. For T, the midpoint of the two
@@ -134,9 +135,9 @@ class AtmosphereInterpolator:
         is used as initial guess for the other quantities. A penalty function
         is applied to each fit, to avoid excessively large shifts on the
         depth scale.
-        2) The mean of the horizontal shift in each parameter is used to
+        2. The mean of the horizontal shift in each parameter is used to
         construct the common output depth scale.
-        3) Each atmospheric quantity is interpolated after shifting the two
+        3. Each atmospheric quantity is interpolated after shifting the two
         corner models by the amount determined in step 1), rescaled by the
         interpolation fraction (frac).
 
@@ -176,51 +177,51 @@ class AtmosphereInterpolator:
             .xna  (vector[ndep]) atomic number density (1/cm^3)
             .rho  (vector[ndep]) mass density (g/cm^3)
         """
-        """
-        History
-        -------
-        2004-Apr-15 Valenti
-            Initial coding.
-        MB
-            interpolation on TAU scale
-        2012-Oct-30 TN
-            Rewritten to use either column mass (RHOX) or
-            reference optical depth (TAU) as vertical scale. Shift-interpolation
-            algorithms have been improved for stability in cool dwarfs (<=3500 K).
-            The reference optical depth scale is preferred in terms of interpolation
-            accuracy across most of parameter space, with significant improvement for
-            both cool models (where depth vs temperature is rather flat) and hot
-            models (where depth vs temperature exhibits steep transitions).
-            Column mass depth is used by default for backward compatibility.
-        2013-May-17 Valenti
-            Use frac to weight the two shifted depth scales,
-            rather than simply averaging them. This change fixes discontinuities
-            when crossing grid nodes.
-        2013-Sep-10 Valenti
-            Now returns an atmosphere structure instead of a
-            [5,NDEP] atmosphere array. This was necessary to support interpolation
-            using one variable (e.g., TAU) and radiative transfer using a different
-            variable (e.g. RHOX). The atmosphere array could only store one depth
-            variable, meaning the radiative transfer variable had to be the same
-            as the interpolation variable. Returns atmo.RHOX if available and also
-            atmo.TAU if available. Since both depth variables are returned, if
-            available, this routine no longer needs to know which depth variable
-            will be used for radiative transfer. Only the interpolation variable
-            is important. Thus, the interpvar= keyword argument replaces the
-            type= keyword argument. Very similar code blocks for each atmospheric
-            quantity have been unified into a single code block inside a loop over
-            atmospheric quantities.
-        2013-Sep-21 Valenti
-            Fixed an indexing bug that affected the output depth
-            scale but not other atmosphere vectors. Itop clipping was not being
-            applied to the depth scale ('RHOX' or 'TAU'). Bug fixed by adding
-            interpvar to vtags. Now atmospheres interpolated with interp_atmo_grid
-            match output from revision 398. Revisions back to 399 were development
-            only, so no users should be affected.
-        2014-Mar-05 Piskunov
-            Replicated the removal of the bad top layers in models
-            for interpvar eq 'TAU'
-        """
+        # """
+        # History
+        # -------
+        # 2004-Apr-15 Valenti
+        #     Initial coding.
+        # MB
+        #     interpolation on TAU scale
+        # 2012-Oct-30 TN
+        #     Rewritten to use either column mass (RHOX) or
+        #     reference optical depth (TAU) as vertical scale. Shift-interpolation
+        #     algorithms have been improved for stability in cool dwarfs (<=3500 K).
+        #     The reference optical depth scale is preferred in terms of interpolation
+        #     accuracy across most of parameter space, with significant improvement for
+        #     both cool models (where depth vs temperature is rather flat) and hot
+        #     models (where depth vs temperature exhibits steep transitions).
+        #     Column mass depth is used by default for backward compatibility.
+        # 2013-May-17 Valenti
+        #     Use frac to weight the two shifted depth scales,
+        #     rather than simply averaging them. This change fixes discontinuities
+        #     when crossing grid nodes.
+        # 2013-Sep-10 Valenti
+        #     Now returns an atmosphere structure instead of a
+        #     [5,NDEP] atmosphere array. This was necessary to support interpolation
+        #     using one variable (e.g., TAU) and radiative transfer using a different
+        #     variable (e.g. RHOX). The atmosphere array could only store one depth
+        #     variable, meaning the radiative transfer variable had to be the same
+        #     as the interpolation variable. Returns atmo.RHOX if available and also
+        #     atmo.TAU if available. Since both depth variables are returned, if
+        #     available, this routine no longer needs to know which depth variable
+        #     will be used for radiative transfer. Only the interpolation variable
+        #     is important. Thus, the interpvar= keyword argument replaces the
+        #     type= keyword argument. Very similar code blocks for each atmospheric
+        #     quantity have been unified into a single code block inside a loop over
+        #     atmospheric quantities.
+        # 2013-Sep-21 Valenti
+        #     Fixed an indexing bug that affected the output depth
+        #     scale but not other atmosphere vectors. Itop clipping was not being
+        #     applied to the depth scale ('RHOX' or 'TAU'). Bug fixed by adding
+        #     interpvar to vtags. Now atmospheres interpolated with interp_atmo_grid
+        #     match output from revision 398. Revisions back to 399 were development
+        #     only, so no users should be affected.
+        # 2014-Mar-05 Piskunov
+        #     Replicated the removal of the bad top layers in models
+        #     for interpvar eq 'TAU'
+        # """
 
         # Internal program parameters.
         min_drhox = min_dtau = 0.01  # minimum fractional step in RHOX
@@ -455,10 +456,12 @@ class AtmosphereInterpolator:
     def determine_depth_scale(self, depth, atmo_grid):
         """
         Determine ATMO.DEPTH radiative transfer depth variable. Order of precedence:
-            1. Value of ATMO_IN.DEPTH, if it exists and is set
-            2. Value of ATMO_GRID[0].DEPTH, if it exists and is set
-            3. 'RHOX', if ATMO_GRID.RHOX exists (preferred over 'TAU' for depth)
-            4. 'TAU', if ATMO_GRID.TAU exists
+
+        1. Value of ATMO_IN.DEPTH, if it exists and is set
+        2. Value of ATMO_GRID[0].DEPTH, if it exists and is set
+        3. 'RHOX', if ATMO_GRID.RHOX exists (preferred over 'TAU' for depth)
+        4. 'TAU', if ATMO_GRID.TAU exists
+
         Check that INTERP is valid and the corresponding field exists in ATMO.
 
         Parameters
@@ -504,10 +507,12 @@ class AtmosphereInterpolator:
     def determine_interpolation_scale(self, interp, atmo_grid):
         """
         Determine ATMO.INTERP interpolation variable. Order of precedence:
-            1. Value of ATMO_IN.INTERP, if it exists and is set
-            2. Value of ATMO_GRID[0].INTERP, if it exists and is set
-            3. 'TAU', if ATMO_GRID.TAU exists (preferred over 'RHOX' for interpolation)
-            4. 'RHOX', if ATMO_GRID.RHOX exists
+
+        1. Value of ATMO_IN.INTERP, if it exists and is set
+        2. Value of ATMO_GRID[0].INTERP, if it exists and is set
+        3. 'TAU', if ATMO_GRID.TAU exists (preferred over 'RHOX' for interpolation)
+        4. 'RHOX', if ATMO_GRID.RHOX exists
+
         Check that INTERP is valid and the corresponding field exists in ATMO.
 
         Parameters
@@ -829,7 +834,8 @@ class AtmosphereInterpolator:
         atmo_grid : AtmosphereGrid
             complete atmosphere grid
         icor : array_like
-            indices for the corner models that were interpolated from the atmosphere grid
+            indices for the corner models that were interpolated from the
+            atmosphere grid
 
         Returns
         -------
