@@ -184,7 +184,7 @@ class Synthesizer:
         return smod, cmod
 
     @staticmethod
-    def integrate_flux(mu, inten, deltav, vsini, vrt, osamp=1):
+    def integrate_flux(mu, inten, deltav, vsini, vrt, osamp=None):
         """
         Produces a flux profile by integrating intensity profiles (sampled
         at various mu angles) over the visible stellar surface.
@@ -279,38 +279,48 @@ class Synthesizer:
             vsini = vsini[0]
         if np.size(vrt) > 1:
             vrt = vrt[0]
-
-        # Determine oversampling factor.
-        os = round(np.clip(osamp, 1, None))  # force integral value > 1
+        nmu = np.size(mu)  # number of radii
 
         # Convert input MU to projected radii, R, of annuli for a star of unit radius
         #  (which is just sine, rather than cosine, of the angle between the outward
         #  normal and the line of sight).
         rmu = np.sqrt(1 - mu ** 2)  # use simple trig identity
+        if nmu > 1:
+            r = np.sqrt(
+                0.5 * (rmu[:-1] ** 2 + rmu[1:] ** 2)
+            )  # area midpoints between rmu
+            r = np.concatenate(([0], r, [1]))
+        else:
+            r = np.array([0, 1])
+
+        # Determine oversampling factor.
+        if osamp is None:
+            if vsini == 0:
+                os = 1
+            else:
+                os = deltav / (vsini * r)
+                os = os[np.isfinite(os)].max()
+                os = int(np.ceil(os))
+        else:
+            # force integral value > 1
+            os = round(np.clip(osamp, 1, None))
 
         # Sort the projected radii and corresponding intensity spectra into ascending
         #  order (i.e. from disk center to the limb), which is equivalent to sorting
         #  MU in descending order.
         isort = np.argsort(rmu)
         rmu = rmu[isort]  # reorder projected radii
-        nmu = np.size(mu)  # number of radii
-        if nmu == 1:
-            if vsini != 0:
-                logger.warning(
-                    "Vsini is non-zero, but only one projected radius (mu value) is set. No rotational broadening will be performed."
-                )
-                vsini = 0  # ignore vsini if only 1 mu
+        if nmu == 1 and vsini != 0:
+            logger.warning(
+                "Vsini is non-zero, but only one projected radius (mu value) is set. No rotational broadening will be performed."
+            )
+            vsini = 0  # ignore vsini if only 1 mu
 
         # Calculate projected radii for boundaries of disk integration annuli.  The n+1
         # boundaries are selected such that r(i+1) exactly bisects the area between
         # rmu(i) and rmu(i+1). The in!=rmost boundary, r(0) is set to 0 (disk center)
         # and the outermost boundary, r(nmu) is set to 1 (limb).
-        if nmu > 1 or vsini != 0:  # really want disk integration
-            r = np.sqrt(
-                0.5 * (rmu[:-1] ** 2 + rmu[1:] ** 2)
-            )  # area midpoints between rmu
-            r = np.concatenate(([0], r, [1]))
-
+        if nmu > 1:  # really want disk integration
             # Calculate integration weights for each disk integration annulus.  The weight
             # is just given by the relative area of each annulus, normalized such that
             # the sum of all weights is unity.  Weights for limb darkening are included
@@ -341,10 +351,12 @@ class Synthesizer:
             ypix = inten[isort[imu]]  # extract intensity profile
             if os == 1:
                 # just copy (use) original profile
-                yfine = ypix
+                yfine = np.copy(ypix)
             else:
                 # spline onto fine wavelength scale
-                yfine = interp1d(xpix, ypix, kind="cubic")(xfine)
+                yfine = interp1d(xpix, ypix, kind="cubic", fill_value="extrapolate")(
+                    xfine
+                )
 
             # Construct the convolution kernel which describes the distribution of
             # rotational velocities present in the current annulus. The distribution has
@@ -376,11 +388,8 @@ class Synthesizer:
 
                 # Convolve the intensity profile with the rotational velocity kernel for this
                 # annulus. Pad each end of the profile with as many points as are in the
-                # convolution kernel. This reduces Fourier ringing. The convolution may also
-                # be do!= with a routi!= called "externally" from IDL, which efficiently
-                # shifts and adds.
-                if nrk > 3:
-                    yfine = convolve(yfine, rkern, mode="nearest")
+                # convolution kernel. This reduces Fourier ringing.
+                yfine = convolve(yfine, rkern, mode="nearest")
 
             # Calculate projected sigma for radial and tangential velocity distributions.
             muval = mu[isort[imu]]  # current value of mu
