@@ -367,11 +367,11 @@ class Grid:
         else:
             self.citation_info = None
             if self.selection != "levels":
-                logger.warning(
-                    "NLTE grid file version %s only supports level selection, not %s",
-                    self.version,
-                    self.selection,
-                )
+                # logger.warning(
+                #     "NLTE grid file version %s only supports level selection, not %s",
+                #     self.version,
+                #     self.selection,
+                # )
                 self.selection = "levels"
 
         if self.selection == "levels":
@@ -877,7 +877,7 @@ class NLTE(Collection):
             "list: elements for which nlte calculations will be performed"),
         ("grids", {}, astype(dict), this,
             "dict: nlte grid datafiles for each element"),
-        ("subgrid_size", [2, 2, 2, 2], array(4, int), this,
+        ("subgrid_size", [3, 3, 3, 3], array(4, int), this,
             "array of shape (4,): defines size of nlte grid cache."
             "Each entry is for one parameter abund, teff, logg, monh"),
         ("flags", None, array(None, np.bool_), this,
