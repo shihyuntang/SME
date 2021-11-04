@@ -975,9 +975,13 @@ def match_rv_continuum(sme, segments, x_syn, y_syn):
         for s in segments:
             # We only use the continuum mask for the continuum fit,
             # we need the lines for the radial velocity
-            vrad[s] = radial_velocity(sme, x_syn[s], y_syn[s], s, cscale[s])
+            rv_bounds = (-sme.vrad_limit, sme.vrad_limit)
+            vrad[s] = radial_velocity(
+                sme, x_syn[s], y_syn[s], s, cscale[s], rv_bounds=rv_bounds
+            )
     elif sme.vrad_flag == "whole":
         s = segments
+        rv_bounds = (-sme.vrad_limit, sme.vrad_limit)
         vrad[s] = radial_velocity(
             sme,
             [x_syn[s] for s in s],
@@ -985,6 +989,7 @@ def match_rv_continuum(sme, segments, x_syn, y_syn):
             s,
             cscale[s],
             whole=True,
+            rv_bounds=rv_bounds,
         )
     else:
         raise ValueError

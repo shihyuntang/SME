@@ -142,6 +142,7 @@ class SME_Structure(Parameters):
                * "whole": Determine one radial velocity for the whole spectrum
             """),
         ("vrad", 0, array(None, float), this, "array of size (nseg,): radial velocity of each segment in km/s"),
+        ("vrad_limit", 100, asfloat, this, "float: radial velocity limit in km/s"),
         ("cscale_flag", "none", lowercase(oneof("none", "fix", "constant", "linear", "quadratic", "cubic", "quintic", "quantic", astype=int)), this,
             """str: Flag that describes how to correct for the continuum
 
