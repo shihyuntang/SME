@@ -804,10 +804,10 @@ class Grid:
             self._points[3][imonh : imonh + 2],
         )
         npoints = (
-            points[0].size,
-            points[1].size,
-            points[2].size,
-            points[3].size,
+            max(points[0].size, 1),
+            max(points[1].size, 1),
+            max(points[2].size, 1),
+            max(points[3].size, 1),
         )
 
         grid = np.empty((*npoints, ntarget, ndepths), float)
