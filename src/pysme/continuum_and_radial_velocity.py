@@ -25,6 +25,7 @@ c_light = speed_of_light * 1e-3  # speed of light in km/s
 
 class ContinuumNormalizationAbstract:
     def __init__(self):
+        self.cscale_type = "none"
         pass
 
     def __call__(self, sme, x_syn, y_syn, segments, rvel=0):
@@ -35,6 +36,10 @@ class ContinuumNormalizationAbstract:
 
 
 class ContinuumNormalizationMask(ContinuumNormalizationAbstract):
+    def __init__(self):
+        super().__init__()
+        self.cscale_tyoe = "mask"
+
     def __call__(self, sme, x_syn, y_syn, segments, rvel=0):
         """
         Fit a polynomial to the spectrum points marked as continuum
@@ -173,6 +178,10 @@ class ContinuumNormalizationMask(ContinuumNormalizationAbstract):
 
 
 class ContinuumNormalizationMCMC(ContinuumNormalizationAbstract):
+    def __init__(self):
+        super().__init__()
+        self.cscale_tyoe = "mcmc"
+
     def __call__(self, sme, x_syn, y_syn, segments, rvel=0):
         """
         Fits both radial velocity and continuum level simultaneously
@@ -489,7 +498,12 @@ class ContinuumNormalizationMCMC(ContinuumNormalizationAbstract):
 class ContinuumNormalizationMatch(ContinuumNormalizationAbstract):
     def __init__(self):
         super().__init__()
+        self.cscale_type = "match"
         self.mask = False
+        # We over exaggerate the weights on the top of the spectrum
+        # this works well to determine the continuum
+        # assuming that there is something there
+        self.top_factor = 10000
 
     def __call__(self, sme, x_syn, y_syn, segments, rvel=0):
         """
@@ -542,7 +556,11 @@ class ContinuumNormalizationMatch(ContinuumNormalizationAbstract):
             yp *= tell
 
         # TODO: what should this be?
-        u = u + 10000 * np.nanmedian(u) * (np.nanpercentile(y, 95) - y) ** 2
+        if self.top_factor != 0:
+            u = (
+                u
+                + self.top_factor * np.nanmedian(u) * (np.nanpercentile(y, 95) - y) ** 2
+            )
 
         deg = sme.cscale_degree
         p0 = sme.cscale[segments]
@@ -559,15 +577,32 @@ class ContinuumNormalizationMatch(ContinuumNormalizationAbstract):
         return popt[None, :]
 
 
+class ContinuumNormalizationMatchLines(ContinuumNormalizationMatch):
+    def __init__(self):
+        super().__init__()
+        self.cscale_type = "matchlines"
+        self.top_factor = 0
+
+
 class ContinuumNormalizationMatchMask(ContinuumNormalizationMatch):
     def __init__(self):
         super().__init__()
+        self.cscale_type = "match+mask"
+        self.mask = True
+
+
+class ContinuumNormalizationMatchLinesMask(ContinuumNormalizationMatch):
+    def __init__(self):
+        super().__init__()
+        self.cscale_type = "matchlines+mask"
+        self.top_factor = 0
         self.mask = True
 
 
 class ContinuumNormalizationSpline(ContinuumNormalizationAbstract):
     def __init__(self):
         super().__init__()
+        self.cscale_type = "spline"
         self.mask = False
 
     def __call__(self, sme, x_syn, y_syn, segments, rvel):
@@ -634,6 +669,7 @@ class ContinuumNormalizationSpline(ContinuumNormalizationAbstract):
 class ContinuumNormalizationSplineMask(ContinuumNormalizationSpline):
     def __init__(self):
         super().__init__()
+        self.cscale_type = "spline+mask"
         self.mask = True
 
 
@@ -943,6 +979,8 @@ def match_rv_continuum(sme, segments, x_syn, y_syn):
         "mask": ContinuumNormalizationMask,
         "match": ContinuumNormalizationMatch,
         "match+mask": ContinuumNormalizationMatchMask,
+        "matchlines": ContinuumNormalizationMatchLines,
+        "matchlines+mask": ContinuumNormalizationMatchLinesMask,
         "spline": ContinuumNormalizationSpline,
         "spline+mask": ContinuumNormalizationSplineMask,
         "mcmc": ContinuumNormalizationMCMC,
