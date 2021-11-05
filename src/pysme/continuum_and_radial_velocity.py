@@ -504,6 +504,7 @@ class ContinuumNormalizationMatch(ContinuumNormalizationAbstract):
         # this works well to determine the continuum
         # assuming that there is something there
         self.top_factor = 10000
+        self.bottom_factor = 1
 
     def __call__(self, sme, x_syn, y_syn, segments, rvel=0):
         """
@@ -557,18 +558,21 @@ class ContinuumNormalizationMatch(ContinuumNormalizationAbstract):
 
         # TODO: what should this be?
         if self.top_factor != 0:
-            u = (
-                u
-                + self.top_factor * np.nanmedian(u) * (np.nanpercentile(y, 95) - y) ** 2
-            )
+            mod = np.nanmedian(u) * (np.nanpercentile(y, 95) - y) ** 2
+            u = u + self.top_factor * mod
 
         deg = sme.cscale_degree
         p0 = sme.cscale[segments]
-        func = lambda p: (yp * np.polyval(p, xs) - y) / u
+
+        def func(p):
+            model = yp * np.polyval(p, xs)
+            resid = (model - y) / u
+            # resid[resid > 0] *= self.top_factor
+            resid[resid < 0] *= self.bottom_factor
+            return resid
+
         try:
-            res = least_squares(
-                func, x0=p0, loss="soft_l1", method="trf", xtol=None, x_scale="jac"
-            )
+            res = least_squares(func, x0=p0, method="lm", x_scale="jac")
             popt = res.x
         except RuntimeError as ex:
             logger.warning("Could not determine the continuum")
@@ -582,6 +586,7 @@ class ContinuumNormalizationMatchLines(ContinuumNormalizationMatch):
         super().__init__()
         self.cscale_type = "matchlines"
         self.top_factor = 0
+        self.bottom_factor = 10
 
 
 class ContinuumNormalizationMatchMask(ContinuumNormalizationMatch):
@@ -591,11 +596,10 @@ class ContinuumNormalizationMatchMask(ContinuumNormalizationMatch):
         self.mask = True
 
 
-class ContinuumNormalizationMatchLinesMask(ContinuumNormalizationMatch):
+class ContinuumNormalizationMatchLinesMask(ContinuumNormalizationMatchLines):
     def __init__(self):
         super().__init__()
         self.cscale_type = "matchlines+mask"
-        self.top_factor = 0
         self.mask = True
 
 
