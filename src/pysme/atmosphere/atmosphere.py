@@ -73,8 +73,7 @@ class Atmosphere(Collection):
     # fmt: on
 
     # TODO: pick the right geometry for the grid, based on whether it has height/radius values or not
-
-    def __init__(self, **kwargs):
+    def __init__(self, *args, **kwargs):
         monh = kwargs.pop("monh", kwargs.pop("feh", 0))
         abund = kwargs.pop("abund", "empty")
         abund_format = kwargs.pop("abund_format", "sme")

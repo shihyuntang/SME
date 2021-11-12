@@ -265,7 +265,7 @@ class LineList(IPersist):
             )
 
     def __getattribute__(self, name):
-        if name[0] != "_" and name not in dir(self):
+        if name[0] != "_" and name not in dir(self) and name in self._lines:
             return self._lines[name].values
         return super().__getattribute__(name)
 
