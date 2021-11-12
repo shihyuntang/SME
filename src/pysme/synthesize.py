@@ -296,14 +296,15 @@ class Synthesizer:
         # Determine oversampling factor.
         if osamp is None:
             if vsini == 0:
-                os = 1
+                os = 2
             else:
                 os = deltav / (vsini * r)
                 os = os[np.isfinite(os)].max()
-                os = int(np.ceil(os))
+                os = int(np.ceil(os)) + 1
         else:
-            # force integral value > 1
-            os = round(np.clip(osamp, 1, None))
+            os = osamp
+        # force integral value > 1
+        os = round(np.clip(os, 2, 10))
 
         # Sort the projected radii and corresponding intensity spectra into ascending
         #  order (i.e. from disk center to the limb), which is equivalent to sorting
@@ -354,9 +355,14 @@ class Synthesizer:
                 yfine = np.copy(ypix)
             else:
                 # spline onto fine wavelength scale
-                yfine = interp1d(xpix, ypix, kind="cubic", fill_value="extrapolate")(
-                    xfine
-                )
+                try:
+                    yfine = interp1d(
+                        xpix, ypix, kind="cubic", fill_value="extrapolate"
+                    )(xfine)
+                except ValueError:
+                    yfine = interp1d(
+                        xpix, ypix, kind="linear", fill_value="extrapolate"
+                    )(xfine)
 
             # Construct the convolution kernel which describes the distribution of
             # rotational velocities present in the current annulus. The distribution has
@@ -428,9 +434,7 @@ class Synthesizer:
 
             # Convolve the total flux profiles, again padding the spectrum on both ends to
             # protect against Fourier ringing.
-            yfine = convolve(
-                yfine, mkern, mode="nearest"
-            )  # add the padding and convolve
+            yfine = convolve(yfine, mkern, mode="nearest")
 
             # Add contribution from current annulus to the running total.
             flux = flux + wt[imu] * yfine  # add profile to running total
