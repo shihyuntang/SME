@@ -503,7 +503,7 @@ class ContinuumNormalizationMatch(ContinuumNormalizationAbstract):
         # We over exaggerate the weights on the top of the spectrum
         # this works well to determine the continuum
         # assuming that there is something there
-        self.top_factor = 10000
+        self.top_factor = 100_000
         self.bottom_factor = 1
 
     def __call__(self, sme, x_syn, y_syn, segments, rvel=0):
