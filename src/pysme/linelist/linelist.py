@@ -413,8 +413,8 @@ class LineList(IPersist):
 
         Returns
         -------
-        [type]
-            [description]
+        self : LineList
+            this object, now with appended data
         """
         if self.medium != linelist.medium:
             logger.warning(
