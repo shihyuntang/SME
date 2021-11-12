@@ -399,6 +399,40 @@ class LineList(IPersist):
         }
         self._lines = self._lines.append([linedata])
 
+    def append(self, linelist: "LineList"):
+        """
+        Append a linelist to this one
+
+        Note this replaces the underlying data
+        and sorts the lines by wavelength
+
+        Parameters
+        ----------
+        linelist : LineList
+            other linelist to append
+
+        Returns
+        -------
+        [type]
+            [description]
+        """
+        if self.medium != linelist.medium:
+            logger.warning(
+                "The appended linelist, has its wavelength in a different medium"
+            )
+        if self.lineformat != linelist.lineformat:
+            raise ValueError(
+                (
+                    "The formats of the linelists do not match. This linelist "
+                    "has format %s, but the other has format %s"
+                ),
+                self.lineformat,
+                linelist.lineformat,
+            )
+        self._lines = self._lines.append(linelist._lines)
+        self.sort()
+        return self
+
     def trim(self, wave_min, wave_max, rvel=None):
         if rvel is not None:
             # Speed of light in km/s
