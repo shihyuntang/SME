@@ -21,11 +21,13 @@ def apply_broadening(ipres, x_seg, y_seg, type="gauss", sme=None):
     y_seg : array (npoints,)
         y values (intensities) of the spectrum to broaden
     type : {str, None}, optional
-        broadening type to apply. Options are "gauss", "sinc", "table", None. If None, will try to use sme.iptype to determine type.
-        "table" requires keyword sme to be passed as well. See functions the respective for details.
+        broadening type to apply. Options are "gauss", "sinc", "table", None.
+        If None, will try to use sme.iptype to determine type. "table" requires
+        keyword sme to be passed as well. See functions the respective for details.
         (default: "gauss")
     sme : SME_Struct, optional
-        sme structure with instrument profile data, required only for type="table" or type=None (default: None)
+        sme structure with instrument profile data, required only for
+        type="table" or type=None (default: None)
 
     Raises
     ------
@@ -43,7 +45,7 @@ def apply_broadening(ipres, x_seg, y_seg, type="gauss", sme=None):
         raise AttributeError(f"SME structure needs to be passed when using type={type}")
 
     # Using the log-linear wavelength grid requires using the first point
-    # for specifying the the width of the instrumental profile
+    # for specifying the width of the instrumental profile
     hwhm = 0.5 * x_seg[0] / ipres if ipres > 0 else 0
 
     if type is None:
@@ -163,18 +165,23 @@ def gaussbroad(w, s, hwhm):
     wrange = w[-1] - w[0]
     dw = wrange / (nw - 1)  # wavelength change per pixel
 
-    # Make smoothing gaussian# extend to 4 sigma.
-    # 4.0 / sqrt(2.0*alog(2.0)) = 3.3972872 and sqrt(alog(2.0))=0.83255461
-    # sqrt(alog(2.0)/pi)=0.46971864 (*1.0000632 to correct for >4 sigma wings)
+    # Make smoothing gaussian; extend to 4 sigma.
+    # 4.0 / sqrt(2.0 * alog(2.0)) = 3.3972872
+    # sqrt(alog(2.0)) = 0.83255461
+    # sqrt(alog(2.0) / pi) = 0.46971864
+    # (*1.0000632 to correct for >4 sigma wings)
     if hwhm >= 5 * wrange:
         return np.full(nw, np.sum(s) / nw)
-    nhalf = int(3.3972872 * hwhm / dw)  ## points in half gaussian
-    ng = 2 * nhalf + 1  ## points in gaussian (odd!)
-    wg = dw * (
-        np.arange(ng, dtype=float) - (ng - 1) / 2
-    )  # wavelength scale of gaussian
-    xg = (0.83255461 / hwhm) * wg  # convenient absisca
-    gpro = (0.46974832 * dw / hwhm) * np.exp(-xg * xg)  # unit area gaussian w/ FWHM
+    ## points in half gaussian
+    nhalf = int(3.3972872 * hwhm / dw)
+    ## points in gaussian (odd!)
+    ng = 2 * nhalf + 1
+    # wavelength scale of gaussian
+    wg = dw * (np.arange(ng, dtype=float) - (ng - 1) / 2)
+    # convenient absisca
+    xg = (0.83255461 / hwhm) * wg
+    # unit area gaussian w / FWHM
+    gpro = (0.46974832 * dw / hwhm) * np.exp(-xg * xg)
     gpro = gpro / np.sum(gpro)
 
     # Pad spectrum ends to minimize impact of Fourier ringing.
