@@ -385,7 +385,7 @@ class SME_DLL:
                 radius = atmo["radius"]
                 height = atmo["height"]
                 motype = "SPH"
-                args = args[:5] + [radius] + args[5:] + [height]
+                args = args[:4] + [motype, radius] + args[5:] + [height]
                 type = type[:5] + "d" + type[5:] + "d"
         except AttributeError as ae:
             raise TypeError("atmo has to be an Atmo type, {ae}".format(ae=ae))
