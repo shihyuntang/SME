@@ -275,15 +275,31 @@ class Abund(IPersist):
     # These are there for the atmosphere interpolation
     # The internal format is always H=12, so that should be fine
     def __add__(self, other):
+        result = Abund(
+            monh=self.monh, pattern=np.copy(self._pattern), type=self._type_internal
+        )
         if isinstance(other, Abund):
-            self._pattern += other._pattern
+            result._pattern += other.get_pattern(self._type_internal, raw=True)
+            result.monh += other.monh
         else:
-            self._pattern += other
-        return self
+            raise NotImplementedError
+        result.type = self.type
+        return result
+
+    def __radd__(self, other):
+        return self.__add__(other)
 
     def __mul__(self, other):
-        self._pattern *= other
-        return self
+        result = Abund(
+            monh=self.monh, pattern=np.copy(self._pattern), type=self._type_internal
+        )
+        if isinstance(other, Abund):
+            raise NotImplementedError
+        else:
+            result._pattern *= other
+            result.monh *= other
+        result.type = self.type
+        return result
 
     def __rmul__(self, other):
         return self.__mul__(other)
