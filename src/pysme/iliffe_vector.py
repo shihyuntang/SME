@@ -255,6 +255,10 @@ class Iliffe_vector(numpy.lib.mixins.NDArrayOperatorsMixin, MultipleDataExtensio
     def max(self, *args, axis=None, **kwargs):
         return self.__array_function_axis__(np.max, axis, args, kwargs)
 
+    @implements(np.mean)
+    def mean(self, *args, axis=None, **kwargs):
+        return self.__array_function_axis__(np.mean, axis, args, kwargs)
+
     @classmethod
     def from_offsets(cls, array, offsets):
         self = cls(array, offsets=offsets)
