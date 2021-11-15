@@ -298,8 +298,8 @@ class Synthesizer:
             if vsini == 0:
                 os = 2
             else:
-                os = deltav / (vsini * r)
-                os = os[np.isfinite(os)].max()
+                os = deltav / (vsini * r[r != 0])
+                os = np.max(os[np.isfinite(os)])
                 os = int(np.ceil(os)) + 1
         else:
             os = osamp
