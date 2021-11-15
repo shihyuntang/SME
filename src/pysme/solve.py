@@ -47,6 +47,7 @@ class SME_Solver:
         self.parameter_names = []
         self.update_linelist = False
         self._latest_residual = None
+        self._latest_jacobian = None
         self.restore = restore
 
         # For displaying the progressbars
@@ -179,8 +180,7 @@ class SME_Solver:
             # Save result for jacobian
             self._latest_residual = resid
             self.iteration += 1
-            logger.debug("%s", {n: v for n, v in zip(self.parameter_names, param)})
-            # Store progress (async)
+        logger.debug("%s", {n: f"{v:.3f}" for n, v in zip(self.parameter_names, param)})
 
         # Also save intermediary results, because we can
         if save:
@@ -189,12 +189,24 @@ class SME_Solver:
         return resid
 
     def _jacobian(
-        self, param, *args, bounds=None, segments="all", step_sizes=None, **_
+        self,
+        param,
+        *args,
+        bounds=None,
+        segments="all",
+        step_sizes=None,
+        method="2-point",
+        **_,
     ):
         """
         Approximate the jacobian numerically
-        The calculation is the same as "3-point"
-        but we can tell residuals that we are within a jacobian
+        The calculation is the same as "2-point"
+        but we can tell residuals that we are within a jacobian.
+
+        Note that when we reuse the wavelength grid, the results are
+        slightly different for reasons(?). Therefore the step size should
+        be larger than those differences, which is why we specify the
+        step size for each parameter.
         """
         self.progressbar_jacobian.reset()
 
@@ -203,7 +215,7 @@ class SME_Solver:
         g = approx_derivative(
             self._residuals,
             param,
-            method="2-point",
+            method=method,
             # This feels pretty bad, passing the latest synthetic spectrum
             # by reference as a parameter of the residuals function object
             f0=self._latest_residual,
@@ -220,7 +232,7 @@ class SME_Solver:
                 "Final uncertainties will be inaccurate. "
                 "You might be running into the boundary of the grid"
             )
-
+        self._latest_jacobian = np.copy(g)
         return g
 
     def get_bounds(self, sme):
@@ -295,7 +307,14 @@ class SME_Solver:
                 bounds["logg"] = atmo.logg - 1, atmo.logg + 1
                 bounds["monh"] = atmo.monh - 1, atmo.monh + 1
         # Add generic bounds
-        bounds.update({"vmic": [0, clight], "vmac": [0, clight], "vsini": [0, clight]})
+        bounds.update(
+            {
+                "vmic": [0, clight],
+                "vmac": [0, clight],
+                "vsini": [0, clight],
+                "ipres": [1, 500_000],
+            }
+        )
         # bounds.update({"abund %s" % el: [-10, 11] for el in abund_elem})
 
         result = np.array([[-np.inf, np.inf]] * self.nparam)
@@ -671,10 +690,13 @@ class SME_Solver:
         mask = sme.mask_good[segments]
         spec = sme.spec[segments][mask]
         uncs = sme.uncs[segments][mask]
+        # This is the expected range of the uncertainty
+        # if the residuals are larger, they are dampened by log(1 + z)
+        f_scale = 0.1 * np.nanmean(spec.ravel()) / np.nanmean(uncs.ravel())
 
         # Divide the uncertainties by the spectrum, to improve the fit in the continuum
         # Just as in IDL SME, this increases the relative error for points inside lines
-        uncs /= spec
+        # uncs /= spec
 
         logger.info("Fitting Spectrum with Parameters: %s", ",".join(param_names))
         logger.debug("Initial values: %s", p0)
@@ -706,21 +728,27 @@ class SME_Solver:
                     jac=self._jacobian,
                     x0=p0,
                     bounds=bounds,
-                    loss="linear",
+                    loss="cauchy",
+                    f_scale=f_scale,
                     method="dogbox",
                     # x_scale="jac",
                     # These control the tolerance, for early termination
                     # since each iteration is quite expensive
                     xtol=sme.accxt,
                     ftol=sme.accft,
+                    gtol=sme.accgt,
                     verbose=2,
                     args=(sme, spec, uncs, mask),
                     kwargs={
                         "bounds": bounds,
                         "segments": segments,
                         "step_sizes": step_sizes,
+                        "method": "2-point",
                     },
                 )
+                # The jacobian is altered by the loss function
+                # This lets us keep the original for our uncertainty estimate
+                res.jac = self._latest_jacobian
 
             self.progressbar.close()
             self.progressbar_jacobian.close()
