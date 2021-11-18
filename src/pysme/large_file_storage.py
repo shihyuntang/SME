@@ -32,6 +32,8 @@ logger = logging.getLogger(__name__)
 # We are lazy and want a simple check if a file is in the Path
 Path.__contains__ = lambda self, key: (self / key).exists()
 
+PKGNAME = "sme"
+
 
 class LargeFileStorage:
     """
@@ -90,17 +92,39 @@ class LargeFileStorage:
             Absolute path to the datafile
         """
         url = self.get_url(key)
-        is_cached = is_url_in_cache(url, pkgname="pysme")
-        fname = download_file(url, cache=True, pkgname="pysme")
+        # If its a direct file link, pass that directly to
+        if url.startswith("file://"):
+            return url[7:]
 
-        if not is_cached and url.endswith(".gz"):
+        fname = download_file(url, cache=True, pkgname=PKGNAME)
+
+        compression = self._test_compression(fname)
+        if compression is None:
+            pass
+        elif compression == "gzip":
             # If the file is compressed
             # Replace the cache file with the decompressed file
-            self._unpack(fname, key, url)
+            self._unpack_gzip(fname, key, url)
+        else:
+            raise ValueError(
+                "The file is compressed using %s, which is not supported" % compression
+            )
 
         return fname
 
-    def _unpack(self, fname, key, url):
+    def _test_compression(self, fname):
+        """Check filetype using the magic string"""
+        with open(fname, "rb") as f:
+            magic = f.read(6)
+            if magic[:2] == b"\x1f\x8b":
+                return "gzip"
+            if magic[:6] == b"\x37\x7A\xBC\xAF\x27\x1C":
+                return "7z"
+            if magic[:5] == b"\x50\x4B\x03\x04":
+                return "zip"
+            return None
+
+    def _unpack_gzip(self, fname, key, url):
         logger.debug("Unpacking data file %s", key)
 
         # We have to use a try except block, as this will crash with
@@ -125,7 +149,7 @@ class LargeFileStorage:
                             f_out.write(chunk)
                         f_out.flush()
                         t.reset()
-            import_file_to_cache(url, f_out.name, pkgname="pysme")
+            import_file_to_cache(url, f_out.name, pkgname=PKGNAME)
         finally:
             try:
                 os.remove(f_out.name)
@@ -154,18 +178,18 @@ class LargeFileStorage:
 
     def clean_cache(self):
         """Remove unused cache files (from old versions)"""
-        clear_download_cache(pkgname="pysme")
+        clear_download_cache(pkgname=PKGNAME)
 
     def delete_file(self, fname):
         """Delete a file, including the cache file"""
-        clear_download_cache(fname, pkgname="pysme")
+        clear_download_cache(fname, pkgname=PKGNAME)
 
     def move_to_cache(self, fname, key=None):
         """Move currently used files into cache directory and use symlinks instead,
         just as if downloaded from a server"""
         if key is None:
             key = basename(fname)
-        import_file_to_cache(key, fname, pkgname="pysme")
+        import_file_to_cache(key, fname, pkgname=PKGNAME)
         self.pointers[key] = key
 
 
