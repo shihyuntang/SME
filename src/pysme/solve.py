@@ -686,10 +686,13 @@ class SME_Solver:
             sme = self.restore_func(sme)
 
         # Get constant data from sme structure
-        sme.mask[segments][sme.uncs[segments] == 0] = sme.mask_values["bad"]
+        for seg in segments:
+            sme.mask[seg, sme.uncs[seg] == 0] = sme.mask_values["bad"]
+        # sme.mask[segments][sme.uncs[segments] == 0] = sme.mask_values["bad"]
         mask = sme.mask_good[segments]
         spec = sme.spec[segments][mask]
         uncs = sme.uncs[segments][mask]
+
         # This is the expected range of the uncertainty
         # if the residuals are larger, they are dampened by log(1 + z)
         f_scale = 0.1 * np.nanmean(spec.ravel()) / np.nanmean(uncs.ravel())
