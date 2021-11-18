@@ -39,8 +39,10 @@ class SavFile(AtmosphereGrid):
             source = basename(filename)
         self.source = source
 
-        if "atmo_grid_intro" in data.keys():
+        try:
             self.info = b" ".join(data["atmo_grid_intro"]).decode()
+        except (KeyError, TypeError):
+            self.info = ""
 
         # TODO cover all cases
         if "marcs" in self.source:
