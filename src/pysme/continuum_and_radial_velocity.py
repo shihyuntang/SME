@@ -948,7 +948,9 @@ def determine_radial_velocity(
             return resid
 
         interpolator = lambda x: np.interp(x, x_syn, y_syn)
-        res = least_squares(func, x0=rvel, loss="soft_l1", bounds=rv_bounds)
+        res = least_squares(
+            func, x0=rvel, loss="soft_l1", bounds=rv_bounds, jac="3-point"
+        )
         rvel = res.x[0]
 
     return rvel
