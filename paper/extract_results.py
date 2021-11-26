@@ -7,14 +7,14 @@ import numpy as np
 from pysme.sme import SME_Structure
 
 targets = [
-    "AU_Mic",
     "Eps_Eri",
     "HN_Peg",
+    "55_Cnc",
+    "AU_Mic",
     "HD_102195",
     "HD_130322",
     "HD_179949",
     "HD_189733",
-    "55_Cnc",
     "WASP-18",
 ]
 
@@ -31,8 +31,8 @@ for target in targets:
     for param in ["teff", "logg", "monh", "vmic", "vmac", "vsini"]:
         idx = [i for i, p in enumerate(sme.fitresults.parameters) if p == param][0]
         data[param] = sme.fitresults.values[idx]
-        # data[f"unc_{param}"] = sme.fitresults.uncertainties[idx]
-        data[f"unc_{param}"] = sme.fitresults.fit_uncertainties[idx]
+        data[f"unc_{param}"] = sme.fitresults.uncertainties[idx]
+        # data[f"unc_{param}"] = sme.fitresults.fit_uncertainties[idx]
 
     with open(jname, "w") as f:
         json.dump(data, f)

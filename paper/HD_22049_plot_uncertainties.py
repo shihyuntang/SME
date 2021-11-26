@@ -15,6 +15,7 @@ from astropy import units as u
 from astropy.io import fits
 from astropy.time import Time
 from data_sources.StellarDB import StellarDB
+from scipy.constants import speed_of_light
 from scipy.integrate import quad
 from scipy.interpolate import interp1d
 from scipy.linalg import lstsq, solve_banded
@@ -34,6 +35,8 @@ from pysme.linelist.vald import ValdFile
 from pysme.persistence import save_as_idl
 from pysme.solve import solve
 from pysme.synthesize import synthesize_spectrum
+
+clight = speed_of_light * 1e-3
 
 
 def find_roots(x, y):
@@ -132,7 +135,7 @@ if __name__ == "__main__":
     os.makedirs(image_dir, exist_ok=True)
 
     in_file = os.path.join(
-        examples_dir, f"results/HN_Peg_monh_teff_logg_vmic_vmac_vsini.sme"
+        examples_dir, f"results/Eps_Eri_monh_teff_logg_vmic_vmac_vsini.sme"
     )
     sme = SME.SME_Structure.load(in_file)
 
@@ -140,7 +143,7 @@ if __name__ == "__main__":
     mask = sme.mask_good[segments]
     resid = sme.fitresults.residuals
     unc = np.concatenate(sme.uncs[segments][mask])
-    # s = np.concatenate(sme.spec[segments][mask])
+    spec = np.concatenate(sme.spec[segments][mask])
     # unc = np.sqrt(s)
     # unc = np.full(resid.size, 1)
 
@@ -165,6 +168,45 @@ if __name__ == "__main__":
     VT = VT[: s.size]
     pcov = np.dot(VT.T / s ** 2, VT)
     uncertainties = np.sqrt(np.diag(pcov))
+
+    # def gauss(x, A, sig, mu, B):
+    #     return B - A * np.exp(-((x - mu) ** 2) / (2 * sig ** 2))
+
+    # width = 100
+    # wave = sme.wave.ravel()
+    # spec = sme.spec.ravel()
+    # wave_lines = sme.linelist.wlcent[sme.linelist.depth > 0.1]
+    # wave_lines *= 1 + sme.vrad[10] / clight
+    # idx_wave = np.digitize(wave_lines, wave)
+    # idx_lines = idx_wave[:, None] + np.arange(-width, width)[None, :]
+    # lines = spec[idx_lines]
+
+    # x = np.arange(width * 2)
+    # B0 = np.max(lines, axis=1)
+    # A0 = B0 - np.min(lines, axis=1)
+    # sig0 = np.full(lines.shape[0], 10)
+    # mu0 = np.full(lines.shape[0], width)
+
+    # n = lines.shape[0]
+    # for i in tqdm(range(n)):
+    #     res = least_squares(
+    #         lambda p: (gauss(x, p[0], p[1], p[2], p[3]) - lines[i]),
+    #         x0=[A0[i], sig0[i], mu0[i], B0[i]],
+    #         method="lm",
+    #     )
+    #     A0[i] = res.x[0]
+    #     sig0[i] = res.x[1]
+    #     mu0[i] = res.x[2]
+    #     B0[i] = res.x[3]
+
+    # fn = gauss(x[None, :], 1, sig0[:, None], width, 1)
+    # line = np.nanmedian(fn, axis=0)
+    # line_mad = np.nanmedian(np.abs(fn - line), axis=0)
+    # line_std = line_mad * 1.48
+
+    # plt.fill_between(x, line - line_std, line + line_std, alpha=0.5)
+    # plt.plot(line)
+    # plt.show()
 
     for i, param in enumerate(sme.fitresults.parameters):
         pder = sme.fitresults.derivative[:, i] / np.sqrt(chi2)

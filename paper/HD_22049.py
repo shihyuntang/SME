@@ -17,6 +17,7 @@ from data_sources.StellarDB import StellarDB
 from scipy.interpolate import interp1d
 from scipy.ndimage.filters import gaussian_filter1d, median_filter
 from scipy.optimize import least_squares
+from tqdm import tqdm
 
 from pysme import sme as SME
 from pysme import util
@@ -26,6 +27,126 @@ from pysme.gui import plot_plotly
 from pysme.iliffe_vector import Iliffe_vector
 from pysme.linelist.vald import ValdFile
 from pysme.solve import solve
+from pysme.synthesize import synthesize_spectrum
+
+# from pyreduce.util import top, middle
+
+
+# def continuum_normalize(
+#     spec,
+#     wave,
+#     cont,
+#     sigm,
+#     iterations=10,
+#     smooth_initial=1e5,
+#     smooth_final=5e6,
+#     scale_vert=1,
+# ):
+#     """Fit a continuum to a spectrum by slowly approaching it from the top.
+#     We exploit here that the continuum varies only on large wavelength scales, while individual lines act on much smaller scales
+
+#     TODO automatically find good parameters for smooth_initial and smooth_final
+#     TODO give variables better names
+
+#     Parameters
+#     ----------
+#     spec : masked array of shape (nord, ncol)
+#         Observed input spectrum, masked values describe column ranges
+#     wave : masked array of shape (nord, ncol)
+#         Wavelength solution of the spectrum
+#     cont : masked array of shape (nord, ncol)
+#         Initial continuum guess, for example based on the blaze
+#     sigm : masked array of shape (nord, ncol)
+#         Uncertainties of the spectrum
+#     iterations : int, optional
+#         Number of iterations of the algorithm,
+#         note that runtime roughly scales with the number of iterations squared
+#         (default: 10)
+#     smooth_initial : float, optional
+#         Smoothing parameter in the initial runs, usually smaller than smooth_final (default: 1e5)
+#     smooth_final : float, optional
+#         Smoothing parameter of the final run (default: 5e6)
+#     scale_vert : float, optional
+#         Vertical scale of the spectrum. Usually 1 if a previous normalization exists (default: 1)
+#     plot : bool, optional
+#         Wether to plot the current status and results or not (default: True)
+
+#     Returns
+#     -------
+#     cont : masked array of shape (nord, ncol)
+#         New continuum
+#     """
+
+#     nord, ncol = spec.shape
+
+#     par2 = 1e-4
+#     par4 = 0.01 * (1 - np.clip(2, None, 1 / np.sqrt(np.ma.median(spec))))
+
+#     b = np.clip(cont, 1, None)
+#     mask = ~np.ma.getmaskarray(b)
+#     for i in range(nord):
+#         b[i, mask[i]] = middle(b[i, mask[i]], 1)
+#     cont = b
+
+#     # Create new equispaced wavelength grid
+#     tmp = wave.ravel()
+#     wmin = np.min(tmp)
+#     wmax = np.max(tmp)
+#     dwave = np.abs(tmp[tmp.size // 2] - tmp[tmp.size // 2 - 1]) * 0.5
+#     nwave = np.ceil((wmax - wmin) / dwave) + 1
+#     new_wave = np.linspace(wmin, wmax, int(nwave), endpoint=True)
+
+#     # Combine all orders into one big spectrum, sorted by wavelength
+#     wsort, j, index = np.unique(tmp, return_index=True, return_inverse=True)
+#     sB = ((spec / cont).ravel())[j]
+
+#     # Get initial weights for each point
+#     weight = middle(sB, 0.5, x=wsort - wmin)
+#     weight = weight / middle(weight, 3 * smooth_initial) + np.concatenate(
+#         ([0], 2 * weight[1:-1] - weight[0:-2] - weight[2:], [0])
+#     )
+#     weight = np.clip(weight, 0, None)
+#     # TODO for some reason the interpolation messes up, use linear instead for now
+#     # weight = util.safe_interpolation(wsort, weight, new_wave)
+#     weight = np.interp(new_wave, wsort, weight)
+#     weight /= np.max(weight)
+
+#     # Interpolate Spectrum onto the new grid
+#     # ssB = util.safe_interpolation(wsort, sB, new_wave)
+#     ssB = np.interp(new_wave, wsort, sB)
+#     # Keep the scale of the continuum
+#     bbb = middle(cont.ravel()[j], 1)
+
+#     contB = np.ones_like(ssB)
+
+#     try:
+#         for i in tqdm(range(iterations)):
+#             # Find new approximation of the top, smoothed by some parameter
+#             c = ssB / contB
+#             for _ in tqdm(range(iterations)):
+#                 _c = top(
+#                     c, smooth_initial, eps=par2, weight=weight, lambda2=smooth_final
+#                 )
+#                 c = np.clip(_c, c, None)
+#             c = (
+#                 top(c, smooth_initial, eps=par4, weight=weight, lambda2=smooth_final)
+#                 * contB
+#             )
+
+#             # Scale it and update the weights of each point
+#             contB = c * scale_vert
+#             contB = middle(contB, 1)
+#             weight = np.clip(ssB / contB, None, contB / np.clip(ssB, 1, None))
+#     except ValueError:
+#         pass
+
+#     # Calculate the new continuum from intermediate values
+#     # new_cont = util.safe_interpolation(new_wave, contB, wsort)
+#     new_cont = np.interp(wsort, new_wave, contB)
+#     mask = np.ma.getmaskarray(cont)
+#     cont[~mask] = (new_cont * bbb)[index]
+
+#     return cont
 
 
 def hl_envelopes_idx(s, dmin=1, dmax=1, split=False):
@@ -121,8 +242,8 @@ def load_tellurics():
     return wtapas, ftapas
 
 
-def normalize(wave, flux, dmin=400, dmax=500):
-    flux /= np.nanpercentile(flux, 95)
+def normalize(wave, flux, dmin=1000, dmax=1000, return_cont=False):
+    flux = flux / np.nanpercentile(flux, 95)
     # Get first guess from upper envelope
     mflux = median_filter(flux, 3)
     _, high_idx = hl_envelopes_idx(mflux, dmin=dmin, dmax=dmax)
@@ -130,8 +251,12 @@ def normalize(wave, flux, dmin=400, dmax=500):
     cont = interp1d(
         wave[high_idx], flux[high_idx], kind="linear", fill_value="extrapolate"
     )(wave)
-    flux /= cont
-    return flux
+    cont = gaussian_filter1d(cont, dmax)
+    flux = flux / cont
+    if return_cont:
+        return cont
+    else:
+        return flux
 
 
 def vel_shift(rv, wave):
@@ -183,7 +308,14 @@ def split_into_segments(wave, flux, ftell):
     return wave, flux, ftell
 
 
-def init(target, mask=None, linelist="harps.lin", segments="all"):
+def init(
+    target,
+    mask=None,
+    linelist="harps.lin",
+    segments="all",
+    cscale="match+linear",
+    vrad="each",
+):
     examples_dir = dirname(realpath(__file__))
     data_dir = join(examples_dir, "data")
     # /home/ansgar/Documents/Python/sme/examples/paper/data/ADP.2019-11-16T01 15 37.789.fits
@@ -205,6 +337,13 @@ def init(target, mask=None, linelist="harps.lin", segments="all"):
             flux[m[0] : m[1]] = 0
     flux = normalize(wave, flux)
 
+    # cont = continuum_normalize(
+    #     flux[None, :],
+    #     wave[None, :],
+    #     cont[None, :],
+    #     None,
+    # )
+
     # Get tellurics from Tapas
     wtapas, ftapas = load_tellurics()
     ftapas = normalize(wtapas, ftapas, dmin=100, dmax=100)
@@ -224,6 +363,7 @@ def init(target, mask=None, linelist="harps.lin", segments="all"):
     # Create the SME structure
     sme = SME.SME_Structure(wave=wave, sob=flux)
     sme.meta["object"] = target
+    sme.normalize_by_continuum = True
     sme.nmu = 7
     # Use simple shot noise assumption for uncertainties
     sme.uncs = np.sqrt(sme.spec)
@@ -242,12 +382,15 @@ def init(target, mask=None, linelist="harps.lin", segments="all"):
     sme.abund = Abund(monh, "asplund2009")
     # There is no reference for these, use solar values instead
     sme.vmic = 1
-    sme.vmac = 2
-    sme.vsini = get_value(star, "velocity_rotation", "km/s", 2)
+    sme.vmac = 4
+    sme.vsini = get_value(star, "velocity_rotation", "km/s", 4)
 
     # Load the linelist
     # and restrict the linelist to relevant lines
     sme.linelist = ValdFile(vald_file)
+    # TODO: Why AIR? This will match Tanjas Linelist though
+    # Is there a problem with the conversion?
+    sme.linelist.medium = "air"
     wmin = sme.wran[segments[0]][0]
     wmax = sme.wran[segments[-1]][-1]
     sme.linelist = sme.linelist.trim(wmin, wmax, rvel=100)
@@ -276,10 +419,12 @@ def init(target, mask=None, linelist="harps.lin", segments="all"):
 
     # Set radial velocity and continuum settings
     # Set RV and Continuum flags
-    sme.vrad_flag = "whole"
-    sme.cscale_flag = "linear"
-    sme.cscale_type = "match"
-    sme.vrad = 0
+    ctype, cflag = cscale.rsplit("+", 1)
+    sme.vrad_flag = vrad
+    sme.cscale_flag = cflag
+    sme.cscale_type = ctype
+    sme.vrad = None
+    sme.cscale = None
 
     # Harps instrumental broadening
     sme.iptype = "gauss"
@@ -290,20 +435,27 @@ def init(target, mask=None, linelist="harps.lin", segments="all"):
     return sme
 
 
-def fit(sme, target, segments="all"):
+def fit(sme, target, segments="all", remove_outliers=False):
     examples_dir = dirname(realpath(__file__))
 
     # Define all parameters to be extra sure they are correct
     fitparameters = ["monh", "teff", "logg", "vmic", "vmac", "vsini"]
-    sme.cscale_type = "match"
-    sme.cscale_flag = "linear"
-    sme.vrad_flag = "whole"
     sme.vrad = None
     sme.cscale = None
 
+    # Mask outlier points
+    if remove_outliers:
+        sme = synthesize_spectrum(sme, segments=segments)
+        resid = sme.synth[segments] - sme.spec[segments]
+        mask = np.abs(resid) < 0.1
+        mask &= sme.mask[segments] != 0
+        for i, seg in enumerate(segments):
+            sme.mask[seg] = np.where(mask[i], 1, 0)
+        sme.vrad_flag = "fix"
+        sme.cscale_flag = "fix"
+
     # Run least squares fit
-    tmp = os.path.join(examples_dir, f"results/{target}.json")
-    sme = solve(sme, fitparameters, segments=segments, filename=tmp)
+    sme = solve(sme, fitparameters, segments=segments)
 
     # Save results
     fname = f"{target}_{'_'.join(fitparameters)}"
@@ -351,8 +503,11 @@ if __name__ == "__main__":
             (15063, 15287),
             (18559, 18925),
             (31888, 32002),
+            (44415, 44478),
             (55757, 55892),
             (107806, 107983),
+            (210728, 210797),
+            (211327, 211393),
             (277889, 278216),
         ],
         "HN_Peg": [
@@ -445,11 +600,14 @@ if __name__ == "__main__":
         # "55_Cnc": "55_cnc.lin",
         # "WASP-18": "wasp_18.lin",
     }
+    cscale_type = {"AU_Mic": "matchlines+quadratic"}
+    vrad_flag = {}
+    remove_outliers = {"AU_Mic": True}
 
     def parallel(target):
         print(f"Starting {target}")
         segments = range(6, 31)
-        # segments = [6]
+        # segments = [21]
 
         # Start the logging to the file
         examples_dir = dirname(realpath(__file__))
@@ -460,14 +618,29 @@ if __name__ == "__main__":
         # Create the first synthethic spectrum to use for manual masking
         mask = masked.get(target)
         ll = linelist.get(target, "harps.lin")
-        sme = init(target, mask=mask, linelist=ll, segments=segments)
+        cscale = cscale_type.get(target, "match+linear")
+        vrad = vrad_flag.get(target, "whole")
+        remove = remove_outliers.get(target, False)
+        sme = init(
+            target,
+            mask=mask,
+            linelist=ll,
+            segments=segments,
+            cscale=cscale,
+            vrad=vrad,
+        )
 
         # Finally fit it to the data
-        sme = fit(sme, target, segments=segments)
+        sme = fit(
+            sme,
+            target,
+            segments=segments,
+            remove_outliers=remove,
+        )
         return sme
 
     # Parse the cmd arguments
-    target = sys.argv[1] if len(sys.argv) != 1 else "HN_Peg"
+    target = sys.argv[1] if len(sys.argv) != 1 else "55_Cnc"
 
     parallel(target)
     pass

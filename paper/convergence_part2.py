@@ -18,19 +18,38 @@ def get_parameters_from_log(logfile):
     with open(logfile) as f:
         sme_log = f.read()
 
-    match = re.search(r"teff\s*([\d.]+) \+- ([\d.]+)", sme_log)
-    teff = float(match.group(1))
-    teff_unc = float(match.group(2))
+    try:
+        match = re.search(r"teff\s*(-?[\d.]+) \+- ([\d.]+)", sme_log)
+        teff = float(match.group(1))
+        teff_unc = float(match.group(2))
 
-    match = re.search(r"logg\s*([\d.]+) \+- ([\d.]+)", sme_log)
-    logg = float(match.group(1))
-    logg_unc = float(match.group(2))
+        match = re.search(r"logg\s*(-?[\d.]+) \+- ([\d.]+)", sme_log)
+        logg = float(match.group(1))
+        logg_unc = float(match.group(2))
 
-    match = re.search(r"monh\s*([\d.]+) \+- ([\d.]+)", sme_log)
-    monh = float(match.group(1))
-    monh_unc = float(match.group(2))
+        match = re.search(r"monh\s*(-?[\d.]+) \+- ([\d.]+)", sme_log)
+        monh = float(match.group(1))
+        monh_unc = float(match.group(2))
 
-    return teff, logg, monh
+        # match = re.search(r"vmic\s*(-?[\d.]+) \+- ([\d.]+)", sme_log)
+        # vmic = float(match.group(1))
+        # vmic_unc = float(match.group(2))
+
+        # match = re.search(r"vmac\s*(-?[\d.]+) \+- ([\d.]+)", sme_log)
+        # vmac = float(match.group(1))
+        # vmac_unc = float(match.group(2))
+
+        # match = re.search(r"vsini\s*(-?[\d.]+) \+- ([\d.]+)", sme_log)
+        # vsini = float(match.group(1))
+        # vsini_unc = float(match.group(2))
+
+        # match = re.search(r"ipres\s*(-?[\d.]+) \+- ([\d.]+)", sme_log)
+        # ipres = float(match.group(1))
+        # ipres_unc = float(match.group(2))
+    except:
+        teff = logg = monh = vmic = vmac = vsini = np.nan
+
+    return teff, logg, monh  # , vmic, vmac, vsini
 
 
 if __name__ == "__main__":
@@ -50,6 +69,10 @@ if __name__ == "__main__":
     result_teff = data[:, 3]
     result_logg = data[:, 4]
     result_monh = data[:, 5]
+    # vmic = data[:, 6]
+    # vmac = data[:, 7]
+    # vsini = data[:, 8]
+    # ipres = data[:, 9]
 
     unique_teff = np.sort(np.unique(teffs))
     unique_logg = np.sort(np.unique(loggs))
@@ -60,10 +83,27 @@ if __name__ == "__main__":
     # plt.xlabel("Teff [K]")
     # plt.show()
 
+    teff_std = result_teff.std()
+    logg_std = result_logg.std()
+    monh_std = result_monh.std()
+
+    plt.hist(result_teff, bins="auto")
+    plt.show()
+
     # Distribution of new teffs, depending on old teff
     plt.plot(result_teff, teffs, "k+", alpha=0.5)
     plt.xlabel("Final Teff [K]")
     plt.ylabel("Initial Teff [K]")
+    plt.show()
+
+    plt.plot(result_logg, loggs, "k+", alpha=0.5)
+    plt.xlabel("Final logg [cgs]")
+    plt.ylabel("Initial logg [cgs]")
+    plt.show()
+
+    plt.plot(result_monh, monhs, "k+", alpha=0.5)
+    plt.xlabel("Final monh [Fe/H]")
+    plt.ylabel("Initial monh [Fe/H]")
     plt.show()
 
     # Distribution of new values
@@ -71,5 +111,8 @@ if __name__ == "__main__":
     ax = fig.add_subplot(projection="3d")
     ax.scatter(teffs.ravel(), loggs.ravel(), monhs.ravel())
     ax.scatter(result_teff.ravel(), result_logg.ravel(), result_monh.ravel())
+    ax.set_xlabel("Teff [K]")
+    ax.set_ylabel("log(g) [cgs]")
+    ax.set_zlabel("[Fe/H]")
     plt.show()
     pass

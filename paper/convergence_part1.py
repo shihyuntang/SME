@@ -42,6 +42,10 @@ if __name__ == "__main__":
     wave = [wave[i * NPOINTS : (i + 1) * NPOINTS] for i in range(nseg)]
     flux = [flux[i * NPOINTS : (i + 1) * NPOINTS] for i in range(nseg)]
 
+    segments = [10]
+    wave = [wave[10]]
+    flux = [flux[10]]
+
     sme = SME.SME_Structure(wave=wave, sob=flux)
     sme.uncs = np.sqrt(sme.spec)
     sme.mask = sme.mask_values["line"]
@@ -49,6 +53,10 @@ if __name__ == "__main__":
 
     # Add linelist
     sme.linelist = ValdFile(vald_file)
+    sme.linelist.medium = "air"
+    wmin = sme.wave[0, 0]
+    wmax = sme.wave[0, -1]
+    sme.linelist = sme.linelist.trim(wmin, wmax, 100)
 
     # Add abundances
     sme.abund = "asplund2009"
@@ -78,29 +86,31 @@ if __name__ == "__main__":
     # Set continuum and radial velocity settings
     sme.vrad = None
     sme.cscale = None
-    sme.vrad_flag = "each"
-    sme.cscale_flag = "linear"
+    sme.vrad_flag = "fix"
+    sme.cscale_flag = "none"
     sme.cscale_type = "match"
+    sme.vrad_limit = 200
+    sme.vrad = 0.26897
 
     # Load the parameters from the command line
     if len(sys.argv) > 1:
         param = sys.argv[1:]
     else:
-        param = [5000, 4.0, -0.4]  # 5000.00, 4.00, 0.00
+        param = [5000, 4.4, 0.4]  # 5000.00, 4.00, 0.00
     sme.teff = float(param[0])
     sme.logg = float(param[1])
     sme.monh = float(param[2])
     sme.vmic = 1
-    sme.vmac = 2
-    sme.vsini = 10
+    sme.vmac = 3.4
+    sme.vsini = 0.5
 
-    segments = list(range(5, 43))
-    wmin = sme.wave[segments[0], 0]
-    wmax = sme.wave[segments[-1], -1]
-    sme.linelist = sme.linelist.trim(wmin, wmax, 100)
+    # Like HARPS?
+    sme.iptype = "gauss"
+    sme.ipres = 100_500 * 2
 
     # try:
-    sme = solve(sme, ["teff", "logg", "monh"], segments=segments)
+    fp = ["teff", "logg", "monh"]
+    sme = solve(sme, fp)
     sme.save(
         join(
             examples_dir,

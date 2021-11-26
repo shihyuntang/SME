@@ -11,7 +11,7 @@ from pysme.sme import SME_Structure
 if __name__ == "__main__":
     results_dir = join(dirname(__file__), "json")
     targets = [
-        "au_mic.json",
+        # "au_mic.json",
         "eps_eri.json",
         "55_cnc.json",
         "hd_102195.json",
@@ -23,7 +23,7 @@ if __name__ == "__main__":
     ]
     names = np.array(
         [
-            "AU Mic",
+            # "AU Mic",
             "Eps Eri",
             "55 Cnc",
             "HD 102195",
@@ -67,14 +67,12 @@ if __name__ == "__main__":
         # x = values[p]
         x = values["teff"]
         y = uncertainties[p]
-        sort = np.argsort(x)
-        x, y = x[sort], y[sort]
 
         xf = np.linspace(x.min(), x.max(), 100)
         popt, pcov = curve_fit(
             lambda x, *p: np.polyval(p, x),
-            x[names[sort] != "AU Mic"],
-            y[names[sort] != "AU Mic"],
+            x[names != "AU Mic"],
+            y[names != "AU Mic"],
             p0=np.zeros(2),
             method="trf",
             loss="soft_l1",
@@ -94,7 +92,7 @@ if __name__ == "__main__":
         plt.xlabel("$T_{eff}$ [K]")
         plt.ylabel(fr"$\sigma${p} [{u}]")
 
-        plt.savefig(f"trend_{p}.png")
+        plt.savefig(join(dirname(__file__), f"images/trend_{p}.png"))
         # plt.show()
         plt.clf()
 
@@ -130,7 +128,7 @@ if __name__ == "__main__":
             plt.legend(loc="upper left")
             plt.ylabel(fr"$\Delta${p} [{u}]")
             plt.xlabel("$T_{eff}$ [K]")
-            plt.savefig(f"delta_{p}.png")
+            plt.savefig(join(dirname(__file__), f"images/delta_{p}.png"))
             # plt.show()
             plt.clf()
         else:
@@ -138,8 +136,8 @@ if __name__ == "__main__":
 
             popt, pcov = curve_fit(
                 lambda x, *p: np.polyval(p, x),
-                x[names[sort] != "AU Mic"],
-                y[names[sort] != "AU Mic"],
+                x[names != "AU Mic"],
+                y[names != "AU Mic"],
                 p0=np.zeros(2),
                 method="trf",
                 loss="soft_l1",
@@ -158,7 +156,7 @@ if __name__ == "__main__":
                 plt.text(x[i], y[i], names[i])
             plt.xlabel("$T_{eff}$ [K]")
             plt.ylabel(f"{p} [{u}]")
-            plt.savefig(f"teff_trend_{p}.png")
+            plt.savefig(join(dirname(__file__), f"images/teff_trend_{p}.png"))
             # plt.show()
             plt.clf()
 
