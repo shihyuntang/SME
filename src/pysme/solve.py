@@ -7,6 +7,7 @@ And also determines the best fit parameters
 import json
 import logging
 import warnings
+from numbers import Number, Real
 from os.path import splitext
 
 import numpy as np
@@ -32,6 +33,47 @@ clight = speed_of_light * 1e-3  # km/s
 warnings.filterwarnings("ignore", category=OptimizeWarning)
 
 
+class VariableNumber(np.lib.mixins.NDArrayOperatorsMixin):
+    """
+    This is essentially a pointer to the value, but will interact with operators
+    as though it was the value. This is useful to pass one f_scale parameter
+    to the least squares fit, that can then be modified during the iterations.
+    """
+
+    def __init__(self, value):
+        self.value = value
+
+    _HANDLED_TYPES = (np.ndarray, Number)
+
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        out = kwargs.get("out", ())
+        for x in inputs + out:
+            # Only support operations with instances of _HANDLED_TYPES.
+            # Use ArrayLike instead of type(self) for isinstance to
+            # allow subclasses that don't override __array_ufunc__ to
+            # handle ArrayLike objects.
+            if not isinstance(x, self._HANDLED_TYPES + (VariableNumber,)):
+                return NotImplemented
+
+        # Defer to the implementation of the ufunc on unwrapped values.
+        inputs = tuple(x.value if isinstance(x, VariableNumber) else x for x in inputs)
+        if out:
+            kwargs["out"] = tuple(
+                x.value if isinstance(x, VariableNumber) else x for x in out
+            )
+        result = getattr(ufunc, method)(*inputs, **kwargs)
+
+        if type(result) is tuple:
+            # multiple return values
+            return result
+        elif method == "at":
+            # no return value
+            return None
+        else:
+            # one return value
+            return result
+
+
 class SME_Solver:
     def __init__(self, filename=None, restore=False):
         self.config, self.lfs_atmo, self.lfs_nlte = setup_lfs()
@@ -49,7 +91,7 @@ class SME_Solver:
         self._latest_residual = None
         self._latest_jacobian = None
         self.restore = restore
-
+        self.f_scale = 0.2
         # For displaying the progressbars
         self.progressbar = None
         self.progressbar_jacobian = None
@@ -177,6 +219,9 @@ class SME_Solver:
             self.progressbar.update(1)
 
         if not isJacobian:
+            # Update f_scale
+            # self.f_scale.value = np.percentile(np.abs(resid), 95)
+            # print(self.f_scale.value)
             # Save result for jacobian
             self._latest_residual = resid
             self.iteration += 1
@@ -286,11 +331,11 @@ class SME_Solver:
                     bounds["teff"] = teff
 
                     logg = np.unique(atmo_grid.logg)
-                    logg = np.min(logg), np.max(logg) * 1.5
+                    logg = np.min(logg), np.max(logg)
                     bounds["logg"] = logg
 
                     monh = np.unique(atmo_grid.monh)
-                    monh = np.min(monh), np.max(monh) * 1.5
+                    monh = np.min(monh), np.max(monh)
                     bounds["monh"] = monh
                 elif ext == ".krz":
                     # krz atmospheres are fixed to one parameter set
@@ -695,7 +740,8 @@ class SME_Solver:
 
         # This is the expected range of the uncertainty
         # if the residuals are larger, they are dampened by log(1 + z)
-        f_scale = 0.1 * np.nanmean(spec.ravel()) / np.nanmean(uncs.ravel())
+        self.f_scale = 0.2 * np.nanmean(spec.ravel()) / np.nanmean(uncs.ravel())
+        self.f_scale = VariableNumber(self.f_scale)
 
         # Divide the uncertainties by the spectrum, to improve the fit in the continuum
         # Just as in IDL SME, this increases the relative error for points inside lines
@@ -732,7 +778,7 @@ class SME_Solver:
                     x0=p0,
                     bounds=bounds,
                     loss="cauchy",
-                    f_scale=f_scale,
+                    f_scale=self.f_scale,
                     method="dogbox",
                     # x_scale="jac",
                     # These control the tolerance, for early termination
