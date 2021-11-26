@@ -57,7 +57,13 @@ class FitPlot:
 class FinalPlot:
     """Big plot that covers everything"""
 
-    def __init__(self, sme, segment=0, orig=None, labels=None):
+    def __init__(
+        self,
+        sme,
+        segment=0,
+        orig=None,
+        labels=None,
+    ):
         self.sme = sme
         self.wave = sme.wave
         self.spec = sme.spec
@@ -295,7 +301,7 @@ class FinalPlot:
                     dict(
                         x=self.wave[seg],
                         y=self.smod[seg],
-                        name=self.labels.get("synth", "Synthethic"),
+                        name=self.labels.get("synth", "Synthetic"),
                         line={"color": fmt["Syn"]["color"]},
                         legendgroup=1,
                         visible=current_segment == seg,
