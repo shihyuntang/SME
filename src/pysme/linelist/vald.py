@@ -114,7 +114,12 @@ class ValdFile(LineList):
         self.energy_unit = None
         linelist = self.loads(filename)
 
-        super().__init__(linelist, lineformat=self.lineformat, medium=self.medium)
+        super().__init__(
+            linelist,
+            lineformat=self.lineformat,
+            medium=self.medium,
+            citation_info=self.citation_info,
+        )
         # Convert to desired medium
         if medium is not None:
             self.medium = medium
@@ -514,6 +519,9 @@ class ValdFile(LineList):
         # Get references from bibtex file
         # TODO: only load this once? But then again, how often will we do this?
         bibdata = pybtex.database.parse_file(join(dirname(__file__), "VALD3_ref.bib"))
+        # DEBUG:
+        # pybtex.format_from_string(bibdata.to_string("bibtex"), style="plain", output_backend="plaintext")
+
         entries = {}
         for r in references:
             try:

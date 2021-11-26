@@ -442,7 +442,10 @@ class LineList(IPersist):
         selection = self._lines["wlcent"] > wave_min
         selection &= self._lines["wlcent"] < wave_max
         return LineList(
-            self._lines[selection], lineformat=self.lineformat, medium=self.medium
+            self._lines[selection],
+            lineformat=self.lineformat,
+            medium=self.medium,
+            citation_info=self.citation_info,
         )
 
     def _save(self):
