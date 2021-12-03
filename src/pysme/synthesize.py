@@ -443,26 +443,6 @@ class Synthesizer:
         flux = np.pi * np.sum(flux, axis=1) / os  # sum, normalize
         return flux
 
-    def sequential_synthesize_segments(
-        self,
-        sme,
-        segments,
-        wmod,
-        smod,
-        cmod,
-        reuse_wavelength_grid,
-        dll_id=None,
-    ):
-        for il in tqdm(segments, desc="Segments", leave=False):
-            wmod[il], smod[il], cmod[il] = self.synthesize_segment(
-                sme,
-                il,
-                reuse_wavelength_grid,
-                il != segments[0],
-                dll_id=dll_id,
-            )
-        return wmod, smod, cmod
-
     def get_dll_id(self, dll=None):
         if dll is None:
             dll = self.dll
@@ -484,98 +464,6 @@ class Synthesizer:
         else:
             return dll_id
 
-    def parallel_synthesize_segments(
-        self,
-        sme,
-        segments,
-        wmod,
-        smod,
-        cmod,
-        reuse_wavelength_grid,
-        dll_id=None,
-    ):
-        # Make sure the dll is recorded in the global variables
-        dll = self.get_dll(dll_id)
-        dll_id = self.get_dll_id(dll)
-
-        # We calculate the first segment sequentially
-        with tqdm(desc="Segments", total=len(segments), leave=False) as progress:
-            il = segments[0]
-            wmod[il], smod[il], cmod[il] = self.synthesize_segment(
-                sme, il, reuse_wavelength_grid, False, dll_id=dll_id
-            )
-            progress.update(1)
-            # and then all others in parrallel
-            # since we can keep the line opacities from the calculation of the first segment
-            # TODO: do the line opacities also in parallel?
-
-            # For multiple Processes we need to pickle all the components
-            # BUT we can not pickle the smelib, since it has pointers (in the state)
-            # Therefore we cheat by putting the library in a global variable
-            # but only with a unqiue id, that should be unique to this library
-
-            def parallel(il):
-                return self.synthesize_segment(
-                    sme,
-                    il,
-                    reuse_wavelength_grid,
-                    True,
-                    method="parallel",
-                    dll_id=dll_id,
-                )
-
-            # Sequential version for debugging
-            data = [None for _ in segments[1:]]
-            for i, seg in enumerate(segments[1:]):
-                data[i] = self.synthesize_segment(
-                    sme,
-                    seg,
-                    reuse_wavelength_grid,
-                    True,
-                    method="sequential",
-                    dll_id=dll_id,
-                )
-                progress.update(1)
-
-        # data_seq = [None for _ in segments[1:]]
-        # What is sticking around in the library that is not part of the state?
-        # for seg in segments[1:]:
-        #     i = seg-1
-        #     data_seq[i] = self.synthesize_segment(
-        #         sme,
-        #         seg,
-        #         reuse_wavelength_grid,
-        #         True,
-        #         method="sequential",
-        #         dll_id=dll_id,
-        #     )
-
-        #     if not np.all(data[i][0] == data_seq[i][0]):
-        #         print("What")
-        #     if not np.all(data[i][1] == data_seq[i][1]):
-        #         print("The")
-        #     if not np.all(data[i][2] == data_seq[i][2]):
-        #         print("Hell")
-
-        # Pathos version crashes for some reason
-        # with ThreadPool() as pool:
-        #     data = pool.map(parallel, segments[1:])
-
-        # Use "default" ThreadPool instead
-        # data = [None for _ in segments[1:]]
-        # with ThreadPoolExecutor() as executor:
-        #     futures = {executor.submit(parallel, il): il for il in segments[1:]}
-        #     for future in as_completed(futures):
-        #         il = futures[future] - 1
-        #         data[il] = future.result()
-
-        for i, seg in enumerate(segments[1:]):
-            wmod[seg] = data[i][0]
-            smod[seg] = data[i][1]
-            cmod[seg] = data[i][2]
-
-        return wmod, smod, cmod
-
     def synthesize_spectrum(
         self,
         sme,
@@ -587,7 +475,6 @@ class Synthesizer:
         updateLineList=False,
         reuse_wavelength_grid=False,
         radial_velocity_mode="robust",
-        method="sequential",
         dll_id=None,
     ):
         """
@@ -659,23 +546,7 @@ class Synthesizer:
         if "wave" in sme:
             wave = [w for w in sme.wave]
 
-        if method == "parallel" and not self.get_dll(dll_id).parallel:
-            # display only once
-            if (
-                not hasattr(self, "_warning_parallel_mode")
-                or not self._warning_parallel_mode
-            ):
-                self._warning_parallel_mode = True
-                logger.warning(
-                    "Parallel mode was requested, but the library in use is a sequential version. Running in sequential mode instead"
-                )
-            method = "sequential"
-
-        if method == "parallel":
-            dll = self.get_dll(dll_id).copy()
-            dll_id = self.get_dll_id(dll)
-        else:
-            dll = self.get_dll(dll_id)
+        dll = self.get_dll(dll_id)
 
         # Input Model data to C library
         dll.SetLibraryPath()
@@ -700,28 +571,13 @@ class Synthesizer:
         #   Interpolate onto geomspaced wavelength grid
         #   Apply instrumental and turbulence broadening
 
-        # TODO Parallelization
-        # This requires changes in the C code however, since SME uses global parameters
-        # for the wavelength range (and opacities) which change within each segment
-        if dll.parallel:
-            wmod, smod, cmod = self.parallel_synthesize_segments(
+        for il in tqdm(segments, desc="Segments", leave=False):
+            wmod[il], smod[il], cmod[il] = self.synthesize_segment(
                 sme,
-                segments,
-                wmod,
-                smod,
-                cmod,
+                il,
                 reuse_wavelength_grid,
-                dll_id=dll,
-            )
-        else:
-            wmod, smod, cmod = self.sequential_synthesize_segments(
-                sme,
-                segments,
-                wmod,
-                smod,
-                cmod,
-                reuse_wavelength_grid,
-                dll_id=dll,
+                il != segments[0],
+                dll_id=dll_id,
             )
 
         for il in segments:
@@ -805,7 +661,6 @@ class Synthesizer:
         segment,
         reuse_wavelength_grid=False,
         keep_line_opacity=False,
-        method="sequential",
         dll_id=None,
     ):
         """Create the synthetic spectrum of a single segment
@@ -833,11 +688,7 @@ class Synthesizer:
             The continuum Flux of the synthesized spectrum
         """
         logger.debug("Segment %i out of %i", segment, sme.nseg)
-        if method == "parallel":
-            dll = self.get_dll(dll_id).copy()
-            dll_id = self.get_dll_id(dll)
-        else:
-            dll = self.get_dll(dll_id)
+        dll = self.get_dll(dll_id)
 
         # Input Wavelength range and Opacity
         vrad_seg = sme.vrad[segment] if sme.vrad[segment] is not None else 0
@@ -856,8 +707,8 @@ class Synthesizer:
         #   Calculate spectral synthesis for each
         _, wint, sint, cint = dll.Transf(
             sme.mu,
-            sme.accrt,  # threshold line opacity / cont opacity
-            sme.accwi,
+            accrt=sme.accrt,  # threshold line opacity / cont opacity
+            accwi=sme.accwi,
             keep_lineop=keep_line_opacity,
             wave=wint_seg,
         )

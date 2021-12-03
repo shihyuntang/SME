@@ -41,11 +41,19 @@ logger.addHandler(console)
 
 # Download library if it does not exist
 import os.path
+from ctypes import cdll
 
-from . import libtools
+from .smelib import libtools
 
-if not os.path.exists(libtools.get_full_libfile()):
+libfile = libtools.get_full_libfile()
+if not os.path.exists(libfile):
     libtools.download_libsme()
+
+try:
+    cdll.LoadLibrary(libfile)
+    from .smelib import _smelib
+except:
+    libtools.compile_interface()
 
 # Provide submodules to the outside
 __all__ = [

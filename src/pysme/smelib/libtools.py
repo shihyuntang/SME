@@ -8,6 +8,7 @@ import ctypes as ct
 import logging
 import os
 import platform
+import subprocess
 import zipfile
 from os.path import dirname, exists, join
 from posixpath import realpath
@@ -53,6 +54,14 @@ def download_libsme(loc=None):
     os.remove(fname)
 
 
+def compile_interface():
+    libdir = join(dirname(__file__))
+    cwd = os.getcwd()
+    os.chdir(libdir)
+    subprocess.run(["python", "setup.py", "build_ext", "--inplace"])
+    os.chdir(cwd)
+
+
 def get_lib_name():
     """Get the name of the sme C library"""
     system = platform.system().lower()
@@ -66,7 +75,7 @@ def get_lib_name():
 
 def get_full_libfile():
     """Get the full path to the sme C library"""
-    localdir = dirname(__file__)
+    localdir = dirname(dirname(__file__))
     libfile = get_lib_name()
     # TODO: Or "bin" for Windows
     if platform.system() in ["Windows"]:
@@ -92,6 +101,6 @@ def load_library(libfile=None):
 
 
 def get_full_datadir():
-    localdir = dirname(__file__)
+    localdir = dirname(dirname(__file__))
     datadir = join(localdir, "share/libsme/")
     return datadir

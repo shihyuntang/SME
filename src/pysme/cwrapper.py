@@ -13,7 +13,7 @@ import warnings
 
 import numpy as np
 
-from .libtools import load_library
+from .smelib.libtools import load_library
 
 logger = logging.getLogger(__name__)
 
