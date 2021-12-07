@@ -65,12 +65,11 @@ __all__ = [
     "cwrapper",
     "echelle",
     "iliffe_vector",
-    "integrate_flux",
     "linelist",
     "nlte",
     "sme_synth",
     "sme",
     "solve",
     "uncertainties",
-    "vald",
+    "smelib",
 ]
