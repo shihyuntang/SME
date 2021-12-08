@@ -171,8 +171,6 @@ class SME_Solver:
         save = not isJacobian and self.filename is not None
         reuse_wavelength_grid = isJacobian
         radial_velocity_mode = "robust" if not isJacobian else "fast"
-        # method = "parallel" if isJacobian else "sequential"
-        method = "sequential"
 
         # change parameters
         for name, value in zip(self.parameter_names, param):
@@ -187,7 +185,6 @@ class SME_Solver:
                 passLineList=False,
                 updateLineList=self.update_linelist,
                 radial_velocity_mode=radial_velocity_mode,
-                method=method,
             )
         except AtmosphereError as ae:
             # Something went wrong (left the grid? Don't go there)

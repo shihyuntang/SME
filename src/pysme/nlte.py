@@ -1022,7 +1022,7 @@ class NLTE(Collection):
 
         # Reset the departure coefficient every time, just to be sure
         # It would be more efficient to just Update the values, but this doesn't take long
-        dll.ResetNLTE()
+        dll.ResetDepartureCoefficients()
 
         if self.first:
             self.first = False
@@ -1057,7 +1057,7 @@ class NLTE(Collection):
                     # loop through the list of relevant _lines_, substitute both their levels into the main b matrix
                     # Make sure both levels have corrections available
                     if lr[0] != -1 and lr[1] != -1:
-                        dll.InputNLTE(bmat[:, lr].T, li)
+                        dll.InputDepartureCoefficients(bmat[:, lr].T, li)
 
         for elem in marked_for_removal:
             self.remove_nlte(elem)

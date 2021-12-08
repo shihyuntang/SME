@@ -104,7 +104,7 @@ def test_dll(lfs_atmo, lfs_nlte):
     sme.nlte.set_nlte(elem, "marcs2012p_t1.0_Ca.grd")
 
     libsme = SME_DLL()
-    libsme.ResetNLTE()
+    libsme.ResetDepartureCoefficients()
 
     syn = Synthesizer(None, lfs_atmo=lfs_atmo, lfs_nlte=lfs_nlte)
     sme = syn.get_atmosphere(sme)
@@ -117,7 +117,7 @@ def test_dll(lfs_atmo, lfs_nlte):
     for lr, li in zip(linerefs, lineindices):
         if lr[0] != -1 and lr[1] != -1:
             counter += 1
-            libsme.InputNLTE(bmat[:, lr].T, li)
+            libsme.InputDepartureCoefficients(bmat[:, lr].T, li)
 
     flags = libsme.GetNLTEflags()
     assert np.any(flags)
@@ -125,26 +125,26 @@ def test_dll(lfs_atmo, lfs_nlte):
     assert len(flags) == len(sme.linelist)
 
     idx = np.where(flags)[0][0]
-    coeffs = libsme.GetNLTE(idx)
+    coeffs = libsme.GetDepartureCoefficients(idx)
     assert coeffs is not None
 
     # If we reset NLTE no flags should be set
-    libsme.ResetNLTE()
+    libsme.ResetDepartureCoefficients()
     flags = libsme.GetNLTEflags()
     assert not np.any(flags)
     assert len(flags) == len(sme.linelist)
 
     with pytest.raises(TypeError):
-        libsme.InputNLTE(None, 0)
+        libsme.InputDepartureCoefficients(None, 0)
 
     with pytest.raises(TypeError):
-        libsme.InputNLTE(bmat[:, [0, 1]].T, 0.1)
+        libsme.InputDepartureCoefficients(bmat[:, [0, 1]].T, 0.1)
 
     with pytest.raises(ValueError):
-        libsme.InputNLTE([0, 1], 10)
+        libsme.InputDepartureCoefficients([0, 1], 10)
 
-    with pytest.raises(ValueError):
-        libsme.InputNLTE(bmat[:, [0, 1]].T, -10)
+    with pytest.raises(RuntimeError):
+        libsme.InputDepartureCoefficients(bmat[:, [0, 1]].T, -10)
 
 
 @pytest.fixture

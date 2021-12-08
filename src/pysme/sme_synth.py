@@ -264,7 +264,12 @@ class SME_DLL:
             ACOOL: C1, Mg1, Al1, Si1, Fe1, CH, NH, OH
             ALUKE: N1, O1, Mg2, Si2, Ca2
         """
-        return _smelib.GetOpacity(switch, key=key, species=species)
+        kwargs = {}
+        if key is not None:
+            kwargs["key"] = key
+        if species is not None:
+            kwargs["species "] = species
+        return _smelib.GetOpacity(switch, **kwargs)
 
     def Ionization(self, ion=0):
         """
