@@ -58,7 +58,7 @@ def compile_interface():
     libdir = join(dirname(__file__))
     cwd = os.getcwd()
     os.chdir(libdir)
-    subprocess.run(["python", "setup.py", "build_ext", "--inplace"])
+    subprocess.run(["python3", "setup.py", "build_ext", "--inplace"])
     os.chdir(cwd)
 
 
