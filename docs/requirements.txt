@@ -1,0 +1,18 @@
+# The requirements, without a version number, hopefully that works
+pandas
+scipy
+numpy
+astropy
+wget
+tqdm
+colorlog
+emcee
+pybtex
+flex-format
+plotly
+matplotlib
+# Development Requirements
+pre-commit
+sphinx
+pytest
+requests
