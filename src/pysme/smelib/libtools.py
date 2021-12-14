@@ -48,11 +48,9 @@ def download_libsme(loc=None):
         system = aliases[system]
     except KeyError:
         raise KeyError(
-            (
-                f"Could not find the associated compiled library for this system {system}.",
-                " Either compile it yourself and place it in src/pysme/ or open an",
-                " issue on Github. Supported systems are: Linux, MacOS, Windows.",
-            )
+            f"Could not find the associated compiled library for this system {system}."
+            " Either compile it yourself and place it in src/pysme/ or open an"
+            " issue on Github. Supported systems are: Linux, MacOS, Windows."
         )
 
     github_releases_url = "https://github.com/AWehrhahn/SMElib/releases/latest/download"
