@@ -1,17 +1,17 @@
 # -*- coding: utf-8 -*-
-# This file is complementary to cwrapper.py, but since we simply want to
-# copy cwrapper from the smelib, this has all the additional methods in it
-# that are relevant to PySME but not the smelib
-# ATM those are related to the location of the library and its download
+"""
+These libtools are used to locate, download, and install the SME C/Fortran
+library.
+"""
 
 import ctypes as ct
 import logging
 import os
 import platform
 import subprocess
+import sys
 import zipfile
 from os.path import dirname, exists, join
-from posixpath import realpath
 
 import wget
 
@@ -19,6 +19,20 @@ logger = logging.getLogger(__name__)
 
 
 def download_libsme(loc=None):
+    """
+    Download the SME library and the necessary datafiles
+
+    Parameters
+    ----------
+    loc : str, optional
+        the path to the location the files should be placed,
+        by default they are placed so that PySME can find and use them
+
+    Raises
+    ------
+    KeyError
+        If no existing library is found for this system
+    """
     if loc is None:
         loc = dirname(dirname(get_full_libfile()))
     # Download compiled library from github releases
@@ -34,7 +48,11 @@ def download_libsme(loc=None):
         system = aliases[system]
     except KeyError:
         raise KeyError(
-            "Could not find the associated compiled library for this system {}. Either compile it yourself and place it in src/pysme/ or open an issue on Github"
+            (
+                f"Could not find the associated compiled library for this system {system}.",
+                " Either compile it yourself and place it in src/pysme/ or open an",
+                " issue on Github. Supported systems are: Linux, MacOS, Windows.",
+            )
         )
 
     github_releases_url = "https://github.com/AWehrhahn/SMElib/releases/latest/download"
@@ -55,15 +73,28 @@ def download_libsme(loc=None):
 
 
 def compile_interface():
+    """
+    Compiles the Python Module Interface to the SME library. This needs to be
+    called once, before trying to import _smelib.
+
+    Since the module uses the setup.py method to be compiled,
+    it is somewhat hacked together to make it work.
+    """
     libdir = join(dirname(__file__))
+    executable = sys.executable
+    if executable is None:
+        # If python is unable to identify the path to its own executable use python3
+        # This is unlikely to happen for us though
+        executable = "python3"
     cwd = os.getcwd()
+    # We need to swith to the correct directory and back, for setup.py to work
     os.chdir(libdir)
-    subprocess.run(["python3", "setup.py", "build_ext", "--inplace"])
+    subprocess.run([executable, "setup.py", "build_ext", "--inplace"])
     os.chdir(cwd)
 
 
 def get_lib_name():
-    """Get the name of the sme C library"""
+    """Get the name of the SME C library"""
     system = platform.system().lower()
 
     if system == "windows":
@@ -78,6 +109,10 @@ def get_lib_name():
 
 
 def get_lib_directory():
+    """
+    Get the directory name of the library. I.e. 'lib' on all systems
+    execpt windows, and 'bin' on windows
+    """
     if platform.system() in ["Windows"]:
         dirpath = "bin"
     else:
@@ -96,6 +131,23 @@ def get_full_libfile():
 
 
 def load_library(libfile=None):
+    """
+    Load the SME library using cytpes.CDLL
+
+    This is useful and necessary for the pymodule interface to find the
+    library.
+
+    Parameters
+    ----------
+    libfile : str, optional
+        filename of the library to load, by default use the SME library in
+        this package
+
+    Returns
+    -------
+    lib : CDLL
+        library object of the SME library
+    """
     if libfile is None:
         libfile = get_full_libfile()
     try:
@@ -109,6 +161,9 @@ def load_library(libfile=None):
 
 
 def get_full_datadir():
+    """
+    Get the filepath to the datafiles of the SME library
+    """
     localdir = dirname(dirname(__file__))
     datadir = join(localdir, "share/libsme/")
     return datadir
