@@ -594,6 +594,7 @@ class ContinuumNormalizationMatchMask(ContinuumNormalizationMatch):
         super().__init__()
         self.cscale_type = "match+mask"
         self.mask = True
+        self.top_factor = 0
 
 
 class ContinuumNormalizationMatchLinesMask(ContinuumNormalizationMatchLines):
