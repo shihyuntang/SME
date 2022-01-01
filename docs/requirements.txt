@@ -5,7 +5,7 @@ numpy==1.22.0
 astropy==5.0
 wget==3.2
 tqdm==4.62.3
-colorlog
+colorlog==6.6.0
 emcee
 pybtex
 flex-format
