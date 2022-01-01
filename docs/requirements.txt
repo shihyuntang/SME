@@ -4,7 +4,7 @@ scipy==1.7.3
 numpy==1.22.0
 astropy==5.0
 wget==3.2
-tqdm
+tqdm==4.62.3
 colorlog
 emcee
 pybtex
