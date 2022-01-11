@@ -479,7 +479,10 @@ class SME_Solver:
         nparameters = len(freep_name)
         freep_unc = np.zeros(nparameters)
 
-        chi2 = np.sum(resid ** 2) / (resid.size - nparameters)
+        # The goodness of fit
+        # but the metric below, is already indifferent to
+        # the absolute scale of the uncertainties
+        # chi2 = np.sum(resid ** 2) / (resid.size - nparameters)
 
         # Cumulative distribution function of the normal distribution
         # cdf = lambda x, mu, sig: 0.5 * (1 + erf((x - mu) / (np.sqrt(2) * sig)))
@@ -501,7 +504,7 @@ class SME_Solver:
             return sigma
 
         for i, pname in enumerate(freep_name):
-            pder = deriv[:, i] / np.sqrt(chi2)
+            pder = deriv[:, i]
             idx = pder != 0
             # idx &= np.abs(resid) < 5 * unc / unc_median
 
@@ -531,45 +534,47 @@ class SME_Solver:
             sigma_estimate = (interval[1] - interval[0]) / 2
 
             # # Fit the distribution
-            # try:
-            #     sopt, _ = curve_fit(cdf, ch_x, ch_y)
-            # except RuntimeError:
-            #     # Fit failed, use dogbox instead
-            #     try:
-            #         sopt, _ = curve_fit(cdf, ch_x, ch_y, method="dogbox")
-            #     except RuntimeError:
-            #         sopt = [0, 0, 0]
+            from scipy.optimize import curve_fit
+
+            try:
+                sopt, _ = curve_fit(cdf, ch_x, ch_y)
+            except RuntimeError:
+                # Fit failed, use dogbox instead
+                try:
+                    sopt, _ = curve_fit(cdf, ch_x, ch_y, method="dogbox")
+                except RuntimeError:
+                    sopt = [0, 0, 0]
 
             # hmed = sopt[0]
             # sigma_estimate = std(*sopt)
             freep_unc[i] = sigma_estimate
 
             # # Debug plots
-            # import matplotlib.pyplot as plt
+            import matplotlib.pyplot as plt
 
-            # # Plot 1 (cumulative distribution)
-            # r = (sopt[0] - 20 * sopt[1], sopt[0] + 20 * sopt[1])
-            # x = np.linspace(ch_x.min(), ch_x.max(), ch_x.size * 10)
-            # plt.plot(ch_x, ch_y, "+", label="measured")
-            # plt.plot(x, cdf(x, *sopt), label="fit")
-            # plt.xlabel(freep_name[i])
-            # plt.ylabel("cumulative probability")
-            # plt.show()
-            # # Plot 2 (density distribution)
-            # x = np.linspace(r[0], r[-1], ch_x.size * 10)
-            # plt.hist(
-            #     ch_x,
-            #     bins="auto",
-            #     density=True,
-            #     histtype="step",
-            #     range=r,
-            #     label="measured",
-            # )
-            # plt.plot(x, norm.pdf(x, loc=sopt[0], scale=sopt[1]), label="fit")
-            # plt.xlabel(freep_name[i])
-            # plt.ylabel("probability")
-            # plt.xlim(r)
-            # plt.show()
+            # Plot 1 (cumulative distribution)
+            r = (sopt[0] - 20 * sopt[1], sopt[0] + 20 * sopt[1])
+            x = np.linspace(ch_x.min(), ch_x.max(), ch_x.size * 10)
+            plt.plot(ch_x, ch_y, "+", label="measured")
+            plt.plot(x, cdf(x, *sopt), label="fit")
+            plt.xlabel(freep_name[i])
+            plt.ylabel("cumulative probability")
+            plt.show()
+            # Plot 2 (density distribution)
+            x = np.linspace(r[0], r[-1], ch_x.size * 10)
+            plt.hist(
+                ch_x,
+                bins="auto",
+                density=True,
+                histtype="step",
+                range=r,
+                label="measured",
+            )
+            plt.plot(x, norm.pdf(x, loc=sopt[0], scale=sopt[1]), label="fit")
+            plt.xlabel(freep_name[i])
+            plt.ylabel("probability")
+            plt.xlim(r)
+            plt.show()
 
             logger.debug(f"{pname}: {hmed}, {sigma_estimate}")
 
