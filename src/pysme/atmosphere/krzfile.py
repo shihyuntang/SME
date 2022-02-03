@@ -62,19 +62,29 @@ class KrzFile(Atmosphere):
         # Parse header
         # vturb
 
-        self.vturb = float(re.findall(r"VTURB=?\s*(\d)", header)[0])
-        self.lonh = float(re.findall(r"L/H=?\s*(\d+.?\d*)", header)[0])
-        self.teff = float(re.findall(r"T ?EFF=?\s*(\d+.?\d*)", header)[0])
-        self.logg = float(re.findall(r"GRAV(ITY)?=?\s*(\d+.?\d*)", header)[0][1])
+        try:
+            self.vturb = float(re.findall(r"VTURB=?\s*(\d)", header, flags=re.I)[0])
+        except IndexError:
+            self.vturb = 0
 
-        model_type = re.findall(r"MODEL TYPE=?\s*(\d)", header)[0]
+        try:
+            self.lonh = float(re.findall(r"L/H=?\s*(\d+.?\d*)", header, flags=re.I)[0])
+        except IndexError:
+            self.lonh = 0
+
+        self.teff = float(re.findall(r"T ?EFF=?\s*(\d+.?\d*)", header, flags=re.I)[0])
+        self.logg = float(
+            re.findall(r"GRAV(ITY)?=?\s*(\d+.?\d*)", header, flags=re.I)[0][1]
+        )
+
+        model_type = re.findall(r"MODEL TYPE=?\s*(\d)", header, flags=re.I)[0]
         self.model_type = int(model_type)
 
         model_type_key = {0: "rhox", 1: "tau", 3: "sph"}
         self.depth = model_type_key[self.model_type]
         self.geom = "pp"
 
-        self.wlstd = float(re.findall(r"WLSTD=?\s*(\d+.?\d*)", header)[0])
+        self.wlstd = float(re.findall(r"WLSTD=?\s*(\d+.?\d*)", header, flags=re.I)[0])
         # parse opacity
         i = opacity.find("-")
         opacity = opacity[:i].split()
