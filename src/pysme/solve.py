@@ -601,15 +601,15 @@ class SME_Solver:
         sme.fitresults.gradient = result.grad
         sme.fitresults.derivative = result.jac
         sme.fitresults.residuals = result.fun
-        sme.fitresults.chisq = (
-            result.cost * 2 / (sme.spec.size - len(self.parameter_names))
+        sme.fitresults.chisq = np.sum(result.fun ** 2) / (
+            result.fun.size - len(self.parameter_names)
         )
         sme.fitresults.iterations = self.iteration
 
         sme.fitresults.fit_uncertainties = [np.nan for _ in self.parameter_names]
         for i in range(len(self.parameter_names)):
             # Errors based on covariance matrix
-            sme.fitresults.fit_uncertainties[i] = sig[i]
+            sme.fitresults.fit_uncertainties[i] = sig[i] * np.sqrt(sme.fitresults.chisq)
 
         try:
             mask = sme.mask_good[segments]
