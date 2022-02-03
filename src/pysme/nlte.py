@@ -713,7 +713,7 @@ class Grid:
             # 4. Try to match energies (including H, if step 3 failed)
             # Find the level in the nlte grid with the same spec,
             # and the closest energy; *provided* that the desired energy does
-            # not exceed the highest energy out of all the levels in the nlte grid with this spec
+            # not exceed the smallest energy difference between levels in the grid
             idx = idx_species
             if np.any(idx):
                 if level.energy > max_energy or level.energy <= 0:
