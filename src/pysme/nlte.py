@@ -298,7 +298,14 @@ class Grid:
         # The position of the models in the datafile
         self._keys = self.directory["models"].astype("U")
 
-        depth_name = str.lower(sme.atmo.interp)
+        try:
+            depth_name = str.lower(sme.atmo.interp)
+        except TypeError:
+            logger.warning(
+                "No interpolation axis specified in the atmosphere, using 'rhox'."
+            )
+            depth_name = "rhox"
+
         try:
             depth = self.directory[depth_name]
         except KeyError:
