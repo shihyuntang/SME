@@ -766,10 +766,10 @@ def cross_correlate_segment(x_obs, y_obs, x_syn, y_syn, mask, rv_bounds):
     y_tmp = np.interp(x_obs, x_syn, y_syn)
 
     # Normalize both spectra
-    y_obs_tmp = y_obs - np.min(y_obs)
+    y_obs_tmp = np.copy(y_obs)  # - np.min(y_obs)
     y_obs_tmp /= np.nanpercentile(y_obs_tmp, 95)
     y_obs_tmp -= 1
-    y_tmp_tmp = y_tmp - np.min(y_tmp)
+    y_tmp_tmp = np.copy(y_tmp)  # - np.min(y_tmp)
     y_tmp_tmp /= np.nanpercentile(y_tmp_tmp, 95)
     y_tmp_tmp -= 1
 
