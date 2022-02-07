@@ -312,7 +312,8 @@ class Grid:
             other_depth_name = "tau" if depth_name == "rhox" else "rhox"
             depth = self.directory[other_depth_name]
             logger.warning(
-                f"No data for {depth_name} in NLTE grid for {self.elem} found, using {other_depth_name} instead."
+                f"No data for {depth_name} in NLTE grid for {self.elem} found, "
+                f"using {other_depth_name} instead."
             )
             depth_name = other_depth_name
 
