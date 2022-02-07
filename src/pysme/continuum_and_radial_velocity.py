@@ -503,7 +503,7 @@ class ContinuumNormalizationMatch(ContinuumNormalizationAbstract):
         # We over exaggerate the weights on the top of the spectrum
         # this works well to determine the continuum
         # assuming that there is something there
-        self.top_factor = 100_000
+        self.top_factor = 500_000
         self.bottom_factor = 1
 
     def __call__(self, sme, x_syn, y_syn, segments, rvel=0):
@@ -558,7 +558,7 @@ class ContinuumNormalizationMatch(ContinuumNormalizationAbstract):
 
         # TODO: what should this be?
         if self.top_factor != 0:
-            mod = np.nanmedian(u) * (np.nanpercentile(y, 95) - y) ** 2
+            mod = np.nanmedian(u) / np.nanmedian(y) * (np.nanpercentile(y, 95) - y) ** 2
             u = u + self.top_factor * mod
 
         deg = sme.cscale_degree
@@ -574,8 +574,8 @@ class ContinuumNormalizationMatch(ContinuumNormalizationAbstract):
         try:
             res = least_squares(func, x0=p0, method="lm", x_scale="jac")
             popt = res.x
-        except RuntimeError as ex:
-            logger.warning("Could not determine the continuum")
+        except (RuntimeError, ValueError) as ex:
+            logger.warning("Failed to determine the continuum: " + ex.msg)
             popt = p0
 
         return popt[None, :]
@@ -938,6 +938,10 @@ def determine_radial_velocity(
         u_obs = u_obs[mask]
         if sme.telluric is not None:
             tell = tell[mask]
+
+        # Normalize the spectra to 1
+        y_obs = y_obs / np.nanpercentile(y_obs, 95)
+        y_syn = y_syn / np.nanpercentile(y_syn, 95)
 
         # Then minimize the least squares for a better fit
         # as cross correlation can only find
