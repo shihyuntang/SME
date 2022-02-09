@@ -769,6 +769,8 @@ def cross_correlate_segment(x_obs, y_obs, x_syn, y_syn, mask, rv_bounds):
     y_obs_tmp = np.copy(y_obs)
     y_obs_tmp /= np.nanpercentile(y_obs_tmp, 95)
     y_obs_tmp -= 1
+    y_obs_tmp[~mask] = 0
+
     y_tmp_tmp = np.copy(y_tmp)
     y_tmp_tmp /= np.nanpercentile(y_tmp_tmp, 95)
     y_tmp_tmp -= 1
