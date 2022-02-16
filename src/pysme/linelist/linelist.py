@@ -342,6 +342,10 @@ class LineList(IPersist):
         values = values.astype(float)
         return values
 
+    @property
+    def index(self):
+        return self._lines.index
+
     def sort(self, field="wlcent", ascending=True):
         """Sort the linelist
 
