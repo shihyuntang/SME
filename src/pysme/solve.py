@@ -719,8 +719,16 @@ class SME_Solver:
         self.update_linelist = False
         for name in self.parameter_names:
             if name[:8] == "linelist":
-                self.update_linelist = True
-                break
+                if self.update_linelist is False:
+                    self.update_linelist = []
+                try:
+                    idx = int(name.split()[1])
+                except IndexError:
+                    raise ValueError(
+                        f"Could not parse fit parameter {name}, expected a "
+                        "linelist parameter like 'linelist n gflog'"
+                    )
+                self.update_linelist += [idx]
 
         # Create appropiate bounds
         if bounds is None:
@@ -746,14 +754,13 @@ class SME_Solver:
         spec = sme.spec[segments][mask]
         uncs = sme.uncs[segments][mask]
 
+        # Divide the uncertainties by the spectrum, to improve the fit in the continuum
+        # Just as in IDL SME, this increases the relative error for points inside lines
+        uncs /= np.sqrt(np.abs(spec))
+
         # This is the expected range of the uncertainty
         # if the residuals are larger, they are dampened by log(1 + z)
         self.f_scale = 0.2 * np.nanmean(spec.ravel()) / np.nanmean(uncs.ravel())
-        # self.f_scale = VariableNumber(self.f_scale)
-
-        # Divide the uncertainties by the spectrum, to improve the fit in the continuum
-        # Just as in IDL SME, this increases the relative error for points inside lines
-        # uncs /= spec
 
         logger.info("Fitting Spectrum with Parameters: %s", ",".join(param_names))
         logger.debug("Initial values: %s", p0)

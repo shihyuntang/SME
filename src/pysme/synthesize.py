@@ -554,7 +554,7 @@ class Synthesizer:
             dll.InputLineList(sme.linelist)
         if updateLineList:
             # TODO Currently Updates the whole linelist, could be improved to only change affected lines
-            dll.UpdateLineList(sme.atomic, sme.species, np.arange(len(sme.linelist)))
+            dll.UpdateLineList(sme.atomic, sme.species, updateLineList)
         if passAtmosphere:
             sme = self.get_atmosphere(sme)
             dll.InputModel(sme.teff, sme.logg, sme.vmic, sme.atmo)

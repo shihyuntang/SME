@@ -178,7 +178,9 @@ class SME_DLL:
         index : array(int) of size (nlines,)
             indices of the lines to update relative to the overall linelist
         """
-        atomic = atomic.T
+        index = np.asarray(index, dtype=np.int16)
+        species = species[index].astype("S8")
+        atomic = atomic[index].T
 
         _smelib.UpdateLineList(
             species,

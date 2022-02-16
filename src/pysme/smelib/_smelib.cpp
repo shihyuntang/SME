@@ -287,7 +287,8 @@ static PyObject *smelib_UpdateLineList(PyObject *self, PyObject *args)
     const int n = 4;
     const char *result = NULL;
     void *args_c[n];
-    int nlines, nchar;
+    short nlines;
+    int nchar;
     double *linelist = NULL;
     IDL_STRING *species = NULL;
     short *index = NULL;
