@@ -155,9 +155,10 @@ paper/images
 paper/logs
 paper/data/
 paper/results/
-
+paper/**/stderr
+paper/**/stdout
+paper/**/seq
 
 # For local testing
 local/
 atmo_ml/
-examples/alvin/
