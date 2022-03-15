@@ -750,7 +750,7 @@ class SME_Solver:
         for seg in segments:
             sme.mask[seg, sme.uncs[seg] == 0] = sme.mask_values["bad"]
         # sme.mask[segments][sme.uncs[segments] == 0] = sme.mask_values["bad"]
-        mask = sme.mask_good[segments]
+        mask = sme.mask_line[segments]
         spec = sme.spec[segments][mask]
         uncs = sme.uncs[segments][mask]
 
