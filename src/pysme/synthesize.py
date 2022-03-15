@@ -516,11 +516,13 @@ class Synthesizer:
         cscale_degree = sme.cscale_degree
 
         # fix impossible input
-        if "spec" not in sme:
+        if "spec" not in sme or sme.spec is None:
             sme.vrad_flag = "none"
             sme.cscale_flag = "none"
         else:
-            if "mask" not in sme:
+            if "uncs" not in sme or sme.uncs is None:
+                sme.uncs = np.ones(sme.spec.size)
+            if "mask" not in sme or sme.mask is None:
                 sme.mask = np.full(sme.spec.size, sme.mask_values["line"])
             for i in range(sme.nseg):
                 mask = ~np.isfinite(sme.spec[i])
