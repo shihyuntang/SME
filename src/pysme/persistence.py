@@ -369,7 +369,7 @@ def write_as_idl(sme):
     if "monh" in sme.fitparameters:
         fitvars += ["FEH"]
 
-    if sme.mask is None:
+    if sme.mask is None and sme.wave is not None:
         sme.mask = 1
 
     idl_fields = {
