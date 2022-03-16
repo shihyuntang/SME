@@ -8,9 +8,7 @@ import logging
 import warnings
 
 import emcee
-import matplotlib.pyplot as plt
 import numpy as np
-from more_itertools import only
 from scipy.constants import speed_of_light
 from scipy.interpolate import splev, splrep
 from scipy.ndimage import binary_dilation
