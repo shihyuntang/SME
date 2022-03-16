@@ -8,9 +8,11 @@ import logging
 import warnings
 
 import emcee
+import matplotlib.pyplot as plt
 import numpy as np
 from scipy.constants import speed_of_light
 from scipy.interpolate import splev, splrep
+from scipy.ndimage import binary_dilation
 from scipy.optimize import least_squares
 from scipy.signal import correlate
 from tqdm import tqdm
@@ -761,11 +763,9 @@ def null_result(nseg, ndeg=0, ctype=None):
     return vrad, vrad_unc, cscale, cscale_unc
 
 
-def cross_correlate_segment(x_obs, y_obs, x_syn, y_syn, mask, rv_bounds):
+def cross_correlate_segment(x_obs, y_obs, x_syn, y_syn, mask, mask_wider, rv_bounds):
     # Interpolate synthetic observation onto the observation wavelength grid
     y_tmp = np.interp(x_obs, x_syn, y_syn)
-
-    import matplotlib.pyplot as plt
 
     # Normalize both spectra
     y_obs_tmp = np.copy(y_obs)
@@ -776,10 +776,7 @@ def cross_correlate_segment(x_obs, y_obs, x_syn, y_syn, mask, rv_bounds):
     y_tmp_tmp = np.copy(y_tmp)
     y_tmp_tmp /= np.nanpercentile(y_tmp_tmp, 95)
     y_tmp_tmp -= 1
-
-    plt.plot(y_obs_tmp)
-    plt.plot(y_tmp_tmp)
-    plt.show()
+    y_tmp_tmp[~mask_wider] = 0
 
     # Perform cross correaltion between normalized spectra
     corr = correlate(y_obs_tmp, y_tmp_tmp, mode="same")
@@ -790,10 +787,6 @@ def cross_correlate_segment(x_obs, y_obs, x_syn, y_syn, mask, rv_bounds):
     x_shift = c_light * (1 - x_mid / x_obs)
 
     idx = (x_shift >= rv_bounds[0]) & (x_shift <= rv_bounds[1])
-    plt.plot(x_shift, corr)
-    plt.plot(x_shift[idx], corr[idx])
-    plt.show()
-
     x_shift = x_shift[idx]
     corr = corr[idx]
 
@@ -903,17 +896,29 @@ def determine_radial_velocity(
             )
 
         if only_mask:
-            mask = mask == sme.mask_values["continuum"]
+            mask = mask == sme.mask_values["line"]
         else:
             mask = (mask == sme.mask_values["line"]) | (
                 mask == sme.mask_values["continuum"]
             )
         mask &= u_obs != 0
 
+        # Widen the mask by roughly the amount expected from the rv_bounds
+        rv = max(rv_bounds)
+        rv_factor = np.sqrt((1 + rv / c_light) / (1 - rv / c_light))
+        mask_wider = mask.copy()
+        for i in range(len(x_obs)):
+            iterations = int(
+                np.ceil(
+                    np.median((x_obs[i] * rv_factor - x_obs[i]) / np.gradient(x_obs[i]))
+                )
+            )
+            mask_wider[i] = binary_dilation(mask[i], iterations=iterations)
+
         # Get a first rough estimate from cross correlation
         if sme.vrad_flag == "each":
             x_shift, corr = cross_correlate_segment(
-                x_obs, y_obs, x_syn, y_syn, mask, rv_bounds
+                x_obs, y_obs, x_syn, y_syn, mask, mask_wider, rv_bounds
             )
         else:
             # If using several segments we run the cross correlation for each
@@ -923,7 +928,13 @@ def determine_radial_velocity(
             corr = [None for _ in range(nseg)]
             for i in range(len(x_obs)):
                 shift[i], corr[i] = cross_correlate_segment(
-                    x_obs[i], y_obs[i], x_syn[i], y_syn[i], mask[i], rv_bounds
+                    x_obs[i],
+                    y_obs[i],
+                    x_syn[i],
+                    y_syn[i],
+                    mask[i],
+                    mask_wider[i],
+                    rv_bounds,
                 )
 
             n_min = min(len(s) for s in shift)
@@ -934,6 +945,7 @@ def determine_radial_velocity(
 
             # Concatenate the segments for the last step
             mask = np.concatenate(mask)
+            mask_wider = np.concatenate(mask_wider)
             x_obs = np.concatenate(x_obs)
             y_obs = np.concatenate(y_obs)
             u_obs = np.concatenate(u_obs)
@@ -946,16 +958,15 @@ def determine_radial_velocity(
         offset = np.argmax(corr)
         rvel = x_shift[offset]
 
-        # Apply mask
-        x_obs = x_obs[mask]
-        y_obs = y_obs[mask]
-        u_obs = u_obs[mask]
-        if sme.telluric is not None:
-            tell = tell[mask]
-
         # Normalize the spectra to 1
         y_obs = y_obs / np.nanpercentile(y_obs, 95)
+        y_obs -= 1
         y_syn = y_syn / np.nanpercentile(y_syn, 95)
+        y_syn -= 1
+
+        # Apply mask
+        y_obs[~mask] = 0
+        y_syn[~mask_wider] = 0
 
         # Then minimize the least squares for a better fit
         # as cross correlation can only find
