@@ -920,9 +920,12 @@ def determine_radial_velocity(
         for i in range(len(x_obs)):
             iterations = int(
                 np.ceil(
-                    np.median((x_obs[i] * rv_factor - x_obs[i]) / np.gradient(x_obs[i]))
+                    np.nanmedian(
+                        (x_obs[i] * rv_factor - x_obs[i]) / np.gradient(x_obs[i])
+                    )
                 )
             )
+            iterations = max(1, iterations)
             mask_wider[i] = binary_dilation(mask[i], iterations=iterations)
 
         # Get a first rough estimate from cross correlation
