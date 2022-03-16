@@ -775,6 +775,7 @@ def cross_correlate_segment(x_obs, y_obs, x_syn, y_syn, mask, mask_wider, rv_bou
     y_tmp_tmp = np.copy(y_tmp)
     y_tmp_tmp /= np.nanpercentile(y_tmp_tmp, 95)
     y_tmp_tmp -= 1
+    mask_wider = np.interp(x_obs, x_syn, mask_wider) > 0.5
     y_tmp_tmp[~mask_wider] = 0
 
     # Perform cross correaltion between normalized spectra
@@ -914,17 +915,30 @@ def determine_radial_velocity(
         # Widen the mask by roughly the amount expected from the rv_bounds
         rv = max(rv_bounds)
         rv_factor = np.sqrt((1 + rv / c_light) / (1 - rv / c_light))
-        mask_wider = mask.copy()
-        for i in range(len(x_obs)):
+        # mask_wider = mask.copy()
+        if sme.vrad_flag == "each":
             iterations = int(
-                np.ceil(
-                    np.nanmedian(
-                        (x_obs[i] * rv_factor - x_obs[i]) / np.gradient(x_obs[i])
-                    )
-                )
+                np.ceil(np.nanmedian((x_obs * rv_factor - x_obs) / np.gradient(x_obs)))
             )
             iterations = max(1, iterations)
-            mask_wider[i] = binary_dilation(mask[i], iterations=iterations)
+            mask_wider = binary_dilation(mask, iterations=iterations)
+            mask_wider = np.interp(x_syn, x_obs, mask_wider) > 0.5
+        elif sme.vrad_flag == "whole":
+            mask_wider = [None] * len(x_obs)
+            for i in range(len(x_obs)):
+                iterations = int(
+                    np.ceil(
+                        np.nanmedian(
+                            (x_obs[i] * rv_factor - x_obs[i]) / np.gradient(x_obs[i])
+                        )
+                    )
+                )
+                iterations = max(1, iterations)
+                mask_wider[i] = binary_dilation(mask[i], iterations=iterations)
+                mask_wider[i] = np.interp(x_syn[i], x_obs[i], mask_wider[i]) > 0.5
+            mask_wider = Iliffe_vector(mask_wider)
+        else:
+            raise ValueError
 
         # Get a first rough estimate from cross correlation
         if sme.vrad_flag == "each":
