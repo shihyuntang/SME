@@ -765,6 +765,8 @@ def cross_correlate_segment(x_obs, y_obs, x_syn, y_syn, mask, rv_bounds):
     # Interpolate synthetic observation onto the observation wavelength grid
     y_tmp = np.interp(x_obs, x_syn, y_syn)
 
+    import matplotlib.pyplot as plt
+
     # Normalize both spectra
     y_obs_tmp = np.copy(y_obs)
     y_obs_tmp /= np.nanpercentile(y_obs_tmp, 95)
@@ -775,6 +777,10 @@ def cross_correlate_segment(x_obs, y_obs, x_syn, y_syn, mask, rv_bounds):
     y_tmp_tmp /= np.nanpercentile(y_tmp_tmp, 95)
     y_tmp_tmp -= 1
 
+    plt.plot(y_obs_tmp)
+    plt.plot(y_tmp_tmp)
+    plt.show()
+
     # Perform cross correaltion between normalized spectra
     corr = correlate(y_obs_tmp, y_tmp_tmp, mode="same")
 
@@ -782,7 +788,12 @@ def cross_correlate_segment(x_obs, y_obs, x_syn, y_syn, mask, rv_bounds):
     # and only retain the area within the bounds
     x_mid = x_obs[len(x_obs) // 2]
     x_shift = c_light * (1 - x_mid / x_obs)
+
     idx = (x_shift >= rv_bounds[0]) & (x_shift <= rv_bounds[1])
+    plt.plot(x_shift, corr)
+    plt.plot(x_shift[idx], corr[idx])
+    plt.show()
+
     x_shift = x_shift[idx]
     corr = corr[idx]
 
@@ -894,8 +905,9 @@ def determine_radial_velocity(
         if only_mask:
             mask = mask == sme.mask_values["continuum"]
         else:
-            mask = mask == sme.mask_values["line"]
-            mask |= mask == sme.mask_values["continuum"]
+            mask = (mask == sme.mask_values["line"]) | (
+                mask == sme.mask_values["continuum"]
+            )
         mask &= u_obs != 0
 
         # Get a first rough estimate from cross correlation
