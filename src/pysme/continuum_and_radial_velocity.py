@@ -10,6 +10,7 @@ import warnings
 import emcee
 import matplotlib.pyplot as plt
 import numpy as np
+from more_itertools import only
 from scipy.constants import speed_of_light
 from scipy.interpolate import splev, splrep
 from scipy.ndimage import binary_dilation
@@ -799,7 +800,7 @@ def determine_radial_velocity(
     y_syn,
     segment,
     cscale=None,
-    only_mask=False,
+    only_mask=None,
     rv_bounds=(-100, 100),
     whole=False,
 ):
@@ -895,12 +896,21 @@ def determine_radial_velocity(
                 f"Radial velocity flag {sme.vrad_flag} not recognised, expected one of 'each', 'whole', 'none'"
             )
 
-        if only_mask:
-            mask = mask == sme.mask_values["line"]
+        if only_mask is None:
+            only_mask = "line+continuum"
+
+        if "+" in only_mask:
+            only_mask = only_mask.split("+")
         else:
-            mask = (mask == sme.mask_values["line"]) | (
-                mask == sme.mask_values["continuum"]
-            )
+            only_mask = [
+                only_mask,
+            ]
+
+        m = mask == sme.mask_values[only_mask[0]]
+        for i in range(1, len(only_mask)):
+            m |= mask == sme.mask_values[only_mask[i]]
+        mask = m
+
         mask &= u_obs != 0
 
         # Widen the mask by roughly the amount expected from the rv_bounds
@@ -1051,7 +1061,13 @@ def match_rv_continuum(sme, segments, x_syn, y_syn):
             # we need the lines for the radial velocity
             rv_bounds = (-sme.vrad_limit, sme.vrad_limit)
             vrad[s] = radial_velocity(
-                sme, x_syn[s], y_syn[s], s, cscale[s], rv_bounds=rv_bounds
+                sme,
+                x_syn[s],
+                y_syn[s],
+                s,
+                cscale[s],
+                rv_bounds=rv_bounds,
+                only_mask=sme.vrad_mask,
             )
     elif sme.vrad_flag == "whole":
         s = segments
@@ -1064,6 +1080,7 @@ def match_rv_continuum(sme, segments, x_syn, y_syn):
             cscale[s],
             whole=True,
             rv_bounds=rv_bounds,
+            only_mask=sme.vrad_mask,
         )
     else:
         raise ValueError

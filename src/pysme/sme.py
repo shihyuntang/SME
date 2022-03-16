@@ -143,6 +143,7 @@ class SME_Structure(Parameters):
             """),
         ("vrad", 0, array(None, float), this, "array of size (nseg,): radial velocity of each segment in km/s"),
         ("vrad_limit", 500, asfloat, this, "float: radial velocity limit in km/s"),
+        ("vrad_mask", "line+continuum", lowercase(oneof(None, "continuum", "line", "line+continuum", "continuum+line")), this, "str: which masks to use for the radial velocity determination, should be one of ['line', 'continuum', 'bad']. By default it uses 'line+continuum'."),
         ("cscale_flag", "none", lowercase(oneof("none", "fix", "constant", "linear", "quadratic", "cubic", "quintic", "quantic", astype=int)), this,
             """str: Flag that describes how to correct for the continuum
 
