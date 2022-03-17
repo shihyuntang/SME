@@ -17,6 +17,7 @@ from scipy.signal import correlate
 from tqdm import tqdm
 
 from .iliffe_vector import Iliffe_vector
+from .sme import MASK_VALUES
 from .sme_synth import SME_DLL
 
 logger = logging.getLogger(__name__)
@@ -91,7 +92,7 @@ class ContinuumNormalizationMask(ContinuumNormalizationAbstract):
             x, y, m, u = x[segments], y[segments], m[segments], u[segments]
 
             # Set continuum mask
-            if np.all(m != sme.mask_values["continuum"]):
+            if np.all(m != MASK_VALUES["continuum"]):
                 # If no continuum mask has been set
                 # Use the effective wavelength ranges of the lines to determine continuum points
                 logger.info(
@@ -101,10 +102,10 @@ class ContinuumNormalizationMask(ContinuumNormalizationAbstract):
                 )
                 cont = self.get_continuum_mask(x, y, sme.linelist, mask=m)
                 # Save mask for next iteration
-                m[cont == 2] = sme.mask_values["continuum"]
+                m[cont == 2] = MASK_VALUES["continuum"]
                 logger.debug("Continuum mask points: %i", np.count_nonzero(cont == 2))
 
-            cont = m == sme.mask_values["continuum"]
+            cont = m == MASK_VALUES["continuum"]
             x = x - x[0]
             x, y, u = x[cont], y[cont], u[cont]
 
@@ -235,7 +236,7 @@ class ContinuumNormalizationMCMC(ContinuumNormalizationAbstract):
             return null_result(nseg, sme.cscale_degree)
 
         if "mask" not in sme:
-            sme.mask = np.full(sme.spec.size, sme.mask_values["line"])
+            sme.mask = np.full(sme.spec.size, MASK_VALUES["line"])
         if "uncs" not in sme:
             sme.uncs = np.full(sme.spec.size, 1.0)
 
@@ -852,7 +853,7 @@ def determine_radial_velocity(
             m = sme.mask
         else:
             m = sme.spec.copy()
-            m[:] = sme.mask_values["line"]
+            m[:] = MASK_VALUES["line"]
 
         if "uncs" in sme:
             u = sme.uncs
@@ -905,9 +906,9 @@ def determine_radial_velocity(
                 only_mask,
             ]
 
-        m = mask == sme.mask_values[only_mask[0]]
+        m = mask == MASK_VALUES[only_mask[0]]
         for i in range(1, len(only_mask)):
-            m |= mask == sme.mask_values[only_mask[i]]
+            m |= mask == MASK_VALUES[only_mask[i]]
         mask = m
 
         mask &= u_obs != 0

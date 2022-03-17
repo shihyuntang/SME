@@ -24,6 +24,7 @@ from .atmosphere.krzfile import KrzFile
 from .atmosphere.savfile import SavFile
 from .large_file_storage import setup_lfs
 from .nlte import DirectAccessFile
+from .sme import MASK_VALUES
 from .synthesize import Synthesizer
 from .util import print_to_log
 
@@ -702,7 +703,7 @@ class SME_Solver:
             sme.uncs = np.ones(sme.spec.size)
             logger.warning("SME Structure has no uncertainties, using all ones instead")
         if "mask" not in sme:
-            sme.mask = np.full(sme.wave.size, sme.mask_values["line"])
+            sme.mask = np.full(sme.wave.size, MASK_VALUES["line"])
 
         segments = Synthesizer.check_segments(sme, segments)
 
@@ -748,8 +749,7 @@ class SME_Solver:
 
         # Get constant data from sme structure
         for seg in segments:
-            sme.mask[seg, sme.uncs[seg] == 0] = sme.mask_values["bad"]
-        # sme.mask[segments][sme.uncs[segments] == 0] = sme.mask_values["bad"]
+            sme.mask[seg, sme.uncs[seg] == 0] = MASK_VALUES["bad"]
         mask = sme.mask_line[segments]
         spec = sme.spec[segments][mask]
         uncs = sme.uncs[segments][mask]

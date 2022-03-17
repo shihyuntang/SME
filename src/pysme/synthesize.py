@@ -20,6 +20,7 @@ from .continuum_and_radial_velocity import (
 )
 from .iliffe_vector import Iliffe_vector
 from .large_file_storage import setup_lfs
+from .sme import MASK_VALUES
 from .sme_synth import SME_DLL
 
 logger = logging.getLogger(__name__)
@@ -167,7 +168,7 @@ class Synthesizer:
             segments = [
                 seg
                 for seg in segments
-                if not np.all(sme.mask[seg] == sme.mask_values["bad"])
+                if not np.all(sme.mask[seg] == MASK_VALUES["bad"])
             ]
         return segments
 
@@ -523,11 +524,11 @@ class Synthesizer:
             if "uncs" not in sme or sme.uncs is None:
                 sme.uncs = np.ones(sme.spec.size)
             if "mask" not in sme or sme.mask is None:
-                sme.mask = np.full(sme.spec.size, sme.mask_values["line"])
+                sme.mask = np.full(sme.spec.size, MASK_VALUES["line"])
             for i in range(sme.nseg):
                 mask = ~np.isfinite(sme.spec[i])
                 mask |= sme.uncs[i] == 0
-                sme.mask[i][mask] = sme.mask_values["bad"]
+                sme.mask[i][mask] = MASK_VALUES["bad"]
 
         if radial_velocity_mode != "robust" and (
             "cscale" not in sme or "vrad" not in sme
