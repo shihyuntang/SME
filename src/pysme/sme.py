@@ -21,7 +21,7 @@ from .nlte import NLTE
 logger = logging.getLogger(__name__)
 
 #:dict(str, int): Mask value specifier used in mob
-MASK_VALUES = {"bad": 0, "line": 1, "continuum": 2, "vrad": 3}
+MASK_VALUES = {"bad": 0, "line": 1, "continuum": 2, "vrad": 4}
 
 
 @CollectionFactory
