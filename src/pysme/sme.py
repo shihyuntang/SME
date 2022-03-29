@@ -567,6 +567,12 @@ class SME_Structure(Parameters):
         return self.mask == MASK_VALUES["continuum"]
 
     @property
+    def mask_vrad(self):
+        if self.mask is None:
+            return None
+        return self.mask == MASK_VALUES["vrad"]
+
+    @property
     def cscale_degree(self):
         """int: Polynomial degree of the continuum as determined by cscale_flag"""
         if self.cscale_type in ["spline", "spline+mask"]:
