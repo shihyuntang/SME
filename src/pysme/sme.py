@@ -4,6 +4,7 @@ import os.path
 import platform
 import sys
 from datetime import datetime as dt
+from enum import IntFlag
 
 import numpy as np
 from scipy.constants import speed_of_light
@@ -20,8 +21,19 @@ from .nlte import NLTE
 
 logger = logging.getLogger(__name__)
 
-#:dict(str, int): Mask value specifier used in mob
-MASK_VALUES = {"bad": 0, "line": 1, "continuum": 2, "vrad": 4}
+
+class MASK_VALUES(IntFlag):
+    """
+    Mask value specifier used in mob
+
+    Values can be combined to mark a point as e.g. line and vrad
+    If cont or vrad are not used it will fallback to the line mask
+    """
+
+    BAD = 0
+    LINE = 1
+    CONT = 2
+    VRAD = 4
 
 
 @CollectionFactory
@@ -222,9 +234,6 @@ class SME_Structure(Parameters):
             "Version: information about the host system running the calculation for debugging")
     ]
     # fmt: on
-
-    #:dict(str, int): Mask value specifier used in mob
-    mask_values = MASK_VALUES
 
     def __init__(self, **kwargs):
         wind = kwargs.get("wind", None)
@@ -544,33 +553,31 @@ class SME_Structure(Parameters):
     def mask_good(self):
         if self.mask is None:
             return None
-        return (self.mask == MASK_VALUES["line"]) | (
-            self.mask == MASK_VALUES["continuum"]
-        )
+        return self.mask != MASK_VALUES.BAD
 
     @property
     def mask_bad(self):
         if self.mask is None:
             return None
-        return self.mask == MASK_VALUES["bad"]
+        return self.mask == MASK_VALUES.BAD
 
     @property
     def mask_line(self):
         if self.mask is None:
             return None
-        return self.mask == MASK_VALUES["line"]
+        return (self.mask & MASK_VALUES.LINE) != 0
 
     @property
     def mask_cont(self):
         if self.mask is None:
             return None
-        return self.mask == MASK_VALUES["continuum"]
+        return (self.mask & MASK_VALUES.CONT) != 0
 
     @property
     def mask_vrad(self):
         if self.mask is None:
             return None
-        return self.mask == MASK_VALUES["vrad"]
+        return (self.mask & MASK_VALUES.VRAD) != 0
 
     @property
     def cscale_degree(self):
@@ -656,7 +663,7 @@ class SME_Structure(Parameters):
             this sme structure
         """
         if self.mask is None:
-            self.mask = MASK_VALUES["line"]
+            self.mask = MASK_VALUES.LINE
 
         c_light = speed_of_light * 1e-3  # speed of light in km/s
         wave = other.wave.copy()
@@ -681,9 +688,9 @@ class SME_Structure(Parameters):
                 bpm = self.mask_bad[seg]
                 cm[bpm] = False
                 lm[bpm] = False
-            self.mask[seg][cm] = MASK_VALUES["continuum"]
-            self.mask[seg][lm] = MASK_VALUES["line"]
-            self.mask[seg][~(cm | lm)] = MASK_VALUES["bad"]
+            self.mask[seg][cm] |= MASK_VALUES.CONT
+            self.mask[seg][lm] |= MASK_VALUES.LINE
+            self.mask[seg][~(cm | lm)] = MASK_VALUES.BAD
         return self
 
     def citation(self, output="string"):
@@ -798,7 +805,7 @@ class SME_Structure(Parameters):
                 s.uncs[i] = s.uncs[i][sort]
 
             s.mask = [np.full(i.size, 1) for i in s.spec]
-            s.mask[s.spec == 0] = MASK_VALUES["bad"]
+            s.mask[s.spec == 0] = MASK_VALUES.BAD
             s.wran = [[w[0], w[-1]] for w in s.wave]
             s.abund = Abund.solar()
             try:

@@ -166,9 +166,7 @@ class Synthesizer:
 
         if sme.mask is not None:
             segments = [
-                seg
-                for seg in segments
-                if not np.all(sme.mask[seg] == MASK_VALUES["bad"])
+                seg for seg in segments if not np.all(sme.mask[seg] == MASK_VALUES.BAD)
             ]
         return segments
 
@@ -524,11 +522,11 @@ class Synthesizer:
             if "uncs" not in sme or sme.uncs is None:
                 sme.uncs = np.ones(sme.spec.size)
             if "mask" not in sme or sme.mask is None:
-                sme.mask = np.full(sme.spec.size, MASK_VALUES["line"])
+                sme.mask = np.full(sme.spec.size, MASK_VALUES.LINE)
             for i in range(sme.nseg):
                 mask = ~np.isfinite(sme.spec[i])
                 mask |= sme.uncs[i] == 0
-                sme.mask[i][mask] = MASK_VALUES["bad"]
+                sme.mask[i][mask] = MASK_VALUES.BAD
 
         if radial_velocity_mode != "robust" and (
             "cscale" not in sme or "vrad" not in sme

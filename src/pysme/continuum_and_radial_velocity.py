@@ -92,7 +92,7 @@ class ContinuumNormalizationMask(ContinuumNormalizationAbstract):
             x, y, m, u = x[segments], y[segments], m[segments], u[segments]
 
             # Set continuum mask
-            if np.all(m != MASK_VALUES["continuum"]):
+            if np.all((m & MASK_VALUES.CONT) == 0):
                 # If no continuum mask has been set
                 # Use the effective wavelength ranges of the lines to determine continuum points
                 logger.info(
@@ -102,10 +102,11 @@ class ContinuumNormalizationMask(ContinuumNormalizationAbstract):
                 )
                 cont = self.get_continuum_mask(x, y, sme.linelist, mask=m)
                 # Save mask for next iteration
-                m[cont == 2] = MASK_VALUES["continuum"]
+                m[cont == MASK_VALUES.CONT] = MASK_VALUES.CONT
                 logger.debug("Continuum mask points: %i", np.count_nonzero(cont == 2))
 
-            cont = m == MASK_VALUES["continuum"]
+            cont = (m & MASK_VALUES.CONT) != 0
+
             x = x - x[0]
             x, y, u = x[cont], y[cont], u[cont]
 
@@ -153,7 +154,7 @@ class ContinuumNormalizationMask(ContinuumNormalizationAbstract):
             threshold = 0.01
 
         if mask is None:
-            mask = np.full(len(wave), 1)
+            mask = np.full(len(wave), MASK_VALUES.LINE)
 
         # TODO make this better
         dll = SME_DLL()
@@ -170,10 +171,10 @@ class ContinuumNormalizationMask(ContinuumNormalizationAbstract):
                     temp[w] = False
 
             # TODO: Good value to increase threshold by?
-            temp[mask == 0] = False
+            temp[mask == MASK_VALUES.BAD] = False
             threshold *= 1.1
 
-        mask[temp] = 2
+        mask[temp] = MASK_VALUES.CONT
 
         logger.debug("Ignoring lines with depth < %f", threshold)
         return mask
@@ -236,7 +237,7 @@ class ContinuumNormalizationMCMC(ContinuumNormalizationAbstract):
             return null_result(nseg, sme.cscale_degree)
 
         if "mask" not in sme:
-            sme.mask = np.full(sme.spec.size, MASK_VALUES["line"])
+            sme.mask = np.full(sme.spec.size, MASK_VALUES.LINE)
         if "uncs" not in sme:
             sme.uncs = np.full(sme.spec.size, 1.0)
 
@@ -853,7 +854,7 @@ def determine_radial_velocity(
             m = sme.mask
         else:
             m = sme.spec.copy()
-            m[:] = MASK_VALUES["line"]
+            m[:] = MASK_VALUES.LINE
 
         if "uncs" in sme:
             u = sme.uncs
@@ -896,20 +897,10 @@ def determine_radial_velocity(
                 f"Radial velocity flag {sme.vrad_flag} not recognised, expected one of 'each', 'whole', 'none'"
             )
 
-        if only_mask is None:
-            only_mask = "line+continuum"
-
-        if "+" in only_mask:
-            only_mask = only_mask.split("+")
-        else:
-            only_mask = [
-                only_mask,
-            ]
-
-        m = mask == MASK_VALUES[only_mask[0]]
-        for i in range(1, len(only_mask)):
-            m |= mask == MASK_VALUES[only_mask[i]]
-        mask = m
+        mask = (mask & MASK_VALUES.VRAD) != 0
+        if not np.any(mask):
+            # No VRAD specified, use Line instead
+            mask = (mask & MASK_VALUES.LINE) != 0
 
         mask &= u_obs != 0
 
