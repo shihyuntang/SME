@@ -801,7 +801,6 @@ def determine_radial_velocity(
     y_syn,
     segment,
     cscale=None,
-    only_mask=None,
     rv_bounds=(-100, 100),
     whole=False,
 ):
@@ -1077,7 +1076,6 @@ def match_rv_continuum(sme, segments, x_syn, y_syn):
                 s,
                 cscale[s],
                 rv_bounds=rv_bounds,
-                only_mask=sme.vrad_mask,
             )
     elif sme.vrad_flag == "whole":
         s = segments
@@ -1090,7 +1088,6 @@ def match_rv_continuum(sme, segments, x_syn, y_syn):
             cscale[s],
             whole=True,
             rv_bounds=rv_bounds,
-            only_mask=sme.vrad_mask,
         )
     else:
         raise ValueError

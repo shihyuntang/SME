@@ -4,7 +4,7 @@ import os.path
 import platform
 import sys
 from datetime import datetime as dt
-from enum import IntFlag
+from enum import Enum, IntEnum, IntFlag
 
 import numpy as np
 from scipy.constants import speed_of_light
@@ -34,6 +34,32 @@ class MASK_VALUES(IntFlag):
     LINE = 1
     CONT = 2
     VRAD = 4
+
+
+class CONT_SCALE(Enum):
+    NONE = "none"
+    FIX = "fix"
+    LINEAR = "linear"
+    QUADRATIC = "quadratic"
+    CUBIC = "cubic"
+
+
+class CONT_OPTIONS(Enum):
+    MASK = "mask"
+    MATCH = "match"
+    MATCH_MASK = "match+mask"
+    MATCHLINES = "matchlines"
+    MATCHLINES_MASK = "matchlines+mask"
+    SPLINE = "spline"
+    SPLINE_MASK = "spline_mask"
+    MCMC = "mcmc"
+
+
+class VRAD_OPTIONS(Enum):
+    NONE = "none"
+    FIX = "fix"
+    EACH = "each"
+    WHOLE = "whole"
 
 
 @CollectionFactory
@@ -158,7 +184,6 @@ class SME_Structure(Parameters):
             """),
         ("vrad", 0, array(None, float), this, "array of size (nseg,): radial velocity of each segment in km/s"),
         ("vrad_limit", 500, asfloat, this, "float: radial velocity limit in km/s"),
-        ("vrad_mask", "vrad+line+continuum", lowercase(asstr), this, "str: which masks to use for the radial velocity determination, should be one of ['line', 'continuum', 'bad']. By default it uses 'line+continuum'."),
         ("cscale_flag", "none", lowercase(oneof("none", "fix", "constant", "linear", "quadratic", "cubic", "quintic", "quantic", astype=int)), this,
             """str: Flag that describes how to correct for the continuum
 
