@@ -853,8 +853,9 @@ def determine_radial_velocity(
         if "mask" in sme:
             m = sme.mask
         else:
-            m = sme.spec.copy()
-            m[:] = MASK_VALUES.LINE
+            m = Iliffe_vector(
+                [np.full(s, MASK_VALUES.LINE, dtype="i4") for s in sme.spec.shape[1]]
+            )
 
         if "uncs" in sme:
             u = sme.uncs
@@ -897,11 +898,13 @@ def determine_radial_velocity(
                 f"Radial velocity flag {sme.vrad_flag} not recognised, expected one of 'each', 'whole', 'none'"
             )
 
-        mask = (mask & MASK_VALUES.VRAD) != 0
-        if not np.any(mask):
-            # No VRAD specified, use Line instead
-            mask = (mask & MASK_VALUES.LINE) != 0
-
+        # Filter the mask for the correct sections
+        # Need to use temporary m instead of mask, so that we can check
+        m = (mask & MASK_VALUES.VRAD) != 0
+        if not np.any(m):
+            # No VRAD specified, use LINE instead
+            m = (mask & MASK_VALUES.LINE) != 0
+        mask = m
         mask &= u_obs != 0
 
         # Widen the mask by roughly the amount expected from the rv_bounds
