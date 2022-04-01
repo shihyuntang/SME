@@ -10,9 +10,20 @@ on:
     branches: [ master ]
 
 jobs:
-  build:
 
-    runs-on: ubuntu-latest
+  build:
+  
+    strategy: 
+      fail-fast: false
+      matrix: 
+        include:
+        - name: ubuntu
+          runs-on: ubuntu-latest
+        - name: macos
+          runs-on: macos-latest
+        - name: windows
+          runs-on: windows-latest
+    runs-on: ${{ matrix.runs_on }}
 
     steps:
     - uses: actions/checkout@v2
