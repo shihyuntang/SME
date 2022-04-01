@@ -11,7 +11,7 @@ import platform
 import subprocess
 import sys
 import zipfile
-from os.path import dirname, exists, join
+from os.path import basename, dirname, exists, join
 
 import wget
 
@@ -68,6 +68,18 @@ def download_libsme(loc=None):
     zipfile.ZipFile(fname).extractall(loc)
 
     os.remove(fname)
+
+    if system in ["macos"]:
+        fullname = get_full_libfile()
+        subprocess.run(
+            [
+                "install_name_tool",
+                "-change",
+                "libsme.5.dylib",
+                basename(fullname),
+                fullname,
+            ]
+        )
 
 
 def compile_interface():
