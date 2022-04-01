@@ -12,7 +12,8 @@ on:
 jobs:
 
   build:
-  
+    env: 
+      DYLD_LIBRARY_PATH: /Users/runner/hostedtoolcache/Python/3.8.12/x64/lib/python3.8/site-packages/pysme/lib/
     strategy: 
       fail-fast: false
       matrix: 
