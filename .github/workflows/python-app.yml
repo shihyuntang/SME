@@ -18,11 +18,11 @@ jobs:
       matrix: 
         include:
         - name: ubuntu
-          runs-on: ubuntu-latest
+          runs_on: ubuntu-latest
         - name: macos
-          runs-on: macos-latest
+          runs_on: macos-latest
         - name: windows
-          runs-on: windows-latest
+          runs_on: windows-latest
     runs-on: ${{ matrix.runs_on }}
 
     steps:
