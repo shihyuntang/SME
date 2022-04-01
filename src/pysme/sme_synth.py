@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 # Load the library
 # This ensures that we can find the library when we load _smelib
 libfile = get_full_libfile()
+logger.critical(libfile)
 cdll.LoadLibrary(libfile)
 from .smelib import _smelib
 
