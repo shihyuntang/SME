@@ -82,7 +82,7 @@ static PyObject *smelib_SetLibraryPath(PyObject *self, PyObject *args)
 static char smelib_InputWaveRange_docstring[] = "Read in Wavelength range";
 static PyObject *smelib_InputWaveRange(PyObject *self, PyObject *args)
 {
-    int n = 2;
+    const int n = 2;
     const char *result = NULL;
     void *args_c[n];
     double wmin, wmax;
@@ -106,7 +106,7 @@ static PyObject *smelib_InputWaveRange(PyObject *self, PyObject *args)
 static char smelib_SetVWscale_docstring[] = "Set van der Waals scaling factor";
 static PyObject *smelib_SetVWscale(PyObject *self, PyObject *args)
 {
-    int n = 1;
+    const int n = 1;
     const char *result = NULL;
     void *args_c[n];
     double vwscale;
@@ -129,7 +129,7 @@ static PyObject *smelib_SetVWscale(PyObject *self, PyObject *args)
 static char smelib_SetH2broad_docstring[] = "Set flag for H2 molecule";
 static PyObject *smelib_SetH2broad(PyObject *self, PyObject *args)
 {
-    int n = 0;
+    const int n = 0;
     const char *result = NULL;
     void **args_c = NULL;
 
@@ -147,7 +147,7 @@ static PyObject *smelib_SetH2broad(PyObject *self, PyObject *args)
 static char smelib_ClearH2broad_docstring[] = "Clear flag for H2 molecule";
 static PyObject *smelib_ClearH2broad(PyObject *self, PyObject *args)
 {
-    int n = 0;
+    const int n = 0;
     const char *result = NULL;
     void **args_c = NULL;
 
@@ -611,7 +611,7 @@ fail:
 static char smelib_InputDepartureCoefficients_docstring[] = "Input Departure coefficients";
 static PyObject *smelib_InputDepartureCoefficients(PyObject *self, PyObject *args)
 {
-    int n = 2;
+    const int n = 2;
     void *args_c[n];
     const char *result = NULL;
     int linenumber;
@@ -703,7 +703,7 @@ static char smelib_ResetDepartureCoefficients_docstring[] = "Reset to LTE";
 static PyObject *smelib_ResetDepartureCoefficients(PyObject *self, PyObject *args)
 {
     const int n = 0;
-    void *args_c[n];
+    void **args_c = NULL;
     const char *result = NULL;
 
     result = ResetDepartureCoefficients(n, args_c);
@@ -767,7 +767,7 @@ static char smelib_Opacity_docstring[] = "Calculate opacities";
 static PyObject *smelib_Opacity(PyObject *self, PyObject *args)
 {
     const int n = 0;
-    void *args_c[n];
+    void **args_c = NULL;
     const char *result = NULL;
 
     result = Opacity(n, args_c);
@@ -784,7 +784,7 @@ static char smelib_GetOpacity_docstring[] = "Returns specific cont. opacity";
 static PyObject *smelib_GetOpacity(PyObject *self, PyObject *args, PyObject *kwds)
 {
     int n = 5;
-    void *args_c[n];
+    void *args_c[5];
     const char *result = NULL;
     char *choice = NULL, *species = NULL, *key = NULL;
     short number = -100;
@@ -896,7 +896,7 @@ static PyObject *smelib_GetOpacity(PyObject *self, PyObject *args, PyObject *kwd
 static char smelib_Ionization_docstring[] = "Perform EOS calculations";
 static PyObject *smelib_Ionization(PyObject *self, PyObject *args)
 {
-    int n = 1;
+    const int n = 1;
     void *args_c[n];
     const char *result = NULL;
     short flag = 0;
@@ -917,7 +917,7 @@ static PyObject *smelib_Ionization(PyObject *self, PyObject *args)
 static char smelib_GetDensity_docstring[] = "Returns density in g/cm^3";
 static PyObject *smelib_GetDensity(PyObject *self, PyObject *args)
 {
-    int n = 2;
+    const int n = 2;
     void *args_c[n];
     const char *result = NULL;
 
@@ -944,7 +944,7 @@ static PyObject *smelib_GetDensity(PyObject *self, PyObject *args)
 static char smelib_GetNatom_docstring[] = "Returns atomic number density";
 static PyObject *smelib_GetNatom(PyObject *self, PyObject *args)
 {
-    int n = 2;
+    const int n = 2;
     void *args_c[n];
     const char *result = NULL;
 
@@ -971,7 +971,7 @@ static PyObject *smelib_GetNatom(PyObject *self, PyObject *args)
 static char smelib_GetNelec_docstring[] = "Returns electron number density";
 static PyObject *smelib_GetNelec(PyObject *self, PyObject *args)
 {
-    int n = 2;
+    const int n = 2;
     void *args_c[n];
     const char *result = NULL;
 
@@ -998,7 +998,7 @@ static PyObject *smelib_GetNelec(PyObject *self, PyObject *args)
 static char smelib_Transf_docstring[] = "Computes spectral synthesis";
 static PyObject *smelib_Transf(PyObject *self, PyObject *args, PyObject *kwds)
 {
-    int n = 12;
+    const int n = 12;
     void *args_c[n];
     const char *result = NULL;
 
@@ -1104,7 +1104,7 @@ fail:
 static char smelib_CentralDepth_docstring[] = "Computes line central depths";
 static PyObject *smelib_CentralDepth(PyObject *self, PyObject *args, PyObject *kwds)
 {
-    int n = 5;
+    const int n = 5;
     void *args_c[n];
     const char *result = NULL;
     npy_intp dims[1];
@@ -1158,7 +1158,7 @@ fail:
 static char smelib_GetLineOpacity_docstring[] = "Returns specific line opacity";
 static PyObject *smelib_GetLineOpacity(PyObject *self, PyObject *args)
 {
-    int n = 7;
+    const int n = 7;
     void *args_c[n];
     const char *result = NULL;
     npy_intp dims[1];
@@ -1207,7 +1207,7 @@ static PyObject *smelib_GetLineOpacity(PyObject *self, PyObject *args)
 static char smelib_GetLineRange_docstring[] = "Get validity range for every line";
 static PyObject *smelib_GetLineRange(PyObject *self, PyObject *args)
 {
-    int n = 2;
+    const int n = 2;
     void *args_c[n];
     const char *result = NULL;
     npy_intp dims[2];
@@ -1237,7 +1237,7 @@ static PyObject *smelib_GetLineRange(PyObject *self, PyObject *args)
 static char smelib_GetNLTEflags_docstring[] = "Get line list NLTE flags";
 static PyObject *smelib_GetNLTEflags(PyObject *self, PyObject *args)
 {
-    int n = 2;
+    const int n = 2;
     void *args_c[n];
     const char *result = NULL;
     npy_intp dims[2];

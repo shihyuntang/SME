@@ -46,6 +46,7 @@ def download_libsme(loc=None):
 
     try:
         system = aliases[system]
+        print("Identified OS: %s" % system)
     except KeyError:
         raise KeyError(
             f"Could not find the associated compiled library for this system {system}."
@@ -58,27 +59,36 @@ def download_libsme(loc=None):
     url = github_releases_url + "/" + github_releases_fname
     fname = join(loc, github_releases_fname)
 
-    if exists(fname):
+    try:
         os.remove(fname)
+    except FileNotFoundError:
+        pass
 
     print("Downloading file %s" % url)
     os.makedirs(loc, exist_ok=True)
     wget.download(url, out=loc)
+    # the wget progress bar, does not include a new line
+    print("")
 
+    print("Extracting file")
     zipfile.ZipFile(fname).extractall(loc)
 
-    os.remove(fname)
+    try:
+        os.remove(fname)
+    except FileNotFoundError:
+        pass
+
+    print("done")
 
     if system in ["macos"]:
         # Need to adjust the install_names in the dylib
         fname = realpath(get_full_libfile())
         logger.critical(fname)
         sp = subprocess.run(
-            ["install_name_tool", "-id", fname, fname], capture_output=True
+            ["install_name_tool", "-id", fname, fname], capture_output=True, check=True
         )
         logger.critical(sp.stdout.decode())
         logger.critical(sp.stderr.decode())
-        sp.check_returncode()
 
 
 def compile_interface():
@@ -109,7 +119,7 @@ def get_lib_name():
     if system == "windows":
         return "libsme-5.dll"
     elif system == "darwin":
-        return "libsme.5.dylib"
+        return "libsme.dylib"
 
     arch = platform.machine()
     bits = 64  # platform.architecture()[0][:-3]

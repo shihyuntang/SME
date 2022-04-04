@@ -6,8 +6,8 @@ import numpy.distutils.misc_util
 from libtools import get_full_libfile
 
 libdir = get_full_libfile()
-libdir = abspath(dirname(libdir))
 print(libdir)
+libdir = abspath(dirname(libdir))
 include_dirs = numpy.distutils.misc_util.get_numpy_include_dirs()
 include_dirs += [libdir]
 
