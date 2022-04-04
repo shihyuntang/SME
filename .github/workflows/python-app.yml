@@ -38,7 +38,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install flake8 pytest
         pip install -r requirements.txt
-        pip install .
+        pip install -e .
   
     - name: Lint with flake8
       run: |
@@ -52,7 +52,7 @@ jobs:
       run: |
         echo $PWD
         ls
-        cd SME/src/pysme/smelib
+        cd src/pysme/smelib
         python -c "from libtools import download_libsme; download_libsme()"
         cd ../lib
         install_name_tool -id $PWD/libsme.5.dylib libsme.5.dylib
