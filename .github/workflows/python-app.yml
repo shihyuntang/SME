@@ -12,8 +12,6 @@ on:
 jobs:
 
   build:
-    env: 
-      DYLD_FALLBACK_LIBRARY_PATH : /Users/runner/hostedtoolcache/Python/3.8.12/x64/lib/python3.8/site-packages/pysme/lib
     strategy: 
       fail-fast: false
       matrix: 
@@ -39,15 +37,26 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install flake8 pytest
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-        if [ -f test-requirements.txt ]; then pip install -r test-requirements.txt; fi
+        pip install -r requirements.txt
         pip install .
+  
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+  
+    - name: Install libraries
+      if: ${{ matrix.runs_on == 'macos-latest' }}
+      run: |
+        python -c "from pysme.smelib.libtools import download_libsme; download_libsme()"
+        cd src/pysme/lib
+        install_name_tool -id $PWD/libsme.5.dylib libsme.5.dylib
+        cd ../../..
+        python -c "from pysme.smelib.libtools import compile_interface; compile_interface()"
+        echo $PWD
+  
     - name: Test with pytest
       run: pytest
 
