@@ -82,13 +82,11 @@ def download_libsme(loc=None):
 
     if system in ["macos"]:
         # Need to adjust the install_names in the dylib
+        print("Fixing the file paths in the .dylib file")
         fname = realpath(get_full_libfile())
-        logger.critical(fname)
-        sp = subprocess.run(
+        subprocess.run(
             ["install_name_tool", "-id", fname, fname], capture_output=True, check=True
         )
-        logger.critical(sp.stdout.decode())
-        logger.critical(sp.stderr.decode())
 
 
 def compile_interface():
