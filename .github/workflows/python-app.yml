@@ -50,11 +50,14 @@ jobs:
     - name: Install libraries
       if: ${{ matrix.runs_on == 'macos-latest' }}
       run: |
-        python -c "from pysme.smelib.libtools import download_libsme; download_libsme()"
-        cd src/pysme/lib
+        echo $PWD
+        ls
+        cd SME/src/pysme/smelib
+        python -c "from libtools import download_libsme; download_libsme()"
+        cd ../lib
         install_name_tool -id $PWD/libsme.5.dylib libsme.5.dylib
-        cd ../../..
-        python -c "from pysme.smelib.libtools import compile_interface; compile_interface()"
+        cd ../smelib
+        python -c "from libtools import compile_interface; compile_interface()"
         echo $PWD
   
     - name: Test with pytest
