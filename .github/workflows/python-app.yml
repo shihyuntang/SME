@@ -37,7 +37,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install flake8 pytest
           pip install -r requirements.txt
-          pip install -e .
+          pip install .
 
       - name: Lint with flake8
         run: |
@@ -46,20 +46,20 @@ jobs:
           # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
           flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
-      - name: Install libraries
-        if: ${{ matrix.runs_on == 'macos-latest' }}
-        run: |
-          echo $PWD
-          ls
-          cd src/pysme/smelib
-          python -c "from libtools import download_libsme; download_libsme()"
-          cd ../lib
-          install_name_tool -id $PWD/libsme.5.dylib libsme.5.dylib
-          install_name_tool -id $PWD/libsme.dylib libsme.dylib
-          install_name_tool -id $PWD/sme_synth.so.darwin.x86_64.64 sme_synth.so.darwin.x86_64.64
-          cd ../smelib
-          python -c "from libtools import compile_interface; compile_interface()"
-          echo $PWD
+      # - name: Install libraries
+      #   if: ${{ matrix.runs_on == 'macos-latest' }}
+      #   run: |
+      #     echo $PWD
+      #     ls
+      #     cd src/pysme/smelib
+      #     python -c "from libtools import download_libsme; download_libsme()"
+      #     cd ../lib
+      #     install_name_tool -id $PWD/libsme.5.dylib libsme.5.dylib
+      #     install_name_tool -id $PWD/libsme.dylib libsme.dylib
+      #     install_name_tool -id $PWD/sme_synth.so.darwin.x86_64.64 sme_synth.so.darwin.x86_64.64
+      #     cd ../smelib
+      #     python -c "from libtools import compile_interface; compile_interface()"
+      #     echo $PWD
 
       - name: Test with pytest
         run: pytest
