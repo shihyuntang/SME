@@ -78,11 +78,11 @@ jobs:
           clean: false
 
       - name: Build Wheel
-        if: matrix.name == 'ubuntu
+        if: matrix.name == 'ubuntu'
         run: pip install wheel && python setup.py sdist bdist_wheel
 
       - name: Zip data
-        if: matrix.name == 'ubuntu
+        if: matrix.name == 'ubuntu'
         id: zip_data
         run: zip -r dist dist && echo "::set-output name=filename::dist.zip"
 
