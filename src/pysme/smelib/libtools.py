@@ -69,18 +69,6 @@ def download_libsme(loc=None):
 
     os.remove(fname)
 
-    if system in ["macos"]:
-        fullname = get_full_libfile()
-        subprocess.run(
-            [
-                "install_name_tool",
-                "-change",
-                "libsme.5.dylib",
-                basename(fullname),
-                fullname,
-            ]
-        )
-
 
 def compile_interface():
     """
@@ -109,6 +97,8 @@ def get_lib_name():
 
     if system == "windows":
         return "libsme-5.dll"
+    elif system == "darwin":
+        return "libsme.5.dylib"
 
     arch = platform.machine()
     bits = 64  # platform.architecture()[0][:-3]
