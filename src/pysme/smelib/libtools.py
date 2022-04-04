@@ -11,7 +11,7 @@ import platform
 import subprocess
 import sys
 import zipfile
-from os.path import basename, dirname, exists, join
+from os.path import basename, dirname, exists, join, realpath
 
 import wget
 
@@ -68,6 +68,17 @@ def download_libsme(loc=None):
     zipfile.ZipFile(fname).extractall(loc)
 
     os.remove(fname)
+
+    if system in ["macos"]:
+        # Need to adjust the install_names in the dylib
+        fname = realpath(get_full_libfile())
+        logger.critical(fname)
+        sp = subprocess.run(
+            ["install_name_tool", "-id", fname, fname], capture_output=True
+        )
+        logger.critical(sp.stdout.decode())
+        logger.critical(sp.stderr.decode())
+        sp.check_returncode()
 
 
 def compile_interface():
