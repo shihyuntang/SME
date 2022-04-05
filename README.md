@@ -38,3 +38,7 @@ A poster about PySME can be found here: [Poster](http://sme.astro.uu.se/poster.h
 # GUI
 
 A GUI for PySME is available in its own repository [PySME-GUI](https://github.com/AWehrhahn/PySME-GUI).
+
+# Windows
+
+Unfortunately PySME is not supported in Windows right now. While there is a SME C libary for Windows, it is not compatible with the Python C Extension inteface on Windows as it was compiled with a different compiler. Therefore if you want to use PySME you would need to compile the SME library with the same compiler.
