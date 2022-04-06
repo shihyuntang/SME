@@ -273,6 +273,11 @@ class Iliffe_vector(numpy.lib.mixins.NDArrayOperatorsMixin, MultipleDataExtensio
             arr = [array[l:u] for l, u in zip(offsets[:-1], offsets[1:])]
             return cls(arr)
 
+    def astype(self, dtype):
+        data = self.data.astype(dtype)
+        offsets = self.offsets
+        return Iliffe_vector(data, offsets, dtype=dtype)
+
     # For IO with Flex
     def _prepare(self, name: str):
         cls = self.__class__
