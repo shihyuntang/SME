@@ -82,6 +82,8 @@ class AtmosphereInterpolator:
         else:
             atmo_grid = self.atmo_grid
 
+        assert len(atmo_grid) > 0, "No atmospheres for this geometry"
+
         # Get field names in ATMO and ATMO_GRID structures.
         depth = self.determine_depth_scale(self.depth, atmo_grid)
         interp = self.determine_interpolation_scale(self.interp, atmo_grid)
