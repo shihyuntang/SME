@@ -380,7 +380,7 @@ class SME_Solver:
                 else:
                     result[i] = [-10, 11]
             elif name[:8].lower() == "linelist":
-                pass
+                result[i] = [-np.inf, np.inf]
             else:
                 result[i] = bounds[name]
 
@@ -601,8 +601,10 @@ class SME_Solver:
         sme.fitresults.covariance = covar
         sme.fitresults.gradient = result.grad
         sme.fitresults.derivative = result.jac
-        sme.fitresults.residuals = result.fun
-        sme.fitresults.chisq = np.sum(result.fun ** 2) / (
+        sme.fitresults.residuals = (
+            (sme.spec[segments] - sme.synth[segments]) / sme.uncs[segments]
+        )[sme.mask_line[segments]]
+        sme.fitresults.chisq = np.sum(sme.fitresults.residuals ** 2) / (
             result.fun.size - len(self.parameter_names)
         )
         sme.fitresults.iterations = self.iteration
