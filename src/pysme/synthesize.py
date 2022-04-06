@@ -163,6 +163,7 @@ class Synthesizer:
             segments = np.atleast_1d(segments)
             if np.any(segments < 0) or np.any(segments >= sme.nseg):
                 raise IndexError("Segment(s) out of range")
+            segments = np.unique(segments)
 
         if sme.mask is not None:
             segments = [
