@@ -158,6 +158,7 @@ paper/results/
 paper/**/stderr
 paper/**/stdout
 paper/**/seq
+paper/*.html
 
 # For local testing
 local/
