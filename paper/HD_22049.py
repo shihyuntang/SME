@@ -9,7 +9,7 @@ import re
 import sys
 from os.path import dirname, join, realpath
 
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import numpy as np
 from astropy import constants as const
 from astropy.io import fits
@@ -243,7 +243,8 @@ def load_tellurics():
 
 
 def normalize(wave, flux, dmin=1000, dmax=1000, return_cont=False):
-    flux = flux / np.nanpercentile(flux, 95)
+    scale = np.nanpercentile(flux, 95)
+    flux = flux / scale
     # Get first guess from upper envelope
     mflux = median_filter(flux, 3)
     _, high_idx = hl_envelopes_idx(mflux, dmin=dmin, dmax=dmax)
@@ -252,11 +253,10 @@ def normalize(wave, flux, dmin=1000, dmax=1000, return_cont=False):
         wave[high_idx], flux[high_idx], kind="linear", fill_value="extrapolate"
     )(wave)
     cont = gaussian_filter1d(cont, dmax)
-    flux = flux / cont
     if return_cont:
-        return cont
+        return cont * scale
     else:
-        return flux
+        return flux / cont
 
 
 def vel_shift(rv, wave):
@@ -332,10 +332,19 @@ def init(
     hdu = fits.open(in_file)
     wave = hdu[1].data["WAVE"][0]
     flux = hdu[1].data["FLUX"][0]
+    # the error column is all NaNs
+    uncs = np.sqrt(np.abs(flux))
+
     if mask is not None:
         for m in mask:
             flux[m[0] : m[1]] = 0
-    flux = normalize(wave, flux)
+    cont = normalize(wave, flux, return_cont=True)
+    flux /= cont
+    uncs /= np.abs(cont)
+
+    # plt.plot(wave, uncs / np.nanmedian(uncs))
+    # plt.plot(wave, np.sqrt(flux) / np.nanmedian(np.sqrt(flux)))
+    # plt.show()
 
     # cont = continuum_normalize(
     #     flux[None, :],
@@ -366,7 +375,7 @@ def init(
     sme.normalize_by_continuum = True
     sme.nmu = 7
     # Use simple shot noise assumption for uncertainties
-    sme.uncs = np.sqrt(sme.spec)
+    sme.uncs = uncs
     # Add telluric data (without rayleigh scattering)
     sme.telluric = Iliffe_vector(values=ftapas)
     # Create first mask by removing the telluric offset
@@ -607,7 +616,7 @@ if __name__ == "__main__":
     def parallel(target):
         print(f"Starting {target}")
         segments = range(6, 31)
-        # segments = [21]
+        # segments = [9]
 
         # Start the logging to the file
         examples_dir = dirname(realpath(__file__))
@@ -640,7 +649,7 @@ if __name__ == "__main__":
         return sme
 
     # Parse the cmd arguments
-    target = sys.argv[1] if len(sys.argv) != 1 else "55_Cnc"
+    target = sys.argv[1] if len(sys.argv) != 1 else "AU_Mic"
 
     parallel(target)
     pass

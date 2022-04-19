@@ -28,7 +28,7 @@ if __name__ == "__main__":
     sme = SME.SME_Structure.load(in_file)
     sme_mask = SME.SME_Structure.load(mask_file)
 
-    sme.mask = sme_mask.mask
+    sme.mask = np.copy(sme_mask.mask)
     # sme.nmu = 7
     # sme.teff = 5770
     # sme.logg = 4.4
@@ -97,6 +97,22 @@ if __name__ == "__main__":
     sme = synthesize_spectrum(sme, segments=[0])
     continuum["match+mask+quadratic"] = np.polyval(sme.cscale[0], x)
     synth["match+mask+quadratic"] = np.copy(sme.synth[0])
+    # Matchlines
+    sme.cscale_type = "matchlines"
+    sme.cscale_flag = "linear"
+    sme.cscale = None
+    sme.vrad = None
+    sme = synthesize_spectrum(sme, segments=[0])
+    continuum["matchlines+linear"] = np.polyval(sme.cscale[0], x)
+    synth["matchlines+linear"] = np.copy(sme.synth[0])
+    # Matchlines+Mask
+    sme.cscale_type = "matchlines+mask"
+    sme.cscale_flag = "linear"
+    sme.cscale = None
+    sme.vrad = None
+    sme = synthesize_spectrum(sme, segments=[0])
+    continuum["matchlines+mask+linear"] = np.polyval(sme.cscale[0], x)
+    synth["matchlines+mask+linear"] = np.copy(sme.synth[0])
     # Spline
     sme.cscale_type = "spline"
     sme.cscale_flag = 2
@@ -130,27 +146,40 @@ if __name__ == "__main__":
     for label, cont in continuum.items():
 
         plot_file = join(dirname(__file__), f"images/continuum_{label}.png")
-        plt.plot(sme.wave[0], sme.spec[0], label="Observation")
+        plt.plot(sme.wave[0], sme.spec[0], label="Observation", color="tab:blue")
         # plt.plot(sme.wave[0], sme.synth[0], label="Synthetic")
 
-        m = sme.mask[0] == 2
-        labels, n = scipy_label(m)
-        for i in range(1, n):
-            mask = labels == i
-            plt.plot(
-                sme.wave[0][mask],
-                sme.spec[0][mask],
-                color="tab:red",
-                label="Mask" if i == 1 else None,
-            )
-
-        plt.plot(sme.wave[0], cont, label=f"{label} Continuum")
+        plt.plot(sme.wave[0], cont, label=f"{label} Continuum", color="tab:purple")
         plt.plot(
             sme.wave[0],
             synth[label],
             label=f"{label} Corrected",
-            color="tab:purple",
+            color="tab:orange",
+            linestyle="dotted",
         )
+
+        m = sme.mask[0] == 2
+        labels, n = scipy_label(m)
+        ax = plt.gca()
+        ybound = ax.get_ybound()
+        for i in range(1, n + 1):
+            mask = labels == i
+            # plt.plot(
+            #     sme.wave[0][mask],
+            #     sme.spec[0][mask],
+            #     color="tab:green",
+            #     label="Mask" if i == 1 else None,
+            #     lw=5,
+            # )
+            plt.fill_between(
+                sme.wave[0][mask],
+                0,
+                1,
+                alpha=0.5,
+                color="tab:green",
+                transform=ax.get_xaxis_transform(),
+                label="Mask" if i == 1 else None,
+            )
 
         plt.legend(loc="lower left", fontsize="small")
         plt.xlabel("Wavelength [Å]")

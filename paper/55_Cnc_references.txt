@@ -1,0 +1,67 @@
+ |Teff  log.g | Fe_H  c|CompStar |CatNo|     Reference     | Method |
+ --------------------------------------------------------------------
+ | 5320 4.354 | 0.338  |         |     |2019A&A...629A..80H| Spectroscopy (ESPRESSO)
+ | 5260 4.35  | 0.43   |         |     |2018ApJS..238...29P| Spectroscopy (IGRINS)
+ | 5248 4.43  | 0.34   |SUN      |     |2017AJ....153...21L| Spectroscopy (McDonald)
+ | 5279 4.37  | 0.33   |SUN      |     |2019MNRAS.487.3162C| Spectroscopy (FEROS)
+ | 5353 4.30  | 0.30   |         |     |2018A&A...620A..58S| Spectroscopy
+ | 5346 4.26  | 0.25   |         |     |2018A&A...620A..58S| Spectroscopy
+ | 5310 4.4900|        |         |     |2016A&A...585A...5B| Photometry(teff)/Isochrones(logg)
+ | 5273 4.45  | 0.40   |SUN      |     |2018AJ....155..111L| Spectroscopy (HARPS)
+ | 5281 4.48  | 0.44   |         |     |2018A&A...614A..55A| Photometry(teff)/Isochrones(logg)/Spectroscopy(Fe_H)
+ | 5299 4.35  | 0.29   |         |     |2018MNRAS.479.1332M| Spectroscopy (HERMES)
+ | 5500 4.40  | 0.46   |SUN      |     |2003AJ....126.2015H| Spectroscopy
+ | 5375 4.35  | 0.50   |SUN      |     |2006AJ....131.3069L| Spectroscopy
+ | 5375 4.35  | 0.50   |SUN      |     |2005AJ....129.1063L| Spectroscopy
+ | 5373 4.30  | 0.25   |SUN      |     |2004A&A...418..551M| Spectroscopy (ELODIE)
+ | 5373       |        |SUN      |     |2004A&A...427..933K| Spectroscopy
+ | 5373       |        |SUN      |     |2003A&A...411..559K| Spectroscopy
+ | 5336 4.47  | 0.40   |SUN      |     |1998A&A...338..161F| Spectroscopy
+ | 5336 4.47  | 0.40   |SUN      |     |1998A&A...336..942F| Spectroscopy (FOCES)
+ | 5328 4.58  | 0.46   |SUN      |     |2005PASJ...57...27T| Spectroscopy (Okayama)
+ | 5307 4.58  | 0.35   |SUN      |     |2003A&A...398..363S| Spectroscopy
+ | 5293       |        |SUN      |     |2006A&A...450..735M| Photometry (V + 2MASS IR)
+ | 5283 4.36  |-0.32   |SUN      |     |2005A&A...442..635B| Spectroscopy (ELODIE + CORALIE)
+ | 5279 4.37  | 0.33   |SUN      |     |2004A&A...415.1153S| Spectroscopy
+ | 5270 4.31  | 0.314  |SUN      |     |2012A&A...547A..13T| Spectroscopy
+ | 5254       |        |SUN      |     |2009A&A...497..497G| Photometry (2MASS IR)
+ | 5252 4.53  | 0.40   |SUN      |     |2007A&A...465..271R| Spectroscopy
+ | 5250 4.40  | 0.45   |SUN      |     |1998A&A...339L..29G| Spectroscopy
+ | 5247       |        |SUN      |     |2005ApJ...626..446R| Photometry (IR)
+ | 5242 4.24  | 0.37   |SUN      |     |2015A&A...580A..24D| Spectroscopy
+ | 5235 4.45  | 0.31   |SUN      |     |2005ApJS..159..141V| Spectroscopy
+ | 5196 4.50  | 0.30   |SUN      |     |1977A&A....61...17O| Spectroscopy (Hale)
+ | 5196 4.50  | 0.24   |SUN      |     |1975A&A....39...97P| Spectroscopy
+ | 5196 4.40  | 0.11   |SUN      |     |1974ApJS...27..405O| Spectroscopy
+ | 5173 4.53  | 0.34   |SUN      |     |2006ApJ...652.1604B| Spectroscopy
+ | 5172       |        |SUN      |     |2013ApJ...771...40B| Interferometry (CHARA)
+ | 5150 4.15  | 0.29   |SUN      |     |1998A&A...334..221G| Spectroscopy
+ | 5082 4.26  | 0.26   |SUN      |     |2002AJ....124.2224Z| Spectroscopy
+ | 5063 4.56  | 0.34   |SUN      |     |2004A&A...420..183A| Spectroscopy
+ | 4460       |-0.15   |SUN      |     |1971JRASC..65..222B| Spectroscopy/Photometry
+ | 5250 4.36  | 0.35   |         |     |2016ApJS..225...32B| Spectroscopy
+ | 5211 4.28  | 0.35   |SUN      |     |2016A&A...587A...2B| Spectroscopy
+ | 5192 4.26  | 0.35   |SUN      |     |2016A&A...587A...2B| Spectroscopy
+ | 5334 4.58  |        |         |     |2015A&A...579A..20M| Spectroscopy
+ | 5246 4.26  | 0.35   |SUN      |     |2013AJ....146...73P| Spectroscopy
+ | 5373 4.30  | 0.25   |SUN      |     |2013A&A...552A.128M| Spectroscopy (ELODIE)
+ | 5279 4.37  | 0.33   |SUN      |     |2013A&A...556A.150S| Spectroscopy
+ | 5249 4.42  | 0.39   |SUN      |     |2013ApJ...764...78R| Spectroscopy
+ | 5249 4.42  | 0.39   |SUN      |     |2012ApJ...756...46R| Spectroscopy
+ | 4999 4.37  |        |SUN      |     |2003AJ....126.2048G| Spectroscopy
+ | 5270 4.31  | 0.31   |SUN      |     |2012A&A...547A..13T| Spectroscopy
+ | 5063 4.56  | 7.87   |SUN      |     |2004A&A...420..183A| Spectroscopy
+ | 5373 4.3   | 0.25   |         |     |2011ARep...55..689M| Spectroscopy
+ | 5260 4.35  | 0.43   |SUN      |     |2011A&A...531A.165P| Spectroscopy
+ | 5246 4.26  | 0.35   |SUN      |     |2011ApJ...736...87K| Spectroscopy
+ | 6140 4.35  | 0.19   |SUN      |     |2012A&A...541A..40M| Spectroscopy (iron ionisation equilibrium conditions)
+ | 5328 4.58  | 0.46   |SUN      |     |2007PASJ...59..335T| Spectroscopy
+ | 5150 4.15  | 0.29   |SUN      |F    |1998A&A...334..221G| Spectroscopy
+ | 5250 4.40  | 0.45   |SUN      |F    |1998A&A...339L..29G| Spectroscopy
+ | 5336 4.47  | 0.40   |SUN      |F    |1998A&A...336..942F| Spectroscopy (FOCES)
+ | 5336 4.47  | 0.40   |SUN      |F    |1998A&A...338..161F| Spectroscopy
+ | 5293 4.41  | 0.38   |SUN      |     |2008A&A...480...91S| Spectroscopy
+ | 5196 4.5   | 0.30   |SUN      |F302 |1977A&A....61...17O| Spectroscopy (Hale)
+ | 5196 4.5   | 0.24   |SUN      |F260 |1975A&A....39...97P| Spectroscopy
+ | 5196 4.4   | 0.11   |SUN      |F237 |1974ApJS...27..405O| Spectroscopy
+ | 4460       |-0.15   |SUN      |F164 |1971JRASC..65..222B| Spectroscopy/Photometry

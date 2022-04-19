@@ -3,17 +3,9 @@
 """
 import os.path
 
-import matplotlib.pyplot as plt
-import numpy as np
-from scipy.io import readsav
-
 from pysme import sme as SME
 from pysme import util
-from pysme.abund import Abund
 from pysme.gui import plot_plotly
-from pysme.linelist.vald import ValdFile
-from pysme.persistence import save_as_idl
-from pysme.solve import solve
 from pysme.synthesize import synthesize_spectrum
 
 if __name__ == "__main__":

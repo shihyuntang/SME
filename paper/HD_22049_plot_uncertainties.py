@@ -135,7 +135,7 @@ if __name__ == "__main__":
     os.makedirs(image_dir, exist_ok=True)
 
     in_file = os.path.join(
-        examples_dir, f"results/Eps_Eri_monh_teff_logg_vmic_vmac_vsini.sme"
+        examples_dir, f"results/55_Cnc_monh_teff_logg_vmic_vmac_vsini.sme"
     )
     sme = SME.SME_Structure.load(in_file)
 
@@ -151,23 +151,40 @@ if __name__ == "__main__":
     residuals = sme.fitresults.residuals
     derivative = sme.fitresults.derivative
 
-    # For monh
-    ratio = np.abs(derivative / values)
-    median = np.median(ratio, axis=0)
-    idx_param = (ratio > median)[:, 0]
-    chi2_param = np.nanmean((residuals[idx_param] / unc[idx_param]) ** 2)
+    # z**2 = f**2 * ln(1 + r**2/f**2)
+    # z**2 / f**2 = ln(1 + r**2/f**2)
+    # 1 + r**2/f**2 = exp(z**2/f**2)
+    # r**2/f**2 = exp(z**2/f**2) - 1
+    # r**2 = f**2 ( exp(z**2/f**2) - 1 )
+    #
 
-    limit = np.median(np.abs(derivative / values))
+    # J = (z1**2 - z2**2)/delta
+    #
+    f = 0.2 * np.nanmean(spec.ravel()) / np.nanmean(unc.ravel())
+    # r = f * np.sqrt(np.exp())
+
+    covar = sme.fitresults.covariance
     chi2 = np.sum(residuals ** 2) / (residuals.size - len(values))
-    # unc *= np.sqrt(chi2)
+    covar = covar * chi2
+    uncs = np.sqrt(np.diag(covar))
 
-    jac = derivative / np.sqrt(chi2)
-    _, s, VT = np.linalg.svd(jac, full_matrices=False)
-    threshold = np.finfo(float).eps * max(jac.shape) * s[0]
-    s = s[s > threshold]
-    VT = VT[: s.size]
-    pcov = np.dot(VT.T / s ** 2, VT)
-    uncertainties = np.sqrt(np.diag(pcov))
+    # # For monh
+    # ratio = np.abs(derivative / values)
+    # median = np.median(ratio, axis=0)
+    # idx_param = (ratio > median)[:, 0]
+    # chi2_param = np.nanmean((residuals[idx_param] / unc[idx_param]) ** 2)
+
+    # limit = np.median(np.abs(derivative / values))
+    # chi2 = np.sum(residuals ** 2) / (residuals.size - len(values))
+    # # unc *= np.sqrt(chi2)
+
+    # jac = derivative / np.sqrt(chi2)
+    # _, s, VT = np.linalg.svd(jac, full_matrices=False)
+    # threshold = np.finfo(float).eps * max(jac.shape) * s[0]
+    # s = s[s > threshold]
+    # VT = VT[: s.size]
+    # pcov = np.dot(VT.T / s ** 2, VT)
+    # uncertainties = np.sqrt(np.diag(pcov))
 
     # def gauss(x, A, sig, mu, B):
     #     return B - A * np.exp(-((x - mu) ** 2) / (2 * sig ** 2))
@@ -209,37 +226,16 @@ if __name__ == "__main__":
     # plt.show()
 
     for i, param in enumerate(sme.fitresults.parameters):
-        pder = sme.fitresults.derivative[:, i] / np.sqrt(chi2)
+        pder = sme.fitresults.derivative[:, i]
         pval = sme.fitresults.values[i]
-
         idx = pder != 0
-        # The original rule used in the paper
-        # idx &= np.abs(pder) < np.percentile(np.abs(pder), 84)
-        # idx &= np.abs(pder) > np.percentile(np.abs(pder), 16)
-        # idx &= np.abs(residuals) < 5 * np.std(residuals)
+        idx &= np.abs(resid) / np.sqrt(chi2) < 5
 
-        # idx &= np.abs(resid) < 5 * unc
-        # idx &= np.abs(pder) < limit * np.abs(pval)
-        # idx &= np.abs(pder) < 5 * np.median(np.abs(resid))
-        # Fit which cutoff makes the curve most gaussian
-        # res = minimize(fit, [80], method="Nelder-Mead")
-        # plimit = res.x[0]
-        # gradlim = np.nanpercentile(np.abs(pder), plimit)
-        # idx &= np.abs(pder) < gradlim
-        # Only use the center part of ch_x
-        # ch_x = resid / pder
-        # plimit = np.nanpercentile(ch_x, [45, 55])
-        # idx &= (ch_x > plimit[0]) & (ch_x < plimit[1])
+        # plt.hist(pder[idx], bins="auto")
+        # plt.show()
 
-        # Only use derivatives around the center
-        # this is roughly equivalent to the above cutoff
-        # due to the percentile
-        # med = np.median(np.abs(pder))
-        # mad = np.median(np.abs(np.abs(pder) - med))
-        # idx &= np.abs(pder) < med + 20 * mad
-
-        percentage_points = np.count_nonzero(idx) / idx.size * 100
-        print(f"Using {percentage_points:.2f}% points for the derivative")
+        # plt.hist(resid[idx], bins="auto")
+        # plt.show()
 
         # Sort pixels according to the change of the i
         # parameter needed to match the observations
@@ -252,7 +248,6 @@ if __name__ == "__main__":
         # Normalized cumulative weights
         ch_y /= ch_y[-1]
 
-        # Initial guess
         hmed = np.interp(0.5, ch_y, ch_x)
         interval = np.interp([0.16, 0.84], ch_y, ch_x)
         sigma_estimate = (interval[1] - interval[0]) / 2
@@ -291,6 +286,7 @@ if __name__ == "__main__":
         plt.ylim(-0.1, 1.1)
         plt.legend()
         plt.savefig(join(image_dir, f"cumulative_probability_{param}.png"))
+        plt.show()
         plt.clf()
         # plt.show()
         # Plot 2 (density distribution)
@@ -322,8 +318,8 @@ if __name__ == "__main__":
         plt.title(f"Probability Density: {param}")
         plt.legend()
         plt.savefig(join(image_dir, f"probability_density_{param}.png"))
-        plt.clf()
         # plt.show()
+        plt.clf()
         pass
 
     print(f"Finished")
