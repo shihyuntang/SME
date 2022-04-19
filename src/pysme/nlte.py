@@ -1065,7 +1065,7 @@ class NLTE(Collection):
                     # loop through the list of relevant _lines_, substitute both their levels into the main b matrix
                     # Make sure both levels have corrections available
                     if lr[0] != -1 and lr[1] != -1:
-                        dll.InputDepartureCoefficients(bmat[:, lr].T, li)
+                        dll.InputDepartureCoefficients(bmat[:, lr], li)
 
         for elem in marked_for_removal:
             self.remove_nlte(elem)

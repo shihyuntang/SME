@@ -637,16 +637,16 @@ static PyObject *smelib_InputDepartureCoefficients(PyObject *self, PyObject *arg
         PyErr_SetString(PyExc_ValueError, "Expected bmatrix with ndim == 2");
         return NULL;
     }
-    if (PyArray_DIM(bmatrix_arr, 0) != 2)
+    if (PyArray_DIM(bmatrix_arr, 1) != 2)
     {
         Py_XDECREF(bmatrix_arr);
-        PyErr_SetString(PyExc_ValueError, "Expected bmatrix with shape (2, nrhox)");
+        PyErr_SetString(PyExc_ValueError, "Expected bmatrix with shape (nrhox, 2)");
         return NULL;
     }
-    if (PyArray_DIM(bmatrix_arr, 1) != nrhox)
+    if (PyArray_DIM(bmatrix_arr, 0) != nrhox)
     {
         Py_XDECREF(bmatrix_arr);
-        PyErr_SetString(PyExc_ValueError, "Expected bmatrix with shape (2, nrhox)");
+        PyErr_SetString(PyExc_ValueError, "Expected bmatrix with shape (nrhox, 2)");
         return NULL;
     }
 
