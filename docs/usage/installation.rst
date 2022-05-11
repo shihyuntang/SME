@@ -4,7 +4,7 @@ Installation
 How to install SME:
 
 Prerequisites:
-    - libgfortran5
+    - libgfortran5 (e.g., from https://pkgs.org/download/libgfortran5)
     - gcc
 
 0. (optional) create a virtual environment, and activate it.
