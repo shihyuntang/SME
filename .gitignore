@@ -138,6 +138,7 @@ examples/*.ech
 examples/*.inp
 examples/*.html
 examples/*.sel
+examples/log/
 
 # IDL
 dump.bin
