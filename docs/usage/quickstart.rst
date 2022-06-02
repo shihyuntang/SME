@@ -2,7 +2,7 @@ Quickstart
 ==========
 
 The first step in each SME project is to create an SME structure
-    >>> from sme.sme import SME_Struct
+    >>> from pysme.sme import SME_Structure as SME_Struct
 
 This can be done in done in a few different ways:
     * load an existing SME save file (from Python or IDL)
@@ -14,11 +14,11 @@ This can be done in done in a few different ways:
 
 Either way one has to make sure that a few essential properties are set in the object, those are:
     * Stellar parameters (teff, logg, monh, abund)
-        >>> from sme.abund import Abund
+        >>> from pysme.abund import Abund
         >>> sme.teff, sme.logg, sme.monh = 5700, 4.4, -0.1
         >>> sme.abund = Abund.solar()
     * LineList (linelist), e.g. from VALD
-        >>> from sme.vald import ValdFile
+        >>> from pysme.linelist.vald import ValdFile
         >>> vald = ValdFile("linelist.lin")
         >>> sme.linelist = vald
     * Atmosphere (atmo), the file has to be in PySME/src/sme/atmospheres
