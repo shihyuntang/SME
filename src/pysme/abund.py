@@ -212,7 +212,7 @@ class Abund(IPersist):
     def __init__(
         self,
         monh=0,
-        pattern="empty",
+        pattern="solar",
         type="sme",
         citation_info=_citation_atomic_weights,
     ):

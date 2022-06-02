@@ -77,7 +77,7 @@ class Parameters(Collection):
 
     def __init__(self, **kwargs):
         monh = kwargs.pop("monh", kwargs.pop("feh", 0))
-        abund = kwargs.pop("abund", "empty")
+        abund = kwargs.pop("abund", "solar")
         if "grav" in kwargs.keys() and "logg" not in kwargs.keys():
             kwargs["logg"] = kwargs.pop("grav")
         super().__init__(**kwargs)
