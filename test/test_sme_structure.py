@@ -63,9 +63,9 @@ def test_empty_structure():
     assert empty.atomic is not None
 
     assert empty.monh == 0
-    assert np.isnan(empty["abund Fe"])
-    assert empty.abund["H"] == 0
-    assert np.isnan(empty.abund()["Mg"])
+    assert not np.isnan(empty["abund Fe"])
+    assert empty.abund["H"] == 12
+    assert not np.isnan(empty.abund()["Mg"])
 
     assert empty.system_info is not None
     assert empty.system_info.arch == ""
