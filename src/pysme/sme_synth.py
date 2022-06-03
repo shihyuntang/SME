@@ -244,6 +244,8 @@ class SME_DLL:
             abundance structure to be passed (see Abund for more details)
         """
         abund = abund("sme", raw=True)
+        # TODO: does this make sense or should we fix the C code?
+        abund[np.isnan(abund)] = -12
         _smelib.InputAbund(abund)
 
     def Opacity(self):
