@@ -146,6 +146,129 @@ class SME_DLL:
         species : array(string) of size (nlines,)
             names of the elements (with Ionization level)
         """
+
+        # Check for unsupported lines in the linelist
+        # The limits are given by which data is available in XSAHA in eos.f
+        # The one letter elements need the space, as this is what we get from the
+        # linelist species
+        max_ion = {
+            "H ": 2,
+            "He": 3,
+            "Li": 4,
+            "Be": 4,
+            "B ": 4,
+            "C ": 6,
+            "N ": 6,
+            "O ": 6,
+            "F ": 6,
+            "Ne": 6,
+            "Na": 6,
+            "Mg": 6,
+            "Al": 6,
+            "Si": 6,
+            "P ": 6,
+            "S ": 6,
+            "Cl": 5,
+            "Ar": 5,
+            "K ": 5,
+            "Ca": 5,
+            "Sc": 5,
+            "Ti": 5,
+            "V ": 5,
+            "Cr": 5,
+            "Mn": 5,
+            "Fe": 5,
+            "Co": 5,
+            "Ni": 5,
+            "Cu": 3,
+            "Zn": 3,
+            "Ga": 3,
+            "Ge": 3,
+            "As": 3,
+            "Se": 3,
+            "Br": 3,
+            "Kr": 3,
+            "Rb": 3,
+            "Sr": 3,
+            "Y ": 3,
+            "Zr": 3,
+            "Nb": 3,
+            "Mo": 3,
+            "Tc": 3,
+            "Ru": 3,
+            "Rh": 3,
+            "Pd": 3,
+            "Ag": 3,
+            "Cd": 3,
+            "In": 3,
+            "Sn": 3,
+            "Sb": 3,
+            "Te": 3,
+            "I ": 3,
+            "Xe": 3,
+            "Cs": 3,
+            "Ba": 3,
+            "La": 3,
+            "Ce": 4,
+            "Pr": 4,
+            "Nd": 4,
+            "Pm": 3,
+            "Sm": 3,
+            "Eu": 4,
+            "Gd": 3,
+            "Tb": 3,
+            "Dy": 3,
+            "Ho": 3,
+            "Er": 3,
+            "Tm": 3,
+            "Yb": 3,
+            "Lu": 3,
+            "Hf": 3,
+            "Ta": 3,
+            "W ": 3,
+            "Re": 3,
+            "Os": 3,
+            "Ir": 3,
+            "Pt": 3,
+            "Au": 3,
+            "Hg": 3,
+            "Tl": 3,
+            "Pb": 3,
+            "Bi": 3,
+            "Po": 3,
+            "At": 3,
+            "Rn": 3,
+            "Fr": 3,
+            "Ra": 3,
+            "Ac": 3,
+            "Th": 3,
+            "Pa": 3,
+            "U ": 3,
+            "Np": 3,
+            "Pu": 3,
+            "Am": 3,
+            "Cm": 3,
+            "Bk": 3,
+            "Cf": 3,
+            "Es": 3,
+        }
+
+        elem = linelist["species"].astype("U2")
+        ion = linelist["ionization"]
+
+        # For each element check if we are above the maximum ionization
+        mask = np.full(len(linelist), False)
+        for key, value in max_ion.items():
+            mask |= (elem == key) & (ion > value)
+        logger.warning(
+            "Discarding %i high ionization lines, of species %s",
+            np.count_nonzero(mask),
+            ", ".join(np.unique(linelist[mask].species)),
+        )
+        # And remove those lines
+        linelist = linelist[~mask]
+
+        # Prepare arrays for the C code
         atomic = linelist["atomic"].T
         species = linelist["species"]
         species = np.asarray(species, "S8")
