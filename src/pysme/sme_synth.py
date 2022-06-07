@@ -260,13 +260,16 @@ class SME_DLL:
         mask = np.full(len(linelist), False)
         for key, value in max_ion.items():
             mask |= (elem == key) & (ion > value)
-        logger.warning(
-            "Discarding %i high ionization lines, of species %s",
-            np.count_nonzero(mask),
-            ", ".join(np.unique(linelist[mask].species)),
-        )
+        nlines = np.count_nonzero(mask)
         # And remove those lines
-        linelist = linelist[~mask]
+        if nlines > 0:
+            warning = ", ".join(np.unique(linelist[mask]["species"]))
+            logger.warning(
+                "Discarding %i high ionization lines, of species %s",
+                nlines,
+                warning,
+            )
+            linelist = linelist[~mask]
 
         # Prepare arrays for the C code
         atomic = linelist["atomic"].T
