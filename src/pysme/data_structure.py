@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import logging
 from copy import copy
+from multiprocessing.sharedctypes import Value
 
 import numpy as np
 import pybtex
@@ -121,9 +122,13 @@ def vector(self, value):
     if value is None:
         return None
     elif np.isscalar(value):
-        wind = self.wave.sizes if self.wave is not None else None
-        values = np.full(self.wave.size, value)
-        value = Iliffe_vector.from_indices(values, self.wave.sizes)
+        if self.wave is None:
+            raise ValueError(
+                "Can not set vector from single value without defining the wavelength grid"
+            )
+        wind = self.wave.sizes
+        value = np.full(np.sum(wind), value)
+        value = Iliffe_vector.from_indices(value, wind)
     elif isinstance(value, np.ndarray):
         value = np.require(value, requirements="W")
         if value.ndim == 1:
