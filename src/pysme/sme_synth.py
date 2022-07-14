@@ -371,8 +371,8 @@ class SME_DLL:
         """
         abund = abund("sme", raw=True)
         # TODO: does this make sense or should we fix the C code?
-        abund[np.isnan(abund)] = -13
-        abund[abund < -13] = -13
+        abund[np.isnan(abund)] = -99
+        abund[abund < -99] = -99
 
         _smelib.InputAbund(abund)
 
