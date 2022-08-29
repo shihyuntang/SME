@@ -22,6 +22,7 @@ from .iliffe_vector import Iliffe_vector
 from .large_file_storage import setup_lfs
 from .sme import MASK_VALUES
 from .sme_synth import SME_DLL
+from .util import show_progress_bars
 
 logger = logging.getLogger(__name__)
 
@@ -573,7 +574,9 @@ class Synthesizer:
         #   Interpolate onto geomspaced wavelength grid
         #   Apply instrumental and turbulence broadening
 
-        for il in tqdm(segments, desc="Segments", leave=False):
+        for il in tqdm(
+            segments, desc="Segments", leave=False, disable=~show_progress_bars
+        ):
             wmod[il], smod[il], cmod[il] = self.synthesize_segment(
                 sme,
                 il,

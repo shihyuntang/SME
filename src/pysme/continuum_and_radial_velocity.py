@@ -16,9 +16,12 @@ from scipy.optimize import least_squares
 from scipy.signal import correlate
 from tqdm import tqdm
 
+from pysme.util import disable_progress_bars
+
 from .iliffe_vector import Iliffe_vector
 from .sme import MASK_VALUES
 from .sme_synth import SME_DLL
+from .util import show_progress_bars
 
 logger = logging.getLogger(__name__)
 
@@ -450,7 +453,9 @@ class ContinuumNormalizationMCMC(ContinuumNormalizationAbstract):
         # old_tau = 0
 
         # Now we'll sample for up to max_n steps
-        with tqdm(leave=False, desc="RV", total=max_n) as t:
+        with tqdm(
+            leave=False, desc="RV", total=max_n, disable=~show_progress_bars
+        ) as t:
             for _ in sampler.sample(p0, iterations=max_n):
                 t.update()
                 # Only check convergence every 100 steps
@@ -997,11 +1002,14 @@ def determine_radial_velocity(
             return resid
 
         interpolator = lambda x: np.interp(x, x_syn, y_syn)
-        res = least_squares(
-            func, x0=rvel, loss="soft_l1", bounds=rv_bounds, jac="3-point"
-        )
-        rvel = res.x[0]
-
+        try:
+            res = least_squares(
+                func, x0=rvel, loss="soft_l1", bounds=rv_bounds, jac="3-point"
+            )
+            rvel = res.x[0]
+        except ValueError:
+            logger.warning(f"Could not determine radial velocity for segment {segment}")
+            rvel = 0
     return rvel
 
 

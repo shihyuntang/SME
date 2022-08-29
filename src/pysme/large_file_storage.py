@@ -26,6 +26,7 @@ from tqdm.auto import tqdm
 from tqdm.utils import CallbackIOWrapper
 
 from .config import Config
+from .util import show_progress_bars
 
 logger = logging.getLogger(__name__)
 
@@ -140,6 +141,7 @@ class LargeFileStorage:
                         unit="B",
                         unit_scale=True,
                         unit_divisor=1024,
+                        disable=~show_progress_bars,
                     ) as t:
                         fobj = CallbackIOWrapper(t.update, f_in, "read")
                         while True:

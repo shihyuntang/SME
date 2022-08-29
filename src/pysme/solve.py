@@ -26,7 +26,7 @@ from .large_file_storage import setup_lfs
 from .nlte import DirectAccessFile
 from .sme import MASK_VALUES
 from .synthesize import Synthesizer
-from .util import print_to_log
+from .util import print_to_log, show_progress_bars
 
 logger = logging.getLogger(__name__)
 
@@ -786,8 +786,12 @@ class SME_Solver:
 
         # Do the heavy lifting
         if self.nparam > 0:
-            self.progressbar = tqdm(desc="Iteration", total=0)
-            self.progressbar_jacobian = tqdm(desc="Jacobian", total=len(p0))
+            self.progressbar = tqdm(
+                desc="Iteration", total=0, disable=~show_progress_bars
+            )
+            self.progressbar_jacobian = tqdm(
+                desc="Jacobian", total=len(p0), disable=~show_progress_bars
+            )
             with print_to_log():
                 res = least_squares(
                     self._residuals,

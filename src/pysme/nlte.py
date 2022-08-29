@@ -15,6 +15,7 @@ from tqdm import tqdm
 from .abund import Abund
 from .abund import elements as abund_elem
 from .data_structure import Collection, CollectionFactory, array, astype, oneof, this
+from .util import show_progress_bars
 
 logger = logging.getLogger(__name__)
 
@@ -478,6 +479,7 @@ class Grid:
             np.ndindex(nabund, nteff, ngrav, nfeh),
             desc="Loading NLTE %s" % self.elem,
             total=nabund * nteff * ngrav * nfeh,
+            disable=~show_progress_bars,
         ):
             model = self._keys[f[l], g[k], t[j], x[i]]
             try:

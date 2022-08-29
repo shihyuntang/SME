@@ -25,6 +25,17 @@ from . import __version__ as smeversion
 from .sme_synth import SME_DLL
 
 logger = logging.getLogger(__name__)
+show_progress_bars = True
+
+
+def disable_progress_bars():
+    global show_progress_bars
+    show_progress_bars = False
+
+
+def enable_progress_bars():
+    global show_progress_bars
+    show_progress_bars = True
 
 
 @contextlib.contextmanager
