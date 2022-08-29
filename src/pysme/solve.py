@@ -798,10 +798,10 @@ class SME_Solver:
                     jac=self._jacobian,
                     x0=p0,
                     bounds=bounds,
-                    loss="cauchy",
+                    loss=sme.leastsquares_loss,
                     f_scale=self.f_scale,
-                    method="dogbox",
-                    # x_scale=step_sizes,
+                    method=sme.leastsquares_method,
+                    x_scale=sme.leastsquares_xscale,
                     # These control the tolerance, for early termination
                     # since each iteration is quite expensive
                     xtol=sme.accxt,
@@ -813,7 +813,7 @@ class SME_Solver:
                         "bounds": bounds,
                         "segments": segments,
                         "step_sizes": step_sizes,
-                        "method": "2-point",
+                        "method": sme.leastsquares_jac,
                     },
                 )
                 # The jacobian is altered by the loss function
