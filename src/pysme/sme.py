@@ -225,7 +225,7 @@ class SME_Structure(Parameters):
         ("accgt", 1e-4, asfloat, this,
             "float: minimum accuracy of the gradient of the least squares fit"),
         ("leastsquares_method", "dogbox", asstr, this, "str: leastsquares method to use, see scipy least_squares for details, default: 'dogbox'."),
-        ("leastsquares_loss", "cauchy", asstr, this, "str: leastsquares loss to use, see scipy least_squares for details, default: 'cauchy'"),
+        ("leastsquares_loss", "linear", asstr, this, "str: leastsquares loss to use, see scipy least_squares for details, default: 'linear'"),
         ("leastsquares_xscale", 1.0, this, this, "str, arraylike: leastsquare x-scale to use, see scipy least_squares for details, default: 1"),
         ("leastsquares_jac", "2-point", asstr, this, "str: leastsquares jacobian calculation, see scipy least_squares for details, default: '2-point'"),
         ("iptype", None, lowercase(oneof(None, "gauss", "sinc", "table")), this, "str: instrumental broadening type"),
