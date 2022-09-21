@@ -555,7 +555,7 @@ class Synthesizer:
         dll.SetLibraryPath()
         if passLineList:
             dll.InputLineList(sme.linelist)
-        if updateLineList:
+        if hasattr(updateLineList, "__len__") and len(updateLineList) > 0:
             # TODO Currently Updates the whole linelist, could be improved to only change affected lines
             dll.UpdateLineList(sme.atomic, sme.species, updateLineList)
         if passAtmosphere:
