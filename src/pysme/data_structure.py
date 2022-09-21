@@ -248,6 +248,20 @@ class Collection(persistence.IPersist):
     def citation(self, output="string"):
         return self.create_citation(self.citation_info, output=output)
 
+    def to_dict(self):
+        tree = {}
+        for name in self._names:
+            value = self[name]
+            if hasattr(value, "to_dict"):
+                value = value.to_dict()
+            tree[name] = value
+        return tree
+
+    @classmethod
+    def from_dict(cls, data):
+        obj = cls(**data)
+        return obj
+
     def _save(self):
         header = {}
         data = {}

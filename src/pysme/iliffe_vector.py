@@ -301,18 +301,27 @@ class Iliffe_vector(numpy.lib.mixins.NDArrayOperatorsMixin, MultipleDataExtensio
         return ext
 
     def to_dict(self):
-        cls = self.__class__
-        obj = {"header": self.header}
-        for i, v in enumerate(self.segments):
-            obj[str(i)] = cls._np_to_dict(v)
-        return obj
+        data = {"data": self.data, "offsets": self.offsets}
+        return data
 
     @classmethod
-    def from_dict(cls, header: dict, data: dict):
-        data = {name: cls._np_from_dict(d) for name, d in data.items()}
-        data = [data[str(i)] for i in range(len(data))]
-        obj = cls(values=data)
+    def from_dict(cls, data):
+        obj = cls(values=data["data"], offsets=data["offsets"])
         return obj
+
+    # def to_dict(self):
+    #     cls = self.__class__
+    #     obj = {"header": self.header}
+    #     for i, v in enumerate(self.segments):
+    #         obj[str(i)] = cls._np_to_dict(v)
+    #     return obj
+
+    # @classmethod
+    # def from_dict(cls, header: dict, data: dict):
+    #     data = {name: cls._np_from_dict(d) for name, d in data.items()}
+    #     data = [data[str(i)] for i in range(len(data))]
+    #     obj = cls(values=data)
+    #     return obj
 
     def _save(self):
         data = {str(i): v for i, v in enumerate(self.segments)}

@@ -535,6 +535,27 @@ class Abund(IPersist):
         pattern[0] = 0
         return pattern
 
+    def to_dict(self):
+        data = {
+            "monh": self.monh,
+            "type_internal": self._type_internal,
+            "type": self.type,
+            "citation_info": self.citation_info,
+            "data": self._pattern,
+        }
+        return data
+
+    @classmethod
+    def from_dict(cls, data):
+        obj = cls(
+            monh=data["monh"],
+            pattern=data["data"],
+            type=data["type_internal"],
+            citation_info=data["citation_info"],
+        )
+        obj.type = data["type"]
+        return obj
+
     def _save(self):
         header = {
             "monh": self.monh,

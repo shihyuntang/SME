@@ -438,6 +438,23 @@ class LineList(IPersist):
         return self
 
     def trim(self, wave_min, wave_max, rvel=None):
+        """Remove lines from the linelist outside the specified
+        wavelength range
+
+        Parameters
+        ----------
+        wave_min : float
+            lower wavelength limit in Angstrom
+        wave_max : float
+            upper wavelength limit in Angstrom
+        rvel : float, optional
+            add an additional buffer on each side, corresponding to this radial velocity, by default None
+
+        Returns
+        -------
+        LineList
+            trimmed linelist
+        """
         if rvel is not None:
             # Speed of light in km/s
             c_light = constants.c * 1e3
@@ -445,12 +462,121 @@ class LineList(IPersist):
             wave_max *= np.sqrt((1 + rvel / c_light) / (1 - rvel / c_light))
         selection = self._lines["wlcent"] > wave_min
         selection &= self._lines["wlcent"] < wave_max
+        if not np.any(selection):
+            logger.warning("Trimmed linelist is empty")
         return LineList(
             self._lines[selection],
             lineformat=self.lineformat,
             medium=self.medium,
             citation_info=self.citation_info,
         )
+
+    def cull(self, minimum_depth):
+        """Remove lines from the linelist that are weaker than the cutoff
+
+        The linedepth is an estimate and not accurate for the final stellar
+        parameters, so final line depths might differ from depths in the linelist
+
+        Parameters
+        ----------
+        minimum_depth : float
+            the cutoff for lines to keep them. The cutoff is specified within
+            the normalised spectrum, so should be between 0 and 1
+
+        Returns
+        -------
+        LineList
+            the culled linelist
+        """
+        if minimum_depth < 0 or minimum_depth > 1:
+            raise ValueError(
+                "minimum_depth must be between 0 and 1, but got %i",
+                minimum_depth,
+            )
+        depth = self._lines["depth"]
+        selection = depth > minimum_depth
+        if not np.any(selection):
+            logger.warning("Culled linelist is empty")
+        return LineList(
+            self._lines[selection],
+            lineformat=self.lineformat,
+            medium=self.medium,
+            citation_info=self.citation_info,
+        )
+
+    def cull_percentage(self, percentage_to_keep):
+        """Remove a percentage of the lines in the linelist, removing the
+        weakest lines first
+
+        The linedepth is an estimate and not accurate for the final stellar
+        parameters, so final line depths might differ from depths in the linelist
+
+        The cut is not exact in the number of lines, e.g. if there are many lines
+        with the same depth as the cutoff, then the resulting Linelist will have
+        slightly more than half the lines.
+
+        Parameters
+        ----------
+        percentage_to_keep : float
+            The percentage to keep in the linelist, should be between 0 and 100
+
+        Returns
+        -------
+        LineList
+            the culled linelist
+
+        Raises
+        ------
+        ValueError
+            if the percentage is not between 0 and 100
+        """
+        if percentage_to_keep < 0 or percentage_to_keep > 100:
+            raise ValueError(
+                "percentage_to_keep must be between 0 and 100, but got %i",
+                percentage_to_keep,
+            )
+        depth = self._lines["depth"]
+        cutoff = np.percentile(depth, 100 - percentage_to_keep)
+        selection = depth >= cutoff
+        if not np.any(selection):
+            logger.warning("Culled linelist is empty")
+        return LineList(
+            self._lines[selection],
+            lineformat=self.lineformat,
+            medium=self.medium,
+            citation_info=self.citation_info,
+        )
+
+    def to_dict(self):
+        data = {
+            "lineformat": self.lineformat,
+            "medium": self.medium,
+            "citation_info": self.citation_info,
+        }
+
+        for col in self._lines.columns:
+            value = self._lines[col].values
+            if value.dtype == object:
+                value = value.astype(str)
+            data[col] = value
+
+        return data
+
+    @classmethod
+    def from_dict(cls, data):
+        df_data = {
+            k: v
+            for k, v in data.items()
+            if k not in ["lineformat", "medium", "citation_info"]
+        }
+        df = pd.DataFrame.from_dict(data=df_data)
+        obj = cls(
+            linedata=df,
+            lineformat=data["lineformat"],
+            medium=data["medium"],
+            citation_info=data["citation_info"],
+        )
+        return obj
 
     def _save(self):
         header = {
