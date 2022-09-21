@@ -98,8 +98,22 @@ class FinalPlot:
                     {
                         "title": f"Segment {i}",
                         "annotations": annotations[i],
-                        "xaxis": {"range": list(self.wran[i])},
-                        "yaxis": {"autorange": True},
+                        "xaxis": {
+                            "range": list(self.wran[i]),
+                            "linecolor": "black",
+                            "linewidth": 2.4,
+                            "mirror": True,
+                            "ticks": "outside",
+                            "tickcolor": "black",
+                        },
+                        "yaxis": {
+                            "autorange": True,
+                            "linecolor": "black",
+                            "linewidth": 2.4,
+                            "mirror": True,
+                            "ticks": "outside",
+                            "tickcolor": "black",
+                        },
                     },
                 ],
             }
@@ -107,10 +121,25 @@ class FinalPlot:
 
         layout = {
             "dragmode": "select",
+            "plot_bgcolor": "#fff",
             "selectdirection": "h",
             "title": f"Segment {self.segment}",
-            "xaxis": {"title": "Wavelength [Å]"},
-            "yaxis": {"title": "Intensity"},
+            "xaxis": {
+                "title": "Wavelength [Å]",
+                "linecolor": "black",
+                "linewidth": 2.4,
+                "mirror": True,
+                "ticks": "outside",
+                "tickcolor": "black",
+            },
+            "yaxis": {
+                "title": "Intensity",
+                "linecolor": "black",
+                "linewidth": 2.4,
+                "mirror": True,
+                "ticks": "outside",
+                "tickcolor": "black",
+            },
             "annotations": annotations[self.segment],
             "sliders": [{"active": self.segment, "steps": steps}],
             "legend": {"traceorder": "reversed"},
