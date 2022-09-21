@@ -380,7 +380,11 @@ class SME_Solver:
                 else:
                     result[i] = [-10, 11]
             elif name[:8].lower() == "linelist":
-                result[i] = [-np.inf, np.inf]
+                if "excit" in name.lower():
+                    value = sme.linelist[int(name.split()[1])]["excit"][0]
+                    result[i] = [value - 0.005, value + 0.005]
+                else:
+                    result[i] = [-np.inf, np.inf]
             else:
                 result[i] = bounds[name]
 
@@ -434,7 +438,10 @@ class SME_Solver:
             elif param.startswith("Abund"):
                 step_sizes += [0.01]
             elif param.startswith("linelist"):
-                step_sizes += [0.02]
+                if "excit" in param:
+                    step_sizes += [0.001]
+                else:
+                    step_sizes += [0.2]
             else:
                 step_sizes += [0.001]
         step_sizes = np.asarray(step_sizes)
@@ -732,6 +739,8 @@ class SME_Solver:
                         "linelist parameter like 'linelist n gflog'"
                     )
                 self.update_linelist += [idx]
+        if self.update_linelist:
+            self.update_linelist = np.unique(self.update_linelist)
 
         # Create appropiate bounds
         if bounds is None:
@@ -828,7 +837,7 @@ class SME_Solver:
             logger.debug("Reduced chi square: %.3f", sme.fitresults.chisq)
             try:
                 for name, value, unc in zip(
-                    self.parameter_names, res.x, sme.fitresults.uncertainties
+                    self.parameter_names, res.x, sme.fitresults.fit_uncertainties
                 ):
                     logger.info("%s\t%.5f +- %.5g", name.ljust(10), value, unc)
                 logger.info("%s\t%s +- %s", "v_rad".ljust(10), sme.vrad, sme.vrad_unc)
