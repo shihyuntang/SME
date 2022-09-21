@@ -34,6 +34,7 @@ if __name__ == "__main__":
     # Load your existing SME structure or create your own
     sme = SME.SME_Structure.load(in_file)
     sme.save("test.sme")
+    sme = SME.SME_Structure.load("test.sme")
     sme.abund = Abund(0, "asplund2009")
     sme.linelist = ValdFile(os.path.join(examples_dir, "sun.lin"))
 
@@ -79,7 +80,7 @@ if __name__ == "__main__":
     # sme = synthesize_spectrum(sme)
     sme.fitresults.maxiter = 100 * len(fitparameters)
     sme = solve(sme, fitparameters, segments=[0])
-    chi2 = np.mean(sme.fitresults.residuals ** 2 / sme.uncs.ravel() ** 2)
+    chi2 = np.mean(sme.fitresults.residuals ** 2 / sme.uncs[sme.mask_line].ravel() ** 2)
     print(sme.citation())
     # monh = 0.0 -> chi2 = 0.00057
     # monh = 0.4 -> chi2 = 0.00037
