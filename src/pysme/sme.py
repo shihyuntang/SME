@@ -183,7 +183,14 @@ class SME_Structure(Parameters):
                * "whole": Determine one radial velocity for the whole spectrum
             """),
         ("vrad", 0, array(None, float), this, "array of size (nseg,): radial velocity of each segment in km/s"),
-        ("vrad_limit", 500, asfloat, this, "float: radial velocity limit in km/s"),
+        ("vrad_bounds", (-500, 500), array(2, float), this, "float: radial velocity limits in km/s"),
+        ("vrad_loss", "soft_l1", asstr, this, "str: loss function for the radial velocity fit"),
+        ("vrad_method", "dogbox", asstr, this, "str: least squares method used in the radial velocity fit"),
+        ("vrad_jac", "3-point", asstr, this, "str: jacobian approximation used in the radial velocity fit"),
+        ("vrad_xscale", "jac", this, this, "array or 'jac': scale of the vrad parameter"),
+        ("vrad_ftol", 1e-8, asfloat, this, "float: tolerance for the radial velocity least squares fit"),
+        ("vrad_xtol", 1e-8, asfloat, this, "float: tolerance for the radial velocity least squares fit"),
+        ("vrad_gtol", 1e-8, asfloat, this, "float: tolerance for the radial velocity least squares fit"),
         ("cscale_flag", "none", lowercase(oneof("none", "fix", "constant", "linear", "quadratic", "cubic", "quintic", "quantic", astype=int)), this,
             """str: Flag that describes how to correct for the continuum
 
@@ -208,6 +215,14 @@ class SME_Structure(Parameters):
             The x coordinates of each polynomial are chosen so that x = 0, at the first wavelength point,
             i.e. x is shifted by wave[segment][0]
             """),
+        ("cscale_bounds", (-np.inf, np.inf), this, this, "array(2, cscale_degree): bounds for the continuum parameters"),
+        ("cscale_loss", "soft_l1", asstr, this, "str: loss function for the continuum fit"),
+        ("cscale_method", "dogbox", asstr, this, "str: least squares method used in the continuum fit"),
+        ("cscale_jac", "3-point", asstr, this, "str: jacobian approximation used in the continuum fit"),
+        ("cscale_xscale", "jac", this, this, "array of 'jac', Scale of each continuum parameter"),
+        ("cscale_ftol", 1e-8, asfloat, this, "float: tolerance for the continuum least squares fit"),
+        ("cscale_xtol", 1e-8, asfloat, this, "float: tolerance for the continuum least squares fit"),
+        ("cscale_gtol", 1e-8, asfloat, this, "float: tolerance for the continuum least squares fit"),
         ("normalize_by_continuum", True, asbool, this,
             "bool: Whether to normalize the synthetic spectrum by the synthetic continuum spectrum or not"),
         ("specific_intensities_only", False, asbool, this,
@@ -218,16 +233,13 @@ class SME_Structure(Parameters):
             "float: minimum accuracy for linear spectrum interpolation vs. wavelength."),
         ("accrt", 1e-4, asfloat, this,
             "float: minimum accuracy for synthethized spectrum at wavelength grid points in sme.wint."),
-        ("accxt", 1e-6, asfloat, this,
-            "float: minimum accuracy of the parameters in the fitting procedure"),
-        ("accft", 1e-3, asfloat, this,
-            "float: minimum accuracy of the best fit cost"),
-        ("accgt", 1e-4, asfloat, this,
-            "float: minimum accuracy of the gradient of the least squares fit"),
         ("leastsquares_method", "dogbox", asstr, this, "str: leastsquares method to use, see scipy least_squares for details, default: 'dogbox'."),
         ("leastsquares_loss", "linear", asstr, this, "str: leastsquares loss to use, see scipy least_squares for details, default: 'linear'"),
         ("leastsquares_xscale", 1.0, this, this, "str, arraylike: leastsquare x-scale to use, see scipy least_squares for details, default: 1"),
         ("leastsquares_jac", "2-point", asstr, this, "str: leastsquares jacobian calculation, see scipy least_squares for details, default: '2-point'"),
+        ("leastsquares_ftol", 1e-3, asfloat, this, "float: minimum accuracy of the best fit cost"),
+        ("leastsquares_xtol", 1e-6, asfloat, this, "float: minimum accuracy of the parameters in the fitting procedure"),
+        ("leastsquares_gtol", 1e-4, asfloat, this, "float: minimum accuracy of the gradient of the least squares fit"),
         ("iptype", None, lowercase(oneof(None, "gauss", "sinc", "table")), this, "str: instrumental broadening type"),
         ("ipres", 0, array(None, float), this, "float, array: Instrumental resolution for instrumental broadening"),
         ("ip_x", None, this, this, "array: Instrumental broadening table in x direction"),
@@ -651,6 +663,39 @@ class SME_Structure(Parameters):
         if self.linelist is None:
             return None
         return self.linelist.species
+
+    # Aliases for outdated names
+    @property
+    def accxt(self):
+        return self.leastsquares_xtol
+
+    @accxt.setter
+    def accxt(self, value):
+        self.leastsquares_xtol = value
+
+    @property
+    def accft(self):
+        return self.leastsquares_ftol
+
+    @accft.setter
+    def accft(self, value):
+        self.leastsquares_ftol = value
+
+    @property
+    def accgt(self):
+        return self.leastsquares_gtol
+
+    @accgt.setter
+    def accgt(self, value):
+        self.leastsquares_gtol = value
+
+    @property
+    def vrad_limit(self):
+        return self.vrad_bounds[0]
+
+    @vrad_limit.setter
+    def vrad_limit(self, value):
+        self.vrad_bounds = (-value, value)
 
     def __convert_cscale__(self):
         """
