@@ -1,5 +1,5 @@
 # The requirements, without a version number, hopefully that works
-pandas==1.5.0
+pandas==1.5.1
 scipy==1.9.1
 numpy==1.23.3
 astropy==5.1
