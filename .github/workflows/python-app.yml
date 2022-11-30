@@ -18,7 +18,7 @@ jobs:
           - name: ubuntu
             runs_on: ubuntu-latest
           - name: macos
-            runs_on: macos-latest
+            runs_on: macos-11
           # - name: windows
           #   runs_on: windows-latest
     runs-on: ${{ matrix.runs_on }}
