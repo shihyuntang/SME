@@ -81,6 +81,25 @@ _citation_atomic_weights = r"""
 }
 """
 
+_citation_grevesse1996 = r"""
+@INPROCEEDINGS{1996ASPC...99..117G,
+       author = {{Grevesse}, N. and {Noels}, A. and {Sauval}, A.~J.},
+        title = "{Standard Abundances}",
+    booktitle = {Cosmic Abundances},
+         year = 1996,
+       editor = {{Holt}, Stephen S. and {Sonneborn}, George},
+       series = {Astronomical Society of the Pacific Conference Series},
+       volume = {99},
+        month = jan,
+        pages = {117},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/1996ASPC...99..117G},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+}
+"""
+
+
+
 # fmt: off
 elements = (
     "H", "He",
@@ -177,6 +196,23 @@ _lodders2003 = (
     0.11, 0.94, 0.09, 0.77, -0.14, 0.65, 0.26, 1.37,
     1.35, 1.67, 0.72, 1.16, 0.81, 2.05, 0.68, 0.09,
     None, -0.49, None, None, None, None, None, None,
+    None, None, None, None, None, None, None, None,
+    None,)
+
+# Grevesse, Noels & Sauval (1996) used in NextGen
+_grevesse1996 = (
+    12, 10.99,
+    1.16, 1.15, 2.60, 8.55, 7.97, 8.87, 4.56, 8.08,
+    6.33, 7.58, 6.47, 7.55, 5.45, 7.21, 5.50, 6.52,
+    5.12, 6.36, 3.17, 5.02, 4.00, 5.67, 5.39, 7.50,
+    4.92, 6.25, 4.21, 4.60, 2.88, None, None, None,
+    None, 3.23, 2.60, 2.90, 2.24, 2.60, 1.42, None,
+    None, None, None, None, None, None, None, None,
+    None, None, None, None, None, 2.13, 1.22, None,
+    None, None, None, None, None, None, None, None,
+    None, None, None, None, None, None, None, None,
+    None, None, None, None, None, None, None, None,
+    None, None, None, None, None, None, None, None,
     None, None, None, None, None, None, None, None,
     None,)
 # fmt: on
@@ -469,12 +505,15 @@ class Abund(IPersist):
         elif pattern_name.lower() == "lodders2003":
             self._pattern = np.array(_lodders2003, dtype=float)
             self.citation_info += _citation_lodders2003
+        elif pattern_name.lower() == "grevesse1996":
+            self._pattern = np.array(_grevesse1996, dtype=float)
+            self.citation_info += _citation_grevesse1996
         elif pattern_name.lower() == "empty":
             self._pattern = self.empty_pattern()
         else:
             raise ValueError(
                 f"Got abundance pattern name {pattern_name} should be one of"
-                "'asplund2009', 'grevesse2007', 'lodders2003', or 'empty'."
+                "'asplund2009', 'grevesse2007', 'lodders2003', 'grevesse1996', or 'empty'."
             )
 
     def set_pattern_by_value(self, pattern, type):
