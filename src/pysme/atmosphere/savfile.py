@@ -22,12 +22,12 @@ class SavFile(AtmosphereGrid):
             pass
         # Try loading the datafile using Numpy which is faster
         # and was generated in a previous iteration of PySME
-        try:
-            self = cls.load(filename)
-            cls._cache = self
-            return self
-        except:
-            pass
+        # try:
+        self = cls.load(filename)
+        cls._cache = self
+        return self
+        # except:
+            # pass
 
         # Otherwise we parse the sav file
         data = readsav(filename)
