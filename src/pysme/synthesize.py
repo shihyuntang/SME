@@ -45,7 +45,7 @@ class Synthesizer:
         self.atmosphere_interpolator = None
         # This stores a reference to the currently used sme structure, so we only log it once
         self.known_sme = None
-        logger.info("Don't forget to cite your sources. Use sme.citation()")
+        # logger.info("Don't forget to cite your sources. Use sme.citation()")
 
     def get_atmosphere(self, sme):
         """
