@@ -299,7 +299,7 @@ class AtmosphereGrid(np.recarray):
     @classmethod
     def load(cls, filename):
         """Load the atmosphere grid data from disk"""
-        data = np.load(filename)
+        data = np.load(filename, allow_pickle=True)
         self = data["data"].view(cls)
         header = data["header"]
         for k in header.dtype.names:
